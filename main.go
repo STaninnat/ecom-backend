@@ -35,11 +35,6 @@ func main() {
 		log.Fatal("Warning: jwt secret environment variable is not set")
 	}
 
-	refreshSecret := os.Getenv("REFRESH_SECRET")
-	if refreshSecret == "" {
-		log.Fatal("Warning: refresh secret environment variable is not set")
-	}
-
 	issuerName := os.Getenv("ISSUER")
 	if issuerName == "" {
 		log.Fatal("Warning: api service name environment variable is not set")
@@ -51,10 +46,9 @@ func main() {
 	}
 
 	apicfg := &config.APIConfig{
-		JWTSecret:     jwtSecret,
-		RefreshSecret: refreshSecret,
-		Issuer:        issuerName,
-		Audience:      audienceName,
+		JWTSecret: jwtSecret,
+		Issuer:    issuerName,
+		Audience:  audienceName,
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -76,12 +70,6 @@ func main() {
 
 		log.Println("Connected to database successfully...")
 	}
-
-	_ = apicfg.JWTSecret
-	_ = apicfg.RefreshSecret
-	_ = apicfg.Issuer
-	_ = apicfg.Audience
-	_ = apicfg.DB
 
 	authCfg := &auth.AuthConfig{
 		APIConfig: apicfg,
