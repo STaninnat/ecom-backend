@@ -49,18 +49,18 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 	}
 
 	if claims.Issuer != cfg.Issuer {
-		return nil, fmt.Errorf("invalid issuer: expected 'my-api-service', got '%s'", claims.Issuer)
+		return nil, fmt.Errorf("invalid issuer: got '%s'", claims.Issuer)
 	}
 
 	if !contains(claims.Audience, cfg.Audience) {
-		return nil, fmt.Errorf("invalid audience: expected 'my-frontend-app', got '%s'", claims.Audience)
+		return nil, fmt.Errorf("invalid audience: got '%s'", claims.Audience)
 	}
 
-	if claims.ExpiresAt.Before(time.Now()) {
+	if claims.ExpiresAt.Time.Before(time.Now()) {
 		return nil, fmt.Errorf("token expired")
 	}
 
-	if claims.NotBefore.After(time.Now()) {
+	if claims.NotBefore.Time.After(time.Now()) {
 		return nil, fmt.Errorf("token not valid yet")
 	}
 

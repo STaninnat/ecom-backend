@@ -85,7 +85,8 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		UpdatedAt: time.Now().Local(),
 	})
 	if err != nil {
-		log.Println("Error couldn't create user: ", err)
+		log.Println("Error couldn't create user in database: ", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
 
