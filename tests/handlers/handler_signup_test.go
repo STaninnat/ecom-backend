@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/agiledragon/gomonkey/v2"
@@ -19,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func runSignUpTest(t *testing.T, apicfg *HandlersConfig, reqBody map[string]string, expectedStatus int, expectedMessage string) {
+func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[string]string, expectedStatus int, expectedMessage string) {
 	reqJSON, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/signup", bytes.NewReader(reqJSON))
 	req.Header.Set("Content-Type", "application/json")
@@ -81,7 +82,7 @@ func TestHandlerSignUp(t *testing.T) {
 
 	defer patches.Reset()
 
-	apicfg := &HandlersConfig{
+	apicfg := &handlers.HandlersConfig{
 		APIConfig: &config.APIConfig{
 			DB:        &database.Queries{},
 			JWTSecret: "test-secret",

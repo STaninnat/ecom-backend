@@ -1,9 +1,11 @@
-package middlewares
+package middlewares__test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
 func TestRespondWithError(t *testing.T) {
@@ -33,7 +35,7 @@ func TestRespondWithError(t *testing.T) {
 				t.Fatalf("could not create request: %v", err)
 			}
 
-			RespondWithError(rr, tt.statusCode, tt.msg)
+			middlewares.RespondWithError(rr, tt.statusCode, tt.msg)
 
 			if rr.Code != tt.statusCode {
 				t.Errorf("expected status code %d, got %d", tt.statusCode, rr.Code)
@@ -79,7 +81,7 @@ func TestRespondWithJSON(t *testing.T) {
 				t.Fatalf("could not create request: %v", err)
 			}
 
-			RespondWithJSON(rr, tt.statusCode, tt.payload)
+			middlewares.RespondWithJSON(rr, tt.statusCode, tt.payload)
 
 			if rr.Code != tt.statusCode {
 				t.Errorf("expected status code %d, got %d", tt.statusCode, rr.Code)

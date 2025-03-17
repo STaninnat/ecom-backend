@@ -1,9 +1,10 @@
-package auth
+package auth_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ func TestIsValidUserNameFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IsValidUserNameFormat(tt.username)
+			result := auth.IsValidUserNameFormat(tt.username)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -45,7 +46,7 @@ func TestIsValidateEmailFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.email, func(t *testing.T) {
-			result := IsValidateEmailFormat(tt.email)
+			result := auth.IsValidateEmailFormat(tt.email)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -67,7 +68,7 @@ func TestCheckPasswordHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := CheckPasswordHash(tt.password, string(hash))
+			result := auth.CheckPasswordHash(tt.password, string(hash))
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -77,14 +78,14 @@ func TestValidateAccessToken(t *testing.T) {
 	secret := "secret"
 	invalidToken := "invalidToken"
 
-	authConfig := &AuthConfig{
+	authConfig := &auth.AuthConfig{
 		APIConfig: &config.APIConfig{
 			Issuer:   "testIssuer",
 			Audience: "testAudience",
 		},
 	}
 
-	validClaims := Claims{
+	validClaims := auth.Claims{
 		UserID: uuid.New(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    authConfig.Issuer,
@@ -100,7 +101,7 @@ func TestValidateAccessToken(t *testing.T) {
 		t.Fatalf("failed to create token: %v", err)
 	}
 
-	expiredClaims := Claims{
+	expiredClaims := auth.Claims{
 		UserID: uuid.New(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    authConfig.Issuer,
@@ -116,7 +117,7 @@ func TestValidateAccessToken(t *testing.T) {
 		t.Fatalf("failed to create expired token: %v", err)
 	}
 
-	invalidIssuerClaims := Claims{
+	invalidIssuerClaims := auth.Claims{
 		UserID: uuid.New(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "invalidIssuer",
@@ -132,7 +133,7 @@ func TestValidateAccessToken(t *testing.T) {
 		t.Fatalf("failed to create token with invalid issuer: %v", err)
 	}
 
-	invalidAudienceClaims := Claims{
+	invalidAudienceClaims := auth.Claims{
 		UserID: uuid.New(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    authConfig.Issuer,

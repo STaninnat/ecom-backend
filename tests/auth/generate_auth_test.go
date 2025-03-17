@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 
 func TestHashPassword(t *testing.T) {
 	password := "testpassword"
-	hashedPassword, err := HashPassword(password)
+	hashedPassword, err := auth.HashPassword(password)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, hashedPassword)
@@ -24,7 +25,7 @@ func TestHashPassword(t *testing.T) {
 
 func TestHashPassword_EmptyPassword(t *testing.T) {
 	password := ""
-	hashedPassword, err := HashPassword(password)
+	hashedPassword, err := auth.HashPassword(password)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, hashedPassword)
@@ -35,7 +36,7 @@ func TestHashPassword_EmptyPassword(t *testing.T) {
 
 func TestHashPassword_Error(t *testing.T) {
 	password := string(make([]byte, 10000))
-	hashedPassword, err := HashPassword(password)
+	hashedPassword, err := auth.HashPassword(password)
 
 	assert.Error(t, err)
 	assert.Empty(t, hashedPassword)
@@ -44,8 +45,8 @@ func TestHashPassword_Error(t *testing.T) {
 func TestHashPassword_SamePasswordDifferentHashes(t *testing.T) {
 	password := "samePassword"
 
-	hashedPassword1, err1 := HashPassword(password)
-	hashedPassword2, err2 := HashPassword(password)
+	hashedPassword1, err1 := auth.HashPassword(password)
+	hashedPassword2, err2 := auth.HashPassword(password)
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
@@ -54,7 +55,7 @@ func TestHashPassword_SamePasswordDifferentHashes(t *testing.T) {
 }
 
 func TestGenerateAccessToken(t *testing.T) {
-	authConfig := &AuthConfig{
+	authConfig := &auth.AuthConfig{
 		APIConfig: &config.APIConfig{
 			Issuer:   "testIssuer",
 			Audience: "testAudience",
@@ -70,18 +71,18 @@ func TestGenerateAccessToken(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
-	parsedToken, err := jwt.ParseWithClaims(token, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(token, &auth.Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
 	assert.NoError(t, err)
-	claims, ok := parsedToken.Claims.(*Claims)
+	claims, ok := parsedToken.Claims.(*auth.Claims)
 	assert.True(t, ok)
 
 	assert.Equal(t, userID, claims.UserID)
 }
 
 func TestGenerateAccessTokenWithNilConfig(t *testing.T) {
-	authConfig := (*AuthConfig)(nil)
+	authConfig := (*auth.AuthConfig)(nil)
 
 	userID := uuid.New()
 	secret := "secret"
@@ -94,7 +95,7 @@ func TestGenerateAccessTokenWithNilConfig(t *testing.T) {
 }
 
 func TestGenerateRefreshToken(t *testing.T) {
-	authConfig := &AuthConfig{}
+	authConfig := &auth.AuthConfig{}
 	refreshToken, err := authConfig.GenerateRefreshToken()
 
 	assert.NoError(t, err)
