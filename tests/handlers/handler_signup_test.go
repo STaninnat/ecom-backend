@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,6 +51,9 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 
 func TestHandlerSignUp(t *testing.T) {
 	someCondition := false
+	mockRedis := redis.NewClient(&redis.Options{})
+	log.Println("mockRedis: ", mockRedis)
+
 	patches := gomonkey.NewPatches().
 		ApplyFunc((*database.Queries).CheckUserExistsByName, func(_ *database.Queries, _ context.Context, name string) (bool, error) {
 			if name == "existing_user" {
@@ -78,7 +82,6 @@ func TestHandlerSignUp(t *testing.T) {
 		})
 
 	defer patches.Reset()
-	mockRedis := redis.NewClient(&redis.Options{})
 
 	apicfg := &handlers.HandlersConfig{
 		APIConfig: &config.APIConfig{
