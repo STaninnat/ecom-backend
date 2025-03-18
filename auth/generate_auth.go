@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -30,28 +31,32 @@ func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, secret string, expi
 		return "", errors.New("cfg is nil")
 	}
 
+	timeNow := time.Now().Local()
+
 	claims := Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    cfg.Issuer,
 			Audience:  []string{cfg.Audience},
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(timeNow),
+			NotBefore: jwt.NewNumericDate(timeNow),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error signing JWT: %w", err)
 	}
 
 	return tokenString, nil
 }
 
 func (cfg *AuthConfig) GenerateRefreshToken() (string, error) {
-	token := uuid.New().String()
-	return token, nil
+	token, err := uuid.NewRandom()
+	if err != nil {
+		return "", fmt.Errorf("error generating refresh token: %w", err)
+	}
+	return token.String(), nil
 }
