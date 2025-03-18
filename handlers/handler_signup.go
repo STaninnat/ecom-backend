@@ -13,18 +13,17 @@ import (
 	"github.com/google/uuid"
 )
 
-func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type parameters struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
+func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	if err := decoder.Decode(&params); err != nil {
+	var params parameters
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		log.Println("Decode error: ", err)
 		return
 	}
@@ -40,40 +39,44 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !auth.IsValidateEmailFormat(params.Email) {
+	if !auth.IsValidEmailFormat(params.Email) {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid email format")
 		return
 	}
 	// ------------------------------------------------------------
 
-	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
-	if err != nil {
-		log.Println("Error checking username exist: ", err)
-		return
-	}
-	if nameExists {
+	if nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name); err != nil || nameExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
-	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
-	if err != nil {
-		log.Println("Error checking email exists: ", err)
-		return
-	}
-
-	if emailExists {
+	if emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email); err != nil || emailExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
 
+	userID := uuid.New()
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
 		log.Println("Error couldn't hash password: ", err)
 		return
 	}
 
-	userID := uuid.New()
+	timeNow := time.Now().Local()
+	accessTokenExpiresAt := time.Now().Local().Add(30 * time.Minute)
+	refreshTokenExpiresAt := time.Now().Local().Add(7 * 24 * time.Hour)
+
+	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	if err != nil {
+		log.Println("Error generate access token: ", err)
+		return
+	}
+
+	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
+	if err != nil {
+		log.Println("Error generate refresh token: ", err)
+		return
+	}
 
 	err = apicfg.DB.CreateUser(r.Context(), database.CreateUserParams{
 		ID:        userID.String(),
@@ -81,39 +84,17 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Email:     params.Email,
 		Password:  sql.NullString{String: hashedPassword, Valid: true},
 		Provider:  "local",
-		CreatedAt: time.Now().Local(),
-		UpdatedAt: time.Now().Local(),
+		CreatedAt: timeNow,
+		UpdatedAt: timeNow,
 	})
 	if err != nil {
-		log.Println("Error couldn't create user in database: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
 
-	accessTokenExpiresAt := time.Now().Local().Add(30 * time.Minute)
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(time.Now().Local())).Err()
 	if err != nil {
-		log.Println("Error couldn't generate access token: ", err)
-		return
-	}
-
-	refreshTokenExpiresAt := time.Now().Local().Add(30 * 24 * time.Hour)
-	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
-	if err != nil {
-		log.Println("Error couldn't generate refresh token: ", err)
-		return
-	}
-
-	err = apicfg.DB.CreateUserSession(r.Context(), database.CreateUserSessionParams{
-		ID:        uuid.New().String(),
-		UserID:    userID.String(),
-		Token:     refreshToken,
-		ExpiresAt: refreshTokenExpiresAt,
-		CreatedAt: time.Now().Local(),
-		UpdatedAt: time.Now().Local(),
-	})
-	if err != nil {
-		log.Println("Error saving refresh token: ", err)
+		log.Println("Error saving refresh token to Redis: ", err)
 		return
 	}
 

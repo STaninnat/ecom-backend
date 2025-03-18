@@ -46,7 +46,7 @@ func TestIsValidateEmailFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.email, func(t *testing.T) {
-			result := auth.IsValidateEmailFormat(tt.email)
+			result := auth.IsValidEmailFormat(tt.email)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

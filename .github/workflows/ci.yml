@@ -9,6 +9,12 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - "6379:6379"
+
     steps:
       - name: Check out Code
         uses: actions/checkout@v4
@@ -20,9 +26,12 @@ jobs:
 
       - name: Set environment variables
         env:
-          API_SERVICE_NAME: ${{ secrets.ISSUER }}
-          FRONTEND_APP_NAME: ${{ secrets.AUDIENCE }}
+          ISSUER: ${{ secrets.ISSUER }}
+          AUDIENCE: ${{ secrets.AUDIENCE }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          REDIS_ADDR: ${{ secrets.REDIS_ADDR }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
         run: echo "Load environment variables"
 
       - name: Run unit tests

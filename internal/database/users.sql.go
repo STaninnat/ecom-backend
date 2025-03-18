@@ -61,41 +61,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
-const createUserSession = `-- name: CreateUserSession :exec
-INSERT INTO refresh_tokens (id, user_id, token, expires_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-`
-
-type CreateUserSessionParams struct {
-	ID        string
-	UserID    string
-	Token     string
-	ExpiresAt time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error {
-	_, err := q.db.ExecContext(ctx, createUserSession,
-		arg.ID,
-		arg.UserID,
-		arg.Token,
-		arg.ExpiresAt,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const deleteUserSession = `-- name: DeleteUserSession :exec
-DELETE FROM refresh_tokens WHERE token = $1
-`
-
-func (q *Queries) DeleteUserSession(ctx context.Context, token string) error {
-	_, err := q.db.ExecContext(ctx, deleteUserSession, token)
-	return err
-}
-
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, name, email, password, provider, provider_id, created_at, updated_at FROM users
 WHERE email = $1
@@ -115,24 +80,5 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
-}
-
-const getUserBySessionID = `-- name: GetUserBySessionID :one
-SELECT user_id, token, expires_at 
-FROM refresh_tokens WHERE token = $1 
-LIMIT 1
-`
-
-type GetUserBySessionIDRow struct {
-	UserID    string
-	Token     string
-	ExpiresAt time.Time
-}
-
-func (q *Queries) GetUserBySessionID(ctx context.Context, token string) (GetUserBySessionIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserBySessionID, token)
-	var i GetUserBySessionIDRow
-	err := row.Scan(&i.UserID, &i.Token, &i.ExpiresAt)
 	return i, err
 }

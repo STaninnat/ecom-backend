@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,10 +37,8 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 	actualError, hasError := resp["error"]
 
 	if hasMessage {
-		// t.Logf("Checking 'message': Expected: %s, Got: %s", expectedMessage, actualMessage)
 		require.Equal(t, expectedMessage, actualMessage)
 	} else if hasError {
-		// t.Logf("Checking 'error': Expected: %s, Got: %s", expectedMessage, actualError)
 		require.Equal(t, expectedMessage, actualError)
 	} else {
 		t.Fatalf("Neither 'message' nor 'error' found in response")
@@ -48,17 +46,17 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 }
 
 func TestHandlerSignUp(t *testing.T) {
-	var someCondition bool
+	someCondition := false
+	mockRedis := redis.NewClient(&redis.Options{})
+
 	patches := gomonkey.NewPatches().
 		ApplyFunc((*database.Queries).CheckUserExistsByName, func(_ *database.Queries, _ context.Context, name string) (bool, error) {
-			log.Println("Mock CheckUserExistsByName called with:", name)
 			if name == "existing_user" {
 				return true, nil
 			}
 			return false, nil
 		}).
 		ApplyFunc((*database.Queries).CheckUserExistsByEmail, func(_ *database.Queries, _ context.Context, email string) (bool, error) {
-			log.Println("Mock CheckUserExistsByEmail called with:", email)
 			if email == "existing@example.com" {
 				return true, nil
 			}
@@ -68,9 +66,6 @@ func TestHandlerSignUp(t *testing.T) {
 			if someCondition {
 				return errors.New("database error")
 			}
-			return nil
-		}).
-		ApplyFunc((*database.Queries).CreateUserSession, func(_ *database.Queries, _ context.Context, _ database.CreateUserSessionParams) error {
 			return nil
 		}).
 		ApplyFunc((*auth.AuthConfig).GenerateAccessToken, func(_ *auth.AuthConfig, _ uuid.UUID, _ string, _ time.Time) (string, error) {
@@ -84,13 +79,13 @@ func TestHandlerSignUp(t *testing.T) {
 
 	apicfg := &handlers.HandlersConfig{
 		APIConfig: &config.APIConfig{
-			DB:        &database.Queries{},
-			JWTSecret: "test-secret",
+			DB:          &database.Queries{},
+			RedisClient: mockRedis,
+			JWTSecret:   "test-secret",
 		},
 		Auth: &auth.AuthConfig{},
 	}
 
-	someCondition = false
 	runSignUpTest(t, apicfg, map[string]string{
 		"name":     "new_user",
 		"email":    "new@example.com",

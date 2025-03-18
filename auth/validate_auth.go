@@ -19,7 +19,7 @@ func IsValidUserNameFormat(name string) bool {
 	return len(name) >= 3 && len(name) <= 30 && re.MatchString(name)
 }
 
-func IsValidateEmailFormat(email string) bool {
+func IsValidEmailFormat(email string) bool {
 	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 
 	re := regexp.MustCompile(emailRegex)
@@ -28,17 +28,13 @@ func IsValidateEmailFormat(email string) bool {
 }
 
 func CheckPasswordHash(password, hash string) bool {
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return false
-	}
-
-	return true
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
 func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*Claims, error) {
 	claims := &Claims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
@@ -52,21 +48,18 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 		return nil, fmt.Errorf("invalid issuer: got '%s'", claims.Issuer)
 	}
 
-	if !contains(claims.Audience, cfg.Audience) {
+	if !slices.Contains(claims.Audience, cfg.Audience) {
 		return nil, fmt.Errorf("invalid audience: got '%s'", claims.Audience)
 	}
 
-	if claims.ExpiresAt.Time.Before(time.Now()) {
+	timeNow := time.Now().Local()
+	if claims.ExpiresAt.Time.Before(timeNow) {
 		return nil, fmt.Errorf("token expired")
 	}
 
-	if claims.NotBefore.Time.After(time.Now()) {
+	if claims.NotBefore.Time.After(timeNow) {
 		return nil, fmt.Errorf("token not valid yet")
 	}
 
 	return claims, nil
-}
-
-func contains(slice []string, item string) bool {
-	return slices.Contains(slice, item)
 }
