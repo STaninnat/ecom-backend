@@ -46,7 +46,7 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 }
 
 func TestHandlerSignUp(t *testing.T) {
-	var someCondition bool
+	someCondition := false
 	patches := gomonkey.NewPatches().
 		ApplyFunc((*database.Queries).CheckUserExistsByName, func(_ *database.Queries, _ context.Context, name string) (bool, error) {
 			if name == "existing_user" {
@@ -85,12 +85,11 @@ func TestHandlerSignUp(t *testing.T) {
 		Auth: &auth.AuthConfig{},
 	}
 
-	// someCondition = false
-	// runSignUpTest(t, apicfg, map[string]string{
-	// 	"name":     "new_user",
-	// 	"email":    "new@example.com",
-	// 	"password": "password123",
-	// }, http.StatusCreated, "Signup successful")
+	runSignUpTest(t, apicfg, map[string]string{
+		"name":     "new_user",
+		"email":    "new@example.com",
+		"password": "password123",
+	}, http.StatusCreated, "Signup successful")
 
 	someCondition = true
 	runSignUpTest(t, apicfg, map[string]string{

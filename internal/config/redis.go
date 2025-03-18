@@ -22,8 +22,12 @@ func InitRedis() *redis.Client {
 		DB:       0,
 	})
 
-	redisClient.ConfigSet(ctx, "save", "").Err()
-	redisClient.ConfigSet(ctx, "appendonly", "no").Err()
+	if err := redisClient.ConfigSet(ctx, "save", "").Err(); err != nil {
+		log.Printf("Error setting config for save: %v", err)
+	}
+	if err := redisClient.ConfigSet(ctx, "appendonly", "no").Err(); err != nil {
+		log.Printf("Error setting config for appendonly: %v", err)
+	}
 
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
