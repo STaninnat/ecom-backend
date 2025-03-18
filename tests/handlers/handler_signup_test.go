@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,15 +77,17 @@ func TestHandlerSignUp(t *testing.T) {
 		})
 
 	defer patches.Reset()
+	mockRedis := redis.NewClient(&redis.Options{})
 
 	apicfg := &handlers.HandlersConfig{
 		APIConfig: &config.APIConfig{
 			DB:          &database.Queries{},
-			RedisClient: config.InitRedis(),
+			RedisClient: mockRedis,
 			JWTSecret:   "test-secret",
 		},
 		Auth: &auth.AuthConfig{},
 	}
+	log.Println("api: ", apicfg.APIConfig)
 
 	someCondition = false
 	runSignUpTest(t, apicfg, map[string]string{
