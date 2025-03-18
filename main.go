@@ -27,28 +27,20 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		log.Fatal("Warning: port environment variable is not set")
+		log.Fatal("Warning: environment variable is not set")
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		log.Fatal("Warning: jwt secret environment variable is not set")
-	}
-
 	issuerName := os.Getenv("ISSUER")
-	if issuerName == "" {
-		log.Fatal("Warning: api service name environment variable is not set")
-	}
-
 	audienceName := os.Getenv("AUDIENCE")
-	if audienceName == "" {
-		log.Fatal("Warning: api service name environment variable is not set")
-	}
+
+	redisClient := config.InitRedis()
 
 	apicfg := &config.APIConfig{
-		JWTSecret: jwtSecret,
-		Issuer:    issuerName,
-		Audience:  audienceName,
+		RedisClient: redisClient,
+		JWTSecret:   jwtSecret,
+		Issuer:      issuerName,
+		Audience:    audienceName,
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")

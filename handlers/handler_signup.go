@@ -61,11 +61,12 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		log.Println("Error checking email exists: ", err)
 		return
 	}
-
 	if emailExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
+
+	userID := uuid.New()
 
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
@@ -73,7 +74,19 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	userID := uuid.New()
+	accessTokenExpiresAt := time.Now().Local().Add(30 * time.Minute)
+	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	if err != nil {
+		log.Println("Error couldn't generate access token: ", err)
+		return
+	}
+
+	refreshTokenExpiresAt := time.Now().Local().Add(7 * 24 * time.Hour)
+	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
+	if err != nil {
+		log.Println("Error couldn't generate refresh token: ", err)
+		return
+	}
 
 	err = apicfg.DB.CreateUser(r.Context(), database.CreateUserParams{
 		ID:        userID.String(),
@@ -90,30 +103,9 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	accessTokenExpiresAt := time.Now().Local().Add(30 * time.Minute)
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(time.Now().Local())).Err()
 	if err != nil {
-		log.Println("Error couldn't generate access token: ", err)
-		return
-	}
-
-	refreshTokenExpiresAt := time.Now().Local().Add(30 * 24 * time.Hour)
-	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
-	if err != nil {
-		log.Println("Error couldn't generate refresh token: ", err)
-		return
-	}
-
-	err = apicfg.DB.CreateUserSession(r.Context(), database.CreateUserSessionParams{
-		ID:        uuid.New().String(),
-		UserID:    userID.String(),
-		Token:     refreshToken,
-		ExpiresAt: refreshTokenExpiresAt,
-		CreatedAt: time.Now().Local(),
-		UpdatedAt: time.Now().Local(),
-	})
-	if err != nil {
-		log.Println("Error saving refresh token: ", err)
+		log.Println("Error saving refresh token to Redis: ", err)
 		return
 	}
 
