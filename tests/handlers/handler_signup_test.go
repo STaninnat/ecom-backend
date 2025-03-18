@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,10 +37,8 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 	actualError, hasError := resp["error"]
 
 	if hasMessage {
-		t.Logf("Checking 'message': Expected: %s, Got: %s", expectedMessage, actualMessage)
 		require.Equal(t, expectedMessage, actualMessage)
 	} else if hasError {
-		t.Logf("Checking 'error': Expected: %s, Got: %s", expectedMessage, actualError)
 		require.Equal(t, expectedMessage, actualError)
 	} else {
 		t.Fatalf("Neither 'message' nor 'error' found in response")
@@ -87,7 +84,6 @@ func TestHandlerSignUp(t *testing.T) {
 		},
 		Auth: &auth.AuthConfig{},
 	}
-	log.Println("api: ", apicfg.APIConfig)
 
 	someCondition = false
 	runSignUpTest(t, apicfg, map[string]string{
