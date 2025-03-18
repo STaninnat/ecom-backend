@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,8 +28,6 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 
 	apicfg.HandlerSignUp(w, req)
 
-	fmt.Println("HTTP Status Code:", w.Code)
-
 	require.Equal(t, expectedStatus, w.Code)
 
 	var resp map[string]string
@@ -52,7 +48,6 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 func TestHandlerSignUp(t *testing.T) {
 	someCondition := false
 	mockRedis := redis.NewClient(&redis.Options{})
-	log.Println("mockRedis: ", mockRedis)
 
 	patches := gomonkey.NewPatches().
 		ApplyFunc((*database.Queries).CheckUserExistsByName, func(_ *database.Queries, _ context.Context, name string) (bool, error) {
@@ -68,7 +63,6 @@ func TestHandlerSignUp(t *testing.T) {
 			return false, nil
 		}).
 		ApplyFunc((*database.Queries).CreateUser, func(_ *database.Queries, _ context.Context, _ database.CreateUserParams) error {
-			fmt.Println("someCondition:", someCondition)
 			if someCondition {
 				return errors.New("database error")
 			}
