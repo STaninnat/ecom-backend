@@ -1,12 +1,14 @@
-package database
+package config
 
 import (
 	"database/sql"
 	"log"
 	"os"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
-func ConnectDB() *Queries {
+func ConnectDB() *database.Queries {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Println("Warning: database URL is not set")
@@ -23,5 +25,5 @@ func ConnectDB() *Queries {
 	}
 
 	log.Println("Connected to database successfully...")
-	return New(db)
+	return database.New(db)
 }

@@ -20,15 +20,6 @@ type Product struct {
 	ImageUrl    sql.NullString
 }
 
-type RefreshToken struct {
-	ID        string
-	UserID    string
-	Token     string
-	ExpiresAt time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
 type User struct {
 	ID         string
 	Name       string

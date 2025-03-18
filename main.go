@@ -8,7 +8,6 @@ import (
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/internal/router"
 
 	_ "github.com/lib/pq"
@@ -16,7 +15,7 @@ import (
 
 func main() {
 	apicfg := config.LoadConfig()
-	apicfg.DB = database.ConnectDB()
+	apicfg.DB = config.ConnectDB()
 
 	authCfg := &auth.AuthConfig{
 		APIConfig: apicfg,
