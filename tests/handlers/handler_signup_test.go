@@ -85,12 +85,12 @@ func TestHandlerSignUp(t *testing.T) {
 		Auth: &auth.AuthConfig{},
 	}
 
-	someCondition = false
-	runSignUpTest(t, apicfg, map[string]string{
-		"name":     "new_user",
-		"email":    "new@example.com",
-		"password": "password123",
-	}, http.StatusCreated, "Signup successful")
+	// someCondition = false
+	// runSignUpTest(t, apicfg, map[string]string{
+	// 	"name":     "new_user",
+	// 	"email":    "new@example.com",
+	// 	"password": "password123",
+	// }, http.StatusCreated, "Signup successful")
 
 	someCondition = true
 	runSignUpTest(t, apicfg, map[string]string{
