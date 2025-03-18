@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,6 +28,8 @@ func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[st
 	w := httptest.NewRecorder()
 
 	apicfg.HandlerSignUp(w, req)
+
+	fmt.Println("HTTP Status Code:", w.Code)
 
 	require.Equal(t, expectedStatus, w.Code)
 
@@ -61,6 +64,7 @@ func TestHandlerSignUp(t *testing.T) {
 			return false, nil
 		}).
 		ApplyFunc((*database.Queries).CreateUser, func(_ *database.Queries, _ context.Context, _ database.CreateUserParams) error {
+			fmt.Println("someCondition:", someCondition)
 			if someCondition {
 				return errors.New("database error")
 			}
