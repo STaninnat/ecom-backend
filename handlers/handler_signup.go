@@ -13,44 +13,42 @@ import (
 	"github.com/google/uuid"
 )
 
-type parameters struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
 	defer r.Body.Close()
 
-	var params parameters
+	params := parameters{}
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		log.Println("Decode error: ", err)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	// --------------------move to frontend-------------------
 	if params.Name == "" || params.Email == "" || params.Password == "" {
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid input")
+		log.Println("Invalid request format")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	if !auth.IsValidUserNameFormat(params.Name) {
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid username format")
+	if nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name); err != nil {
+		log.Println("Error checking name existence:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
-	}
-
-	if !auth.IsValidEmailFormat(params.Email) {
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid email format")
-		return
-	}
-	// ------------------------------------------------------------
-
-	if nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name); err != nil || nameExists {
+	} else if nameExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
-	if emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email); err != nil || emailExists {
+	if emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email); err != nil {
+		log.Println("Error checking email existence:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
+		return
+	} else if emailExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
@@ -59,22 +57,25 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
 		log.Println("Error couldn't hash password: ", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
-	timeNow := time.Now().Local()
-	accessTokenExpiresAt := time.Now().Local().Add(30 * time.Minute)
-	refreshTokenExpiresAt := time.Now().Local().Add(7 * 24 * time.Hour)
+	timeNow := time.Now().UTC()
+	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
+	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
 	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
 	if err != nil {
 		log.Println("Error generate access token: ", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
 	if err != nil {
 		log.Println("Error generate refresh token: ", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
@@ -88,13 +89,15 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		UpdatedAt: timeNow,
 	})
 	if err != nil {
+		log.Println("Error creating user in database:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
 
-	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(time.Now().Local())).Err()
+	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(timeNow)).Err()
 	if err != nil {
 		log.Println("Error saving refresh token to Redis: ", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 

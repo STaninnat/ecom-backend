@@ -52,7 +52,7 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 		return nil, fmt.Errorf("invalid audience: got '%s'", claims.Audience)
 	}
 
-	timeNow := time.Now().Local()
+	timeNow := time.Now().UTC()
 	if claims.ExpiresAt.Time.Before(timeNow) {
 		return nil, fmt.Errorf("token expired")
 	}
