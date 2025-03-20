@@ -31,7 +31,7 @@ func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, secret string, expi
 		return "", errors.New("cfg is nil")
 	}
 
-	timeNow := time.Now().Local()
+	timeNow := time.Now().UTC()
 
 	claims := Claims{
 		UserID: userID,
