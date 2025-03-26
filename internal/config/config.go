@@ -1,6 +1,7 @@
 package config
 
 import (
+	"database/sql"
 	"log"
 	"os"
 
@@ -10,12 +11,14 @@ import (
 )
 
 type APIConfig struct {
-	Port        string
-	DB          *database.Queries
-	RedisClient *redis.Client
-	JWTSecret   string
-	Issuer      string
-	Audience    string
+	Port          string
+	DB            *database.Queries
+	DBConn        *sql.DB
+	RedisClient   redis.Cmdable
+	JWTSecret     string
+	RefreshSecret string
+	Issuer        string
+	Audience      string
 }
 
 func LoadConfig() *APIConfig {
@@ -34,6 +37,11 @@ func LoadConfig() *APIConfig {
 		log.Fatal("Warning: JWT Secret environment variable is not set")
 	}
 
+	refreshSecret := os.Getenv("REFRESH_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("Warning: Refresh Secret environment variable is not set")
+	}
+
 	issuerName := os.Getenv("ISSUER")
 	if issuerName == "" {
 		log.Fatal("Warning: Issuer environment variable is not set")
@@ -47,10 +55,11 @@ func LoadConfig() *APIConfig {
 	redisClient := InitRedis()
 
 	return &APIConfig{
-		Port:        port,
-		RedisClient: redisClient,
-		JWTSecret:   jwtSecret,
-		Issuer:      issuerName,
-		Audience:    audienceName,
+		Port:          port,
+		RedisClient:   redisClient,
+		JWTSecret:     jwtSecret,
+		RefreshSecret: refreshSecret,
+		Issuer:        issuerName,
+		Audience:      audienceName,
 	}
 }

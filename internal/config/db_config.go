@@ -6,13 +6,15 @@ import (
 	"os"
 
 	"github.com/STaninnat/ecom-backend/internal/database"
+
+	_ "github.com/lib/pq"
 )
 
-func ConnectDB() *database.Queries {
+func (cfg *APIConfig) ConnectDB() {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Println("Warning: database URL is not set")
-		return nil
+		return
 	}
 
 	db, err := sql.Open("postgres", dbURL)
@@ -24,6 +26,9 @@ func ConnectDB() *database.Queries {
 		log.Fatalf("Failed to ping database: %v\n", err)
 	}
 
+	dbQueries := database.New(db)
+	cfg.DB = dbQueries
+	cfg.DBConn = db
+
 	log.Println("Connected to database successfully...")
-	return database.New(db)
 }

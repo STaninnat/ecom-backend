@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -53,10 +56,16 @@ func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, secret string, expi
 	return tokenString, nil
 }
 
-func (cfg *AuthConfig) GenerateRefreshToken() (string, error) {
-	token, err := uuid.NewRandom()
+func (cfg *AuthConfig) GenerateRefreshToken(userID uuid.UUID) (string, error) {
+	rawUUID, err := uuid.NewRandom()
 	if err != nil {
 		return "", fmt.Errorf("error generating refresh token: %w", err)
 	}
-	return token.String(), nil
+
+	message := fmt.Sprintf("%s:%s", userID.String(), rawUUID.String())
+	h := hmac.New(sha256.New, []byte(cfg.RefreshSecret))
+	h.Write([]byte(message))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	return fmt.Sprintf("%s:%s:%s", userID.String(), rawUUID.String(), signature), nil
 }

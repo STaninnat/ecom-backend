@@ -1,6 +1,9 @@
 package auth_test
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -197,6 +200,77 @@ func TestValidateAccessToken(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, claims)
+			}
+		})
+	}
+}
+
+func TestValidateRefreshToken(t *testing.T) {
+	cfg := &auth.AuthConfig{
+		APIConfig: &config.APIConfig{
+			RefreshSecret: "test-secret",
+		},
+	}
+
+	userID := uuid.New()
+	validToken, err := cfg.GenerateRefreshToken(userID)
+	assert.NoError(t, err, "Should not error when generating refresh token")
+
+	t.Run("Valid Token", func(t *testing.T) {
+		parsedUserID, err := cfg.ValidateRefreshToken(validToken)
+		assert.NoError(t, err, "Should not error when validating valid refresh token")
+		assert.Equal(t, userID, parsedUserID, "UserID should match")
+	})
+
+	t.Run("Invalid Format", func(t *testing.T) {
+		invalidToken := "invalid:token"
+		parsedUserID, err := cfg.ValidateRefreshToken(invalidToken)
+		assert.Error(t, err, "Should error on invalid token format")
+		assert.Equal(t, uuid.Nil, parsedUserID, "UserID should be nil")
+	})
+
+	t.Run("Invalid Signature", func(t *testing.T) {
+		invalidToken := validToken[:len(validToken)-1] + "x"
+		parsedUserID, err := cfg.ValidateRefreshToken(invalidToken)
+		assert.Error(t, err, "Should error on invalid token signature")
+		assert.Equal(t, uuid.Nil, parsedUserID, "UserID should be nil")
+	})
+}
+
+type TestDocodeStruct struct {
+	Field1 string `json:"field1"`
+	Field2 string `json:"field2"`
+}
+
+func TestDecodeAndValidate(t *testing.T) {
+	tests := []struct {
+		name             string
+		requestBody      string
+		expectedResponse int
+		expectValid      bool
+	}{
+		{"Valid JSON", `{"field1": "value1", "field2": "value2"}`, http.StatusOK, true},
+		{"Invalid JSON", `{"field1": "`, http.StatusBadRequest, false},
+		{"Missing field", `{"field1": ""}`, http.StatusBadRequest, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(tt.requestBody))
+			w := httptest.NewRecorder()
+
+			params, valid := auth.DecodeAndValidate[TestDocodeStruct](w, req)
+
+			if valid != tt.expectValid {
+				t.Errorf("expected valid to be %v, got %v", tt.expectValid, valid)
+			}
+
+			if status := w.Result().StatusCode; status != tt.expectedResponse {
+				t.Errorf("expected status %v, got %v", tt.expectedResponse, status)
+			}
+
+			if tt.expectValid && params == nil {
+				t.Errorf("expected non-nil params, got nil")
 			}
 		})
 	}

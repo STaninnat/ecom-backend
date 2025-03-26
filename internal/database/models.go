@@ -9,15 +9,42 @@ import (
 	"time"
 )
 
-type Product struct {
+type Order struct {
 	ID          string
+	UserID      sql.NullString
+	TotalAmount string
+	Status      string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type OrdersItem struct {
+	ID         string
+	OrderID    string
+	ProductID  string
+	Quantity   int32
+	Price      string
+	TotalPrice string
+}
+
+type Payment struct {
+	ID            string
+	OrderID       string
+	PaymentMethod string
+	Amount        string
+	PaymentStatus string
+	PaymentDate   time.Time
+}
+
+type Product struct {
+	ID          string
 	Name        string
 	Description sql.NullString
 	Price       string
 	Stock       int32
 	ImageUrl    sql.NullString
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type User struct {
@@ -27,6 +54,8 @@ type User struct {
 	Password   sql.NullString
 	Provider   string
 	ProviderID sql.NullString
+	Phone      sql.NullString
+	Address    sql.NullString
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -95,9 +96,21 @@ func TestGenerateAccessTokenWithNilConfig(t *testing.T) {
 }
 
 func TestGenerateRefreshToken(t *testing.T) {
-	authConfig := &auth.AuthConfig{}
-	refreshToken, err := authConfig.GenerateRefreshToken()
+	cfg := &auth.AuthConfig{
+		APIConfig: &config.APIConfig{
+			RefreshSecret: "test-secret",
+		},
+	}
+	userID := uuid.New()
 
-	assert.NoError(t, err)
-	assert.NotEmpty(t, refreshToken)
+	token, err := cfg.GenerateRefreshToken(userID)
+
+	assert.NoError(t, err, "should not return an error")
+	assert.NotEmpty(t, token, "token should not be empty")
+
+	parts := strings.Split(token, ":")
+	assert.Len(t, parts, 3, "token should contain three parts separated by ':'")
+	assert.Equal(t, userID.String(), parts[0], "first part should be userID")
+	assert.NotEmpty(t, parts[1], "second part should be rawUUID")
+	assert.NotEmpty(t, parts[2], "third part should be signature")
 }

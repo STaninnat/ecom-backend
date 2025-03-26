@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -20,35 +19,29 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Password string `json:"password"`
 	}
 
-	defer r.Body.Close()
-
-	params := parameters{}
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		log.Println("Decode error: ", err)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
+	params, valid := auth.DecodeAndValidate[parameters](w, r)
+	if !valid {
 		return
 	}
 
-	if params.Name == "" || params.Email == "" || params.Password == "" {
-		log.Println("Invalid request format")
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-
-	if nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name); err != nil {
+	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
+	if err != nil {
 		log.Println("Error checking name existence:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
-	} else if nameExists {
+	}
+	if nameExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
-	if emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email); err != nil {
+	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
+	if err != nil {
 		log.Println("Error checking email existence:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
-	} else if emailExists {
+	}
+	if emailExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
@@ -62,6 +55,34 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 	}
 
 	timeNow := time.Now().UTC()
+
+	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
+	if err != nil {
+		log.Println("Error starting transaction:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.CreateUser(r.Context(), database.CreateUserParams{
+		ID:         userID.String(),
+		Name:       params.Name,
+		Email:      params.Email,
+		Password:   sql.NullString{String: hashedPassword, Valid: true},
+		Provider:   "local",
+		ProviderID: sql.NullString{},
+		CreatedAt:  timeNow,
+		UpdatedAt:  timeNow,
+	})
+	if err != nil {
+		log.Println("Error creating user in database:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
+		return
+	}
+
 	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
 	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
@@ -72,25 +93,10 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
+	refreshToken, err := apicfg.Auth.GenerateRefreshToken(userID)
 	if err != nil {
 		log.Println("Error generate refresh token: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
-		return
-	}
-
-	err = apicfg.DB.CreateUser(r.Context(), database.CreateUserParams{
-		ID:        userID.String(),
-		Name:      params.Name,
-		Email:     params.Email,
-		Password:  sql.NullString{String: hashedPassword, Valid: true},
-		Provider:  "local",
-		CreatedAt: timeNow,
-		UpdatedAt: timeNow,
-	})
-	if err != nil {
-		log.Println("Error creating user in database:", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
 
@@ -98,6 +104,13 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		log.Println("Error saving refresh token to Redis: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Error committing transaction:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 
@@ -119,9 +132,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Path:     "/",
 	})
 
-	userResp := map[string]string{
+	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
 		"message": "Signup successful",
-	}
-
-	middlewares.RespondWithJSON(w, http.StatusCreated, userResp)
+	})
 }
