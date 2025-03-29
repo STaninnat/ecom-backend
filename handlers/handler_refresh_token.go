@@ -1,32 +1,38 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"golang.org/x/oauth2"
 )
 
 func (apicfg *HandlersConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("refresh_token")
+	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Refresh token is required")
-		return
-	}
-	refreshToken := cookie.Value
-
-	userID, err := apicfg.Auth.ValidateRefreshToken(refreshToken)
-	if err != nil {
-		log.Println("Invalid refresh token:", err)
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid refresh token")
 		return
 	}
 
-	storedToken, err := apicfg.RedisClient.Get(r.Context(), "refresh_token:"+userID.String()).Result()
-	if err != nil || storedToken != refreshToken {
-		log.Println("Refresh token mismatch:", err)
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid session")
+	if storedData.Provider == "google" {
+		refreshToken := storedData.Token
+		log.Println("Using refresh token:", refreshToken)
+
+		newToken, err := apicfg.RefreshGoogleAccessToken(refreshToken)
+		if err != nil {
+			fmt.Println("Failed to refresh Google token: ", err)
+			middlewares.RespondWithError(w, http.StatusUnauthorized, "Failed to refresh Google token")
+			return
+		}
+
+		auth.SetTokensAsCookies(w, newToken.AccessToken, refreshToken, newToken.Expiry, time.Now().Add(7*24*time.Hour))
+		middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
+			"message": "Token refreshed successful",
+		})
 		return
 	}
 
@@ -39,46 +45,31 @@ func (apicfg *HandlersConfig) HandlerRefreshToken(w http.ResponseWriter, r *http
 	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
 	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	accessToken, newRefreshToken, err := apicfg.Auth.GenerateTokens(userID, accessTokenExpiresAt)
 	if err != nil {
-		log.Println("Error generating access token:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
-	newRefreshToken, err := apicfg.Auth.GenerateRefreshToken(userID)
+	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		log.Println("Error generating refresh token:", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
-		return
-	}
-
-	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), newRefreshToken, refreshTokenExpiresAt.Sub(timeNow)).Err()
-	if err != nil {
-		log.Println("Error saving refresh token to Redis:", err)
+		log.Println("Error saving refresh token to Redis: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
-		Value:    accessToken,
-		Expires:  accessTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    newRefreshToken,
-		Expires:  refreshTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
+	auth.SetTokensAsCookies(w, accessToken, newRefreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Token refreshed successful",
 	})
+}
+
+func (apicfg *HandlersConfig) RefreshGoogleAccessToken(refreshToken string) (*oauth2.Token, error) {
+	tokenSource := apicfg.OAuth.Google.TokenSource(context.Background(), &oauth2.Token{RefreshToken: refreshToken})
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		return nil, err
+	}
+	return newToken, nil
 }

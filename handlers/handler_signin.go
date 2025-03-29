@@ -44,16 +44,8 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
 	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	accessToken, refreshToken, err := apicfg.Auth.GenerateTokens(userID, accessTokenExpiresAt)
 	if err != nil {
-		log.Println("Error generate access token: ", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
-		return
-	}
-
-	refreshToken, err := apicfg.Auth.GenerateRefreshToken(userID)
-	if err != nil {
-		log.Println("Error generate refresh token: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
@@ -79,7 +71,7 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(timeNow)).Err()
+	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		log.Println("Error saving refresh token to Redis: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
@@ -93,23 +85,7 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
-		Value:    accessToken,
-		Expires:  accessTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Expires:  refreshTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
+	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Signin successful",

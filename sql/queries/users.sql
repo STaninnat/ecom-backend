@@ -9,11 +9,8 @@ LIMIT 1;
 
 -- name: CheckExistsAndGetIDByEmail :one
 SELECT 
-    CASE 
-        WHEN id IS NOT NULL THEN TRUE 
-        ELSE FALSE 
-    END AS exists,
-    id
+    (id IS NOT NULL)::boolean AS exists, 
+    COALESCE(id, '') AS id
 FROM users
 WHERE email = $1
 LIMIT 1;
