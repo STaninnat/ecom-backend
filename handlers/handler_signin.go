@@ -28,7 +28,8 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !auth.CheckPasswordHash(params.Password, user.Password.String) {
+	isValid, err := auth.CheckPasswordHash(params.Password, user.Password.String)
+	if err != nil || !isValid {
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}

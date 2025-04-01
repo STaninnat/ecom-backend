@@ -19,6 +19,7 @@ type APIConfig struct {
 	RefreshSecret string
 	Issuer        string
 	Audience      string
+	CredsPath     string
 }
 
 func LoadConfig() *APIConfig {
@@ -52,6 +53,11 @@ func LoadConfig() *APIConfig {
 		log.Fatal("Warning: Audience environment variable is not set")
 	}
 
+	credsPath := os.Getenv("GOOGLE_CREDENTIALS_PATH")
+	if credsPath == "" {
+		log.Fatal("Warning: Google credentials path environment variable is not set")
+	}
+
 	redisClient := InitRedis()
 
 	return &APIConfig{
@@ -61,5 +67,6 @@ func LoadConfig() *APIConfig {
 		RefreshSecret: refreshSecret,
 		Issuer:        issuerName,
 		Audience:      audienceName,
+		CredsPath:     credsPath,
 	}
 }

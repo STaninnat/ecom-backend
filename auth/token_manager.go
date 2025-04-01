@@ -20,7 +20,7 @@ func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, expiresAt time.Time
 		return "", errors.New("cfg is nil")
 	}
 
-	if err := validateConfig(cfg.JWTSecret, "JWTSecret"); err != nil {
+	if err := ValidateConfig(cfg.JWTSecret, "JWTSecret"); err != nil {
 		return "", err
 	}
 
@@ -54,7 +54,7 @@ func (cfg *AuthConfig) GenerateRefreshToken(userID uuid.UUID) (string, error) {
 		return "", errors.New("cfg is nil")
 	}
 
-	if err := validateConfig(cfg.RefreshSecret, "RefreshSecret"); err != nil {
+	if err := ValidateConfig(cfg.RefreshSecret, "RefreshSecret"); err != nil {
 		return "", err
 	}
 
@@ -88,6 +88,22 @@ func (cfg *AuthConfig) GenerateTokens(userID uuid.UUID, accessTokenExpiresAt tim
 }
 
 func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refreshToken, provider string, ttl time.Duration) error {
+	if cfg.RedisClient == nil {
+		return errors.New("RedisClient is nil")
+	}
+
+	if provider != "local" && provider != "google" {
+		return fmt.Errorf("JSON Marshalling Error: unsupported provider %s", provider)
+	}
+
+	if ttl < 0 {
+		return errors.New("invalid TTL")
+	}
+
+	if refreshToken == "" {
+		return errors.New("refresh token cannot be empty")
+	}
+
 	data := RefreshTokenData{
 		Token:    refreshToken,
 		Provider: provider,
@@ -110,11 +126,20 @@ func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refresh
 
 func ParseRefreshTokenData(jsonData string) (RefreshTokenData, error) {
 	var data RefreshTokenData
+
 	err := json.Unmarshal([]byte(jsonData), &data)
-	return data, err
+	if err != nil {
+		return RefreshTokenData{}, err
+	}
+
+	if data.Token == "" || data.Provider == "" {
+		return RefreshTokenData{}, errors.New("token and provider fields are required")
+	}
+
+	return data, nil
 }
 
-func validateConfig(secret string, secretName string) error {
+func ValidateConfig(secret string, secretName string) error {
 	if secret == "" {
 		return fmt.Errorf("%s is empty", secretName)
 	}

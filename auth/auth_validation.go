@@ -66,7 +66,7 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 	}
 
 	if claims.NotBefore.Time.After(timeNow) {
-		return nil, fmt.Errorf("token not valid yet")
+		return nil, fmt.Errorf("token is not valid yet")
 	}
 
 	return claims, nil
@@ -75,7 +75,7 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, error) {
 	parts := strings.Split(refreshToken, ":")
 	if len(parts) != 3 {
-		userID, err := cfg.getUserIDFromRefreshToken(refreshToken)
+		userID, err := cfg.GetUserIDFromRefreshToken(refreshToken)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("invalid refresh token format")
 		}
@@ -132,13 +132,13 @@ func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *
 	if storedData.Token != refreshToken {
 		log.Println("Refresh token mismatch")
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid session")
-		return uuid.Nil, nil, err
+		return uuid.Nil, nil, errors.New("invalid session")
 	}
 
 	return userID, &storedData, nil
 }
 
-func (cfg *AuthConfig) getUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
+func (cfg *AuthConfig) GetUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
 	keys, err := cfg.RedisClient.Keys(context.Background(), "refresh_token:*").Result()
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("error fetching keys from Redis: %v", err)

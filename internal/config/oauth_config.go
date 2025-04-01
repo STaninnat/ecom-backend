@@ -1,8 +1,10 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -12,13 +14,14 @@ type OAuthConfig struct {
 	Google *oauth2.Config
 }
 
-func NewOAuthConfig() (*OAuthConfig, error) {
-	credentialsPath := os.Getenv("GOOGLE_CREDENTIALS_PATH")
-	if credentialsPath == "" {
-		log.Fatal("Warning: Google credentials path environment variable is not set")
+func NewOAuthConfig(credsPath string) (*OAuthConfig, error) {
+	safePath := filepath.Clean(credsPath)
+
+	if !isSafePath(safePath) {
+		return nil, fmt.Errorf("unsafe file path")
 	}
 
-	data, err := os.ReadFile(credentialsPath)
+	data, err := os.ReadFile(safePath)
 	if err != nil {
 		return nil, err
 	}
@@ -34,4 +37,8 @@ func NewOAuthConfig() (*OAuthConfig, error) {
 	return &OAuthConfig{
 		Google: googleConfig,
 	}, nil
+}
+
+func isSafePath(path string) bool {
+	return !strings.Contains(path, "..")
 }

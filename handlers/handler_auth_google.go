@@ -28,7 +28,6 @@ func (apicfg *HandlersConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store state")
 		return
 	}
-	fmt.Println("Generated State:", state)
 
 	authURL := apicfg.OAuth.Google.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, authURL, http.StatusFound)
@@ -42,7 +41,6 @@ func (apicfg *HandlersConfig) HandlerGoogleCallback(w http.ResponseWriter, r *ht
 	}
 
 	redisState, err := apicfg.RedisClient.Get(r.Context(), "oauth_state:"+state).Result()
-	fmt.Println("Received State:", state, "Redis State:", redisState)
 	if redisState == "" {
 		fmt.Println("State missing from Redis, redirecting to signin")
 		http.Redirect(w, r, "/v1/auth/google/signin", http.StatusTemporaryRedirect)
@@ -53,7 +51,6 @@ func (apicfg *HandlersConfig) HandlerGoogleCallback(w http.ResponseWriter, r *ht
 		return
 	}
 
-	fmt.Println("Expire state from Redis:", state)
 	_ = apicfg.RedisClient.Expire(r.Context(), "oauth_state:"+state, 1*time.Minute).Err()
 
 	code := r.URL.Query().Get("code")
@@ -114,8 +111,6 @@ func (apicfg *HandlersConfig) getUserInfoFromGoogle(token *oauth2.Token) (*UserG
 
 // handleUserAuthentication handles user signin/signup
 func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r *http.Request, user *UserGoogleInfo, token *oauth2.Token, state string) (string, string, error) {
-	fmt.Println("Authenticating user:", user.Email)
-
 	ctx := r.Context()
 	existingUser, err := apicfg.DB.CheckExistsAndGetIDByEmail(ctx, user.Email)
 	if err != nil && err != sql.ErrNoRows {
@@ -146,10 +141,8 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 
 	if existingUser.Exists {
 		userID = existingUser.ID
-		fmt.Println("Existing user found:", userID)
 	} else {
 		userID = uuid.New().String()
-		fmt.Println("Creating new user:", userID)
 		err = queries.CreateUser(ctx, database.CreateUserParams{
 			ID:         userID,
 			Name:       user.Name,
@@ -212,6 +205,5 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 		return "", "", err
 	}
 
-	fmt.Println("Authentication successful for:", user.Email)
 	return accessToken, refreshToken, nil
 }

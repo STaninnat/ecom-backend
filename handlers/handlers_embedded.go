@@ -17,7 +17,7 @@ func SetupHandlersConfig() *HandlersConfig {
 	apicfg := config.LoadConfig()
 	apicfg.ConnectDB()
 
-	oauthConfig, err := config.NewOAuthConfig()
+	oauthConfig, err := config.NewOAuthConfig(apicfg.CredsPath)
 	if err != nil {
 		log.Fatal("Failed to load oauth config: ", err)
 	}
