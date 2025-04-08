@@ -10,7 +10,7 @@ import (
 
 func HashPassword(password string) (string, error) {
 	if len(password) <= 8 {
-		return "", errors.New("password cannot be empty")
+		return "", errors.New("password is too short, it must have at least 8 characters")
 	}
 
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)

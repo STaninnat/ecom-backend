@@ -14,7 +14,7 @@ func TestHashPassword(t *testing.T) {
 		expectedErr bool
 	}{
 		{"Empty password", "", true},                                                  // Test case with an empty password
-		{"Short password", "123", false},                                              // Test case with a short password
+		{"Short password", "123", true},                                               // Test case with a short password
 		{"Common password", "password123", false},                                     // Test case with a common password
 		{"Long password", "aVeryLongPasswordThatShouldStillBeHashedCorrectly", false}, // Test case with a long password
 		{"Password with special characters", "P@ssw0rd!#", false},                     // Test case with special characters
