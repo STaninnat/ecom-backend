@@ -10,8 +10,9 @@ import (
 )
 
 func (apicfg *HandlersConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
-	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
+	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
+		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 

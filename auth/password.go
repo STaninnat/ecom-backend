@@ -9,7 +9,7 @@ import (
 )
 
 func HashPassword(password string) (string, error) {
-	if len(password) == 0 {
+	if len(password) <= 8 {
 		return "", errors.New("password cannot be empty")
 	}
 

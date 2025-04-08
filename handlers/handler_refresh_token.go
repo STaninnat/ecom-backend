@@ -45,7 +45,7 @@ func (apicfg *HandlersConfig) HandlerRefreshToken(w http.ResponseWriter, r *http
 	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
 	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
-	accessToken, newRefreshToken, err := apicfg.Auth.GenerateTokens(userID, accessTokenExpiresAt)
+	accessToken, newRefreshToken, err := apicfg.Auth.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return

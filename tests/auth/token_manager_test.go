@@ -89,7 +89,7 @@ func TestGenerateAccessToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := tt.cfg.GenerateAccessToken(tt.userID, tt.expiresAt)
+			token, err := tt.cfg.GenerateAccessToken(tt.userID.String(), tt.expiresAt)
 
 			// Check if an error is expected
 			if tt.expectedErr != nil {
@@ -109,8 +109,8 @@ func TestGenerateAccessToken(t *testing.T) {
 
 			// Extract claims and verify the userID is correct
 			claims, ok := parsedToken.Claims.(*auth.Claims)
-			assert.True(t, ok)                        // Ensure claims are of the correct type
-			assert.Equal(t, tt.userID, claims.UserID) // Ensure the userID in the token matches the one provided
+			assert.True(t, ok)                                 // Ensure claims are of the correct type
+			assert.Equal(t, tt.userID.String(), claims.UserID) // Ensure the userID in the token matches the one provided
 		})
 	}
 }
@@ -164,7 +164,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			token, err := tt.cfg.GenerateRefreshToken(tt.userID)
+			token, err := tt.cfg.GenerateRefreshToken(tt.userID.String())
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -260,7 +260,7 @@ func TestGenerateTokens(t *testing.T) {
 				NewRandomUUID = originalUUIDGenerator
 			}
 
-			accessToken, refreshToken, err := tt.cfg.GenerateTokens(tt.userID, tt.accessTokenExpiresAt)
+			accessToken, refreshToken, err := tt.cfg.GenerateTokens(tt.userID.String(), tt.accessTokenExpiresAt)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)                                    // Ensure an error occurred

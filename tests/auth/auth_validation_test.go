@@ -98,7 +98,7 @@ func TestValidateAccessToken(t *testing.T) {
 		},
 	}
 
-	validUserID := uuid.New()
+	validUserID := uuid.New().String()
 	validExpiry := time.Now().Add(1 * time.Hour)
 
 	// Generate a valid token
@@ -221,7 +221,7 @@ func TestValidateRefreshToken(t *testing.T) {
 		},
 	}
 
-	validUserID := uuid.New()
+	validUserID := uuid.New().String()
 	rawUUID := uuid.New()
 
 	// Generate a valid refresh token for testing
@@ -242,7 +242,7 @@ func TestValidateRefreshToken(t *testing.T) {
 				"Token": "%s",
 				"Provider": "google"
 			}`, refreshToken),
-			expectedID:  validUserID,
+			expectedID:  uuid.MustParse(validUserID),
 			expectedErr: "",
 		},
 		{
@@ -254,7 +254,7 @@ func TestValidateRefreshToken(t *testing.T) {
 		},
 		{
 			name:         "Invalid signature",
-			refreshToken: fmt.Sprintf("%s:%s:%s", validUserID.String(), rawUUID.String(), "invalid-signature"),
+			refreshToken: fmt.Sprintf("%s:%s:%s", validUserID, rawUUID.String(), "invalid-signature"),
 			redisResponse: fmt.Sprintf(`{
 				"Token": "%s",
 				"Provider": "google"
@@ -268,8 +268,8 @@ func TestValidateRefreshToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Mock Redis keys and values based on the test
 			if tt.redisResponse != "" {
-				mock.ExpectKeys("refresh_token:*").SetVal([]string{fmt.Sprintf("refresh_token:%s", validUserID.String())})
-				mock.ExpectGet(fmt.Sprintf("refresh_token:%s", validUserID.String())).SetVal(tt.redisResponse)
+				mock.ExpectKeys("refresh_token:*").SetVal([]string{fmt.Sprintf("refresh_token:%s", validUserID)})
+				mock.ExpectGet(fmt.Sprintf("refresh_token:%s", validUserID)).SetVal(tt.redisResponse)
 			} else {
 				mock.ExpectKeys("refresh_token:*").SetVal([]string{}) // No stored token
 			}
@@ -296,7 +296,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 		},
 	}
 
-	validUserID := uuid.New()
+	validUserID := uuid.New().String()
 	validToken, err := cfg.GenerateRefreshToken(validUserID)
 	assert.NoError(t, err)
 
@@ -341,7 +341,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				return req
 			},
 			setupRedis: func() {
-				mock.ExpectGet("refresh_token:" + validUserID.String()).RedisNil() // Token does not exist
+				mock.ExpectGet("refresh_token:" + validUserID).RedisNil() // Token does not exist
 			},
 			expectedErr:  "Invalid session", // Session does not exist
 			expectedCode: http.StatusUnauthorized,
@@ -354,7 +354,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				return req
 			},
 			setupRedis: func() {
-				mock.ExpectGet("refresh_token:" + validUserID.String()).SetVal("invalid_json") // Corrupt data
+				mock.ExpectGet("refresh_token:" + validUserID).SetVal("invalid_json") // Corrupt data
 			},
 			expectedErr:  "Failed to process session",
 			expectedCode: http.StatusInternalServerError,
@@ -372,7 +372,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 					Provider: "google",
 				}
 				invalidJSON, _ := json.Marshal(invalidData)
-				mock.ExpectGet("refresh_token:" + validUserID.String()).SetVal(string(invalidJSON))
+				mock.ExpectGet("refresh_token:" + validUserID).SetVal(string(invalidJSON))
 			},
 			expectedErr:  "Invalid session", // Stored token does not match the provided one
 			expectedCode: http.StatusUnauthorized,
@@ -385,7 +385,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				return req
 			},
 			setupRedis: func() {
-				mock.ExpectGet("refresh_token:" + validUserID.String()).SetVal(string(validStoredJSON)) // Valid session
+				mock.ExpectGet("refresh_token:" + validUserID).SetVal(string(validStoredJSON)) // Valid session
 			},
 			expectedErr:  "",
 			expectedCode: 0, // No error expected

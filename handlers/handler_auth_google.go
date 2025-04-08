@@ -159,13 +159,7 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 		}
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		fmt.Println("Error parsing user UUID:", err)
-		return "", "", err
-	}
-
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userUUID, accessTokenExpiresAt)
+	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, accessTokenExpiresAt)
 	if err != nil {
 		fmt.Println("Error generating access token:", err)
 		return "", "", err

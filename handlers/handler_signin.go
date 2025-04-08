@@ -24,11 +24,12 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 
 	user, err := apicfg.DB.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
+		log.Printf("GetUserByEmail error: %v\n", err)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 
-	isValid, err := auth.CheckPasswordHash(params.Password, user.Password.String)
+	isValid, err := apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
 	if err != nil || !isValid {
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
@@ -45,7 +46,7 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
 	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
-	accessToken, refreshToken, err := apicfg.Auth.GenerateTokens(userID, accessTokenExpiresAt)
+	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
@@ -72,7 +73,7 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
+	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		log.Println("Error saving refresh token to Redis: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")

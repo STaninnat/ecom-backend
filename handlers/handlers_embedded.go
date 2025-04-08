@@ -9,8 +9,9 @@ import (
 
 type HandlersConfig struct {
 	*config.APIConfig
-	Auth  *auth.AuthConfig
-	OAuth *config.OAuthConfig
+	Auth       *auth.AuthConfig
+	OAuth      *config.OAuthConfig
+	AuthHelper auth.AuthHelper
 }
 
 func SetupHandlersConfig() *HandlersConfig {
@@ -30,5 +31,8 @@ func SetupHandlersConfig() *HandlersConfig {
 		APIConfig: apicfg,
 		Auth:      authCfg,
 		OAuth:     oauthConfig,
+		AuthHelper: &auth.RealHelper{
+			AuthConfig: authCfg,
+		},
 	}
 }

@@ -3,15 +3,15 @@ module github.com/STaninnat/ecom-backend
 go 1.23.4
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
+	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.1
-	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.36.0
 	golang.org/x/oauth2 v0.28.0

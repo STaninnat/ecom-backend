@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, expiresAt time.Time) (string, error) {
+func (cfg *AuthConfig) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
 	if cfg == nil {
 		return "", errors.New("cfg is nil")
 	}
@@ -49,7 +49,7 @@ func (cfg *AuthConfig) GenerateAccessToken(userID uuid.UUID, expiresAt time.Time
 	return tokenString, nil
 }
 
-func (cfg *AuthConfig) GenerateRefreshToken(userID uuid.UUID) (string, error) {
+func (cfg *AuthConfig) GenerateRefreshToken(userID string) (string, error) {
 	if cfg == nil {
 		return "", errors.New("cfg is nil")
 	}
@@ -63,15 +63,15 @@ func (cfg *AuthConfig) GenerateRefreshToken(userID uuid.UUID) (string, error) {
 		return "", fmt.Errorf("error generating refresh token: %w", err)
 	}
 
-	message := fmt.Sprintf("%s:%s", userID.String(), rawUUID.String())
+	message := fmt.Sprintf("%s:%s", userID, rawUUID.String())
 	h := hmac.New(sha256.New, []byte(cfg.RefreshSecret))
 	h.Write([]byte(message))
 	signature := hex.EncodeToString(h.Sum(nil))
 
-	return fmt.Sprintf("%s:%s:%s", userID.String(), rawUUID.String(), signature), nil
+	return fmt.Sprintf("%s:%s:%s", userID, rawUUID.String(), signature), nil
 }
 
-func (cfg *AuthConfig) GenerateTokens(userID uuid.UUID, accessTokenExpiresAt time.Time) (string, string, error) {
+func (cfg *AuthConfig) GenerateTokens(userID string, accessTokenExpiresAt time.Time) (string, string, error) {
 	accessToken, err := cfg.GenerateAccessToken(userID, accessTokenExpiresAt)
 	if err != nil {
 		log.Println("Error generating access token:", err)
