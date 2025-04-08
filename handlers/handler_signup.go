@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -20,35 +19,29 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Password string `json:"password"`
 	}
 
-	defer r.Body.Close()
-
-	params := parameters{}
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		log.Println("Decode error: ", err)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
+	params, valid := auth.DecodeAndValidate[parameters](w, r)
+	if !valid {
 		return
 	}
 
-	if params.Name == "" || params.Email == "" || params.Password == "" {
-		log.Println("Invalid request format")
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-
-	if nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name); err != nil {
+	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
+	if err != nil {
 		log.Println("Error checking name existence:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
-	} else if nameExists {
+	}
+	if nameExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
-	if emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email); err != nil {
+	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
+	if err != nil {
 		log.Println("Error checking email existence:", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
-	} else if emailExists {
+	}
+	if emailExists {
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
@@ -62,31 +55,27 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 	}
 
 	timeNow := time.Now().UTC()
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
 
-	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, apicfg.JWTSecret, accessTokenExpiresAt)
+	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		log.Println("Error generate access token: ", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
+		log.Println("Error starting transaction:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
 		return
 	}
 
-	refreshToken, err := apicfg.Auth.GenerateRefreshToken()
-	if err != nil {
-		log.Println("Error generate refresh token: ", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
-		return
-	}
+	defer tx.Rollback()
 
-	err = apicfg.DB.CreateUser(r.Context(), database.CreateUserParams{
-		ID:        userID.String(),
-		Name:      params.Name,
-		Email:     params.Email,
-		Password:  sql.NullString{String: hashedPassword, Valid: true},
-		Provider:  "local",
-		CreatedAt: timeNow,
-		UpdatedAt: timeNow,
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.CreateUser(r.Context(), database.CreateUserParams{
+		ID:         userID.String(),
+		Name:       params.Name,
+		Email:      params.Email,
+		Password:   sql.NullString{String: hashedPassword, Valid: true},
+		Provider:   "local",
+		ProviderID: sql.NullString{},
+		CreatedAt:  timeNow,
+		UpdatedAt:  timeNow,
 	})
 	if err != nil {
 		log.Println("Error creating user in database:", err)
@@ -94,34 +83,32 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = apicfg.RedisClient.Set(r.Context(), "refresh_token:"+userID.String(), refreshToken, refreshTokenExpiresAt.Sub(timeNow)).Err()
+	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
+	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
+
+	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
+	if err != nil {
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
+		return
+	}
+
+	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		log.Println("Error saving refresh token to Redis: ", err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
-		Value:    accessToken,
-		Expires:  accessTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Expires:  refreshTokenExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		Path:     "/",
-	})
-
-	userResp := map[string]string{
-		"message": "Signup successful",
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Error committing transaction:", err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		return
 	}
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, userResp)
+	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
+
+	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
+		"message": "Signup successful",
+	})
 }

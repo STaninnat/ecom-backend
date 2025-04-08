@@ -22,13 +22,6 @@ func InitRedis() *redis.Client {
 		DB:       0,
 	})
 
-	if err := redisClient.ConfigSet(ctx, "save", "").Err(); err != nil {
-		log.Printf("Error setting config for save: %v", err)
-	}
-	if err := redisClient.ConfigSet(ctx, "appendonly", "no").Err(); err != nil {
-		log.Printf("Error setting config for appendonly: %v", err)
-	}
-
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("Redis connection failed: %v", err)

@@ -25,7 +25,14 @@ func SetupRouter(handlersCfg *handlers.HandlersConfig) *chi.Mux {
 
 	v1Router.Get("/healthz", handlers.HandlerReadiness)
 	v1Router.Get("/error", handlers.HandlerError)
-	v1Router.Post("/signup", handlersCfg.HandlerSignUp)
+
+	v1Router.Post("/auth/signup", handlersCfg.HandlerSignUp)
+	v1Router.Post("/auth/signin", handlersCfg.HandlerSignIn)
+	v1Router.Post("/auth/signout", handlersCfg.HandlerSignOut)
+	v1Router.Post("/auth/refresh", handlersCfg.HandlerRefreshToken)
+
+	v1Router.Get("/auth/google/signin", handlersCfg.HandlerGoogleSignIn)
+	v1Router.Get("/auth/google/callback", handlersCfg.HandlerGoogleCallback)
 
 	router.Mount("/v1", v1Router)
 	return router

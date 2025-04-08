@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,190 +9,291 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/agiledragon/gomonkey/v2"
+	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
-func setupAPICfg(mockRedis *redis.Client, mockDB *database.Queries) *handlers.HandlersConfig {
-	return &handlers.HandlersConfig{
-		APIConfig: &config.APIConfig{
-			DB:          mockDB,
-			RedisClient: mockRedis,
-			JWTSecret:   "test-secret",
-		},
-		Auth: &auth.AuthConfig{},
-	}
-}
-
-func runSignUpTest(t *testing.T, apicfg *handlers.HandlersConfig, reqBody map[string]string, expectedStatus int, expectedMessage string) {
-	reqJSON, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest("POST", "/auth/signup", bytes.NewReader(reqJSON))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	apicfg.HandlerSignUp(w, req)
-
-	require.Equal(t, expectedStatus, w.Code)
-
-	var resp map[string]string
-	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-
-	actualMessage, hasMessage := resp["message"]
-	actualError, hasError := resp["error"]
-
-	if hasMessage {
-		require.Equal(t, expectedMessage, actualMessage)
-	} else if hasError {
-		require.Equal(t, expectedMessage, actualError)
-	} else {
-		t.Fatalf("Neither 'message' nor 'error' found in response")
-	}
-}
-
-func setupMockFunctions(someCondition, hashPasswordErr, generateAccessTokenErr, generateRefreshTokenErr bool) *gomonkey.Patches {
-	patches := gomonkey.NewPatches().
-		ApplyFunc((*database.Queries).CheckUserExistsByName, func(_ *database.Queries, _ context.Context, name string) (bool, error) {
-			if name == "existing_user" {
-				return true, nil
-			}
-			return false, nil
-		}).
-		ApplyFunc((*database.Queries).CheckUserExistsByEmail, func(_ *database.Queries, _ context.Context, email string) (bool, error) {
-			if email == "existing@example.com" {
-				return true, nil
-			}
-			return false, nil
-		}).
-		ApplyFunc((*database.Queries).CreateUser, func(_ *database.Queries, _ context.Context, _ database.CreateUserParams) error {
-			if someCondition {
-				return errors.New("database error")
-			}
-			return nil
-		}).
-		ApplyFunc((*auth.AuthConfig).GenerateAccessToken, func(_ *auth.AuthConfig, _ uuid.UUID, _ string, _ time.Time) (string, error) {
-			if generateAccessTokenErr {
-				return "", errors.New("failed to generate access token")
-			}
-			return "mockAccessToken", nil
-		}).
-		ApplyFunc((*auth.AuthConfig).GenerateRefreshToken, func(_ *auth.AuthConfig) (string, error) {
-			if generateRefreshTokenErr {
-				return "", errors.New("failed to generate refresh token")
-			}
-			return "mockRefreshToken", nil
-		}).
-		ApplyFunc(auth.HashPassword, func(password string) (string, error) {
-			if hashPasswordErr {
-				return "", errors.New("password hashing error")
-			}
-			return "hashedPassword", nil
-		})
-
-	return patches
-}
-
 func TestHandlerSignUp(t *testing.T) {
-	mockRedis, mockRedisClient := redismock.NewClientMock()
-	mockDB := &database.Queries{}
-	apicfg := setupAPICfg(mockRedis, mockDB)
+	redisClient, redisMock := redismock.NewClientMock()
 
-	tests := []struct {
-		name                    string
-		reqBody                 map[string]string
-		someCondition           bool
-		hashPasswordErr         bool
-		generateAccessTokenErr  bool
-		generateRefreshTokenErr bool
-		redisError              bool
-		expectedStatus          int
-		expectedMessage         string
-	}{
+	type testCase struct {
+		name           string
+		requestBody    map[string]string
+		mockSetup      func(sqlmock.Sqlmock, redismock.ClientMock, *mocks.MockAuthHelper)
+		expectedStatus int
+		expectedBody   string
+	}
+
+	tests := []testCase{
 		{
-			name:            "Invalid JSON format",
-			reqBody:         map[string]string{"name": "new_user"},
-			someCondition:   false,
-			expectedStatus:  http.StatusBadRequest,
-			expectedMessage: "Invalid request format",
+			name: "Signup Success",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectBegin()
+				mock.ExpectExec(`INSERT INTO users`).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+
+				mockAuth.GenerateTokensFn = func(userID string, expiresAt time.Time) (string, string, error) {
+					return "access-token", "refresh-token", nil
+				}
+				mockAuth.StoreRefreshTokenInRedisFn = func(r *http.Request, userID, token, provider string, duration time.Duration) error {
+					data := auth.RefreshTokenData{
+						Token:    token,
+						Provider: provider,
+					}
+					jsonData, _ := json.Marshal(data)
+
+					redisMock.ExpectSet("refresh_token:"+userID, jsonData, duration).SetVal("OK")
+					return redisClient.Set(r.Context(), "refresh_token:"+userID, jsonData, duration).Err()
+				}
+
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "Signup successful",
 		},
 		{
-			name:            "Successful Signup",
-			reqBody:         map[string]string{"name": "new_user", "email": "new@example.com", "password": "password123"},
-			someCondition:   false,
-			redisError:      false,
-			expectedStatus:  http.StatusCreated,
-			expectedMessage: "Signup successful",
+			name: "Username already exists",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "new@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "An account with this name already exists",
 		},
 		{
-			name:            "Database error during signup",
-			reqBody:         map[string]string{"name": "newuser", "email": "newuser@example.com", "password": "password123"},
-			someCondition:   true,
-			redisError:      false,
-			expectedStatus:  http.StatusInternalServerError,
-			expectedMessage: "Something went wrong, please try again later",
+			name: "Email already exists",
+			requestBody: map[string]string{
+				"name":     "newuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("newuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "An account with this email already exists",
 		},
 		{
-			name:            "User name already exists",
-			reqBody:         map[string]string{"name": "existing_user", "email": "unique@example.com", "password": "password123"},
-			someCondition:   false,
-			expectedStatus:  http.StatusBadRequest,
-			expectedMessage: "An account with this name already exists",
+			name:        "Invalid JSON format",
+			requestBody: nil, // will marshal to `null`
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				// no db or redis call expected
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request format",
 		},
 		{
-			name:            "Email already exists",
-			reqBody:         map[string]string{"name": "unique_user", "email": "existing@example.com", "password": "password123"},
-			someCondition:   false,
-			expectedStatus:  http.StatusBadRequest,
-			expectedMessage: "An account with this email already exists",
+			name: "Password hash fail",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "1",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mockAuth.HashPasswordFn = func(password string) (string, error) {
+					return "", errors.New("hash error")
+				}
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Internal server error",
 		},
 		{
-			name:            "Password hashing failure",
-			reqBody:         map[string]string{"name": "new_user", "email": "new@example.com", "password": "password123"},
-			hashPasswordErr: true,
-			expectedStatus:  http.StatusInternalServerError,
-			expectedMessage: "Internal server error",
+			name: "Create user fail",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectBegin()
+				mock.ExpectExec(`INSERT INTO users`).
+					WillReturnError(errors.New("insert error"))
+				mock.ExpectRollback()
+
+				mockAuth.HashPasswordFn = func(password string) (string, error) {
+					return "hashed-password", nil
+				}
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Something went wrong, please try again later",
 		},
 		{
-			name:                   "Error generating access token",
-			reqBody:                map[string]string{"name": "new_user", "email": "new@example.com", "password": "password123"},
-			generateAccessTokenErr: true,
-			expectedStatus:         http.StatusInternalServerError,
-			expectedMessage:        "Failed to generate token",
+			name: "Token generate fail",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectBegin()
+				mock.ExpectExec(`INSERT INTO users`).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectRollback()
+
+				mockAuth.HashPasswordFn = func(password string) (string, error) {
+					return "hashed-password", nil
+				}
+				mockAuth.GenerateTokensFn = func(userID string, expiresAt time.Time) (string, string, error) {
+					return "", "", errors.New("token error")
+				}
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to generate token",
 		},
 		{
-			name:                    "Error generating refresh token",
-			reqBody:                 map[string]string{"name": "new_user", "email": "new@example.com", "password": "password123"},
-			generateRefreshTokenErr: true,
-			expectedStatus:          http.StatusInternalServerError,
-			expectedMessage:         "Failed to generate token",
+			name: "Redis set fail",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectBegin()
+				mock.ExpectExec(`INSERT INTO users`).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectRollback()
+
+				mockAuth.HashPasswordFn = func(password string) (string, error) {
+					return "hashed-password", nil
+				}
+				mockAuth.GenerateTokensFn = func(userID string, expiresAt time.Time) (string, string, error) {
+					return "access-token", "refresh-token", nil
+				}
+				mockAuth.StoreRefreshTokenInRedisFn = func(r *http.Request, userID, token, provider string, duration time.Duration) error {
+					return errors.New("redis error")
+				}
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to store session",
 		},
 		{
-			name:            "Error with Redis set during signup",
-			reqBody:         map[string]string{"name": "test_user", "email": "test@example.com", "password": "password123"},
-			expectedStatus:  http.StatusInternalServerError,
-			expectedMessage: "Failed to store session",
-			redisError:      true,
+			name: "Commit transaction fail",
+			requestBody: map[string]string{
+				"name":     "testuser",
+				"email":    "test@example.com",
+				"password": "pass12345",
+			},
+			mockSetup: func(mock sqlmock.Sqlmock, redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT name FROM users WHERE name = \$1\)`).
+					WithArgs("testuser").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectQuery(`SELECT EXISTS \(SELECT email FROM users WHERE email = \$1\)`).
+					WithArgs("test@example.com").
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+				mock.ExpectBegin()
+				mock.ExpectExec(`INSERT INTO users`).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+
+				mockAuth.HashPasswordFn = func(password string) (string, error) {
+					return "hashed-password", nil
+				}
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to commit transaction",
 		},
 	}
 
-	for _, tt := range tests {
-		apicfg.APIConfig.RedisClient = mockRedis
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.redisError {
-				mockRedisClient.ExpectSet("refresh_token:*", "mockRefreshToken", time.Minute*60).SetErr(errors.New("Redis set error"))
-			} else {
-				apicfg.APIConfig.RedisClient = redis.NewClient(&redis.Options{})
-			}
-			patches := setupMockFunctions(tt.someCondition, tt.hashPasswordErr, tt.generateAccessTokenErr, tt.generateRefreshTokenErr)
-			defer patches.Reset()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare mocks
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err)
+			defer db.Close()
 
-			runSignUpTest(t, apicfg, tt.reqBody, tt.expectedStatus, tt.expectedMessage)
+			mockAuth := &mocks.MockAuthHelper{}
+			tc.mockSetup(mock, redisMock, mockAuth)
+
+			q := database.New(db)
+
+			apicfg := &handlers.HandlersConfig{
+				APIConfig: &config.APIConfig{
+					DB:          q,
+					DBConn:      db,
+					RedisClient: redisClient,
+				},
+				AuthHelper: mockAuth,
+			}
+
+			// Prepare request
+			bodyBytes, _ := json.Marshal(tc.requestBody)
+			req := httptest.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(bodyBytes))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			// Call handler
+			apicfg.HandlerSignUp(rec, req)
+
+			// Assert
+			require.Equal(t, tc.expectedStatus, rec.Code)
+			require.Contains(t, rec.Body.String(), tc.expectedBody)
+			require.NoError(t, mock.ExpectationsWereMet())
+			require.NoError(t, redisMock.ExpectationsWereMet())
 		})
 	}
 }

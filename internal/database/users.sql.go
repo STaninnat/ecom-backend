@@ -11,6 +11,27 @@ import (
 	"time"
 )
 
+const checkExistsAndGetIDByEmail = `-- name: CheckExistsAndGetIDByEmail :one
+SELECT 
+    (id IS NOT NULL)::boolean AS exists, 
+    COALESCE(id, '') AS id
+FROM users
+WHERE email = $1
+LIMIT 1
+`
+
+type CheckExistsAndGetIDByEmailRow struct {
+	Exists bool
+	ID     string
+}
+
+func (q *Queries) CheckExistsAndGetIDByEmail(ctx context.Context, email string) (CheckExistsAndGetIDByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, checkExistsAndGetIDByEmail, email)
+	var i CheckExistsAndGetIDByEmailRow
+	err := row.Scan(&i.Exists, &i.ID)
+	return i, err
+}
+
 const checkUserExistsByEmail = `-- name: CheckUserExistsByEmail :one
 SELECT EXISTS (SELECT email FROM users WHERE email = $1)
 `
@@ -34,18 +55,19 @@ func (q *Queries) CheckUserExistsByName(ctx context.Context, name string) (bool,
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, name, email, password, provider, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO users (id, name, email, password, provider, provider_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateUserParams struct {
-	ID        string
-	Name      string
-	Email     string
-	Password  sql.NullString
-	Provider  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         string
+	Name       string
+	Email      string
+	Password   sql.NullString
+	Provider   string
+	ProviderID sql.NullString
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -55,6 +77,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.Email,
 		arg.Password,
 		arg.Provider,
+		arg.ProviderID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -62,7 +85,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, provider, provider_id, created_at, updated_at FROM users
+SELECT id, name, email, password, provider, provider_id, phone, address, created_at, updated_at FROM users
 WHERE email = $1
 LIMIT 1
 `
@@ -77,8 +100,50 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Password,
 		&i.Provider,
 		&i.ProviderID,
+		&i.Phone,
+		&i.Address,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUserSigninStatusByEmail = `-- name: UpdateUserSigninStatusByEmail :exec
+UPDATE users
+SET updated_at = $1, provider = $2, Provider_id = $3
+WHERE email = $4
+`
+
+type UpdateUserSigninStatusByEmailParams struct {
+	UpdatedAt  time.Time
+	Provider   string
+	ProviderID sql.NullString
+	Email      string
+}
+
+func (q *Queries) UpdateUserSigninStatusByEmail(ctx context.Context, arg UpdateUserSigninStatusByEmailParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserSigninStatusByEmail,
+		arg.UpdatedAt,
+		arg.Provider,
+		arg.ProviderID,
+		arg.Email,
+	)
+	return err
+}
+
+const updateUserStatusByID = `-- name: UpdateUserStatusByID :exec
+UPDATE users
+SET updated_at = $1, provider = $2
+WHERE id = $3
+`
+
+type UpdateUserStatusByIDParams struct {
+	UpdatedAt time.Time
+	Provider  string
+	ID        string
+}
+
+func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserStatusByID, arg.UpdatedAt, arg.Provider, arg.ID)
+	return err
 }

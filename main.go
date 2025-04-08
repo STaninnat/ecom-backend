@@ -5,36 +5,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/router"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {
-	apicfg := config.LoadConfig()
-	apicfg.DB = config.ConnectDB()
+	handlersConfig := handlers.SetupHandlersConfig()
 
-	authCfg := &auth.AuthConfig{
-		APIConfig: apicfg,
-	}
-	handlersCfg := &handlers.HandlersConfig{
-		APIConfig: apicfg,
-		Auth:      authCfg,
-	}
+	port := handlersConfig.APIConfig.Port
 
-	r := router.SetupRouter(handlersCfg)
+	r := router.SetupRouter(handlersConfig)
 	srv := &http.Server{
-		Addr:         ":" + apicfg.Port,
+		Addr:         ":" + port,
 		Handler:      r,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
-	log.Printf("Serving on port: %s\n", apicfg.Port)
+	log.Printf("Serving on port: %s\n", port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v\n", err)
 	}

@@ -28,6 +28,7 @@ func TestRespondWithError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a new recorder to capture the response
 			rr := httptest.NewRecorder()
 
 			_, err := http.NewRequest("GET", "/", nil)
@@ -74,6 +75,7 @@ func TestRespondWithJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a new recorder to capture the response
 			rr := httptest.NewRecorder()
 
 			_, err := http.NewRequest("GET", "/", nil)
