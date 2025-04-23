@@ -16,6 +16,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -271,6 +272,11 @@ func TestHandlerSignUp(t *testing.T) {
 
 			q := database.New(db)
 
+			buf := &bytes.Buffer{}
+			lg := logrus.New()
+			lg.SetFormatter(&logrus.JSONFormatter{})
+			lg.SetOutput(buf)
+
 			apicfg := &handlers.HandlersConfig{
 				APIConfig: &config.APIConfig{
 					DB:          q,
@@ -278,6 +284,7 @@ func TestHandlerSignUp(t *testing.T) {
 					RedisClient: redisClient,
 				},
 				AuthHelper: mockAuth,
+				Logger:     lg,
 			}
 
 			// Prepare request

@@ -7,14 +7,22 @@ import (
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/router"
+	"github.com/STaninnat/ecom-backend/utils"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	handlersConfig := handlers.SetupHandlersConfig()
+	err := godotenv.Load(".env.development")
+	if err != nil {
+		log.Printf("Warning: assuming default configuration, env unreadable: %v", err)
+	}
+
+	logger := utils.InitLogger()
+	handlersConfig := handlers.SetupHandlersConfig(logger)
 
 	port := handlersConfig.APIConfig.Port
 
-	r := router.SetupRouter(handlersConfig)
+	r := router.SetupRouter(handlersConfig, logger)
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
