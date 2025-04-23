@@ -1,4 +1,5 @@
 .env*
 dump.rdb
+logs/
 
 google_credentials.json

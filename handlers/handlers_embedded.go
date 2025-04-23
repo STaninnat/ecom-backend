@@ -5,6 +5,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/sirupsen/logrus"
 )
 
 type HandlersConfig struct {
@@ -12,9 +13,10 @@ type HandlersConfig struct {
 	Auth       *auth.AuthConfig
 	OAuth      *config.OAuthConfig
 	AuthHelper auth.AuthHelper
+	Logger     *logrus.Logger
 }
 
-func SetupHandlersConfig() *HandlersConfig {
+func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	apicfg := config.LoadConfig()
 	apicfg.ConnectDB()
 
@@ -34,5 +36,6 @@ func SetupHandlersConfig() *HandlersConfig {
 		AuthHelper: &auth.RealHelper{
 			AuthConfig: authCfg,
 		},
+		Logger: logger,
 	}
 }

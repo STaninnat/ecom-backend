@@ -1,14 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -19,29 +20,35 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Password string `json:"password"`
 	}
 
+	ip := middlewares.GetIPAddress(r)
+	userAgent := r.UserAgent()
+
 	params, valid := auth.DecodeAndValidate[parameters](w, r)
 	if !valid {
+		apicfg.LogHandlerError(r.Context(), "signup-local", "invalid request", "Invalid signup payload", ip, userAgent, nil)
 		return
 	}
 
 	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
 	if err != nil {
-		log.Println("Error checking name existence:", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "check name failed", "Error checking name existence", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if nameExists {
+		apicfg.LogHandlerError(r.Context(), "signup-local", "name exists", "Duplicate name", ip, userAgent, nil)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
 	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
 	if err != nil {
-		log.Println("Error checking email existence:", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "check email failed", "Error checking email existence", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if emailExists {
+		apicfg.LogHandlerError(r.Context(), "signup-local", "email exists", "Duplicate email", ip, userAgent, nil)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
@@ -49,7 +56,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 	userID := uuid.New()
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		log.Println("Error couldn't hash password: ", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "hash password failed", "Error hashing password", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -58,7 +65,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 
 	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		log.Println("Error starting transaction:", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "start tx failed", "Error starting transaction", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
 		return
 	}
@@ -78,7 +85,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		UpdatedAt:  timeNow,
 	})
 	if err != nil {
-		log.Println("Error creating user in database:", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "create user failed", "Error creating user in database", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
@@ -88,25 +95,30 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "signup-local", "generate token failed", "Failed to generate token", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		log.Println("Error saving refresh token to Redis: ", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "store refresh token failed", "Error saving refresh token to Redis", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Println("Error committing transaction:", err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "commit tx failed", "Error committing transaction", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
+
+	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+
+	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "signup success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
 		"message": "Signup successful",

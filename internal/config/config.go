@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,11 +22,6 @@ type APIConfig struct {
 }
 
 func LoadConfig() *APIConfig {
-	err := godotenv.Load(".env.development")
-	if err != nil {
-		log.Printf("Warning: assuming default configuration, env unreadable: %v", err)
-	}
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("Warning: Port environment variable is not set")

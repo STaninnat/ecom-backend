@@ -2,15 +2,20 @@ package router
 
 import (
 	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/sirupsen/logrus"
 )
 
-func SetupRouter(handlersCfg *handlers.HandlersConfig) *chi.Mux {
+func SetupRouter(handlersCfg *handlers.HandlersConfig, logger *logrus.Logger) *chi.Mux {
 	router := chi.NewRouter()
+
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
+
+	router.Use(middlewares.LoggingMiddleware(logger, []string{"/v1"}, []string{"/v1/healthz", "/v1/error"}))
 
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
