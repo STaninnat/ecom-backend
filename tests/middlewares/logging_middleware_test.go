@@ -20,13 +20,45 @@ func TestShouldLog(t *testing.T) {
 	testcases := []struct {
 		name    string
 		path    string
-		include []string
-		exclude []string
+		include map[string]struct{}
+		exclude map[string]struct{}
 		expect  bool
 	}{
-		{"include_match", "/api/v1", []string{"/api"}, nil, true},
-		{"exclude_match", "/health", []string{"/"}, []string{"/health"}, false},
-		{"no_rule", "/random", nil, nil, true},
+		{
+			name:    "include_match_should_log",
+			path:    "/v1/user",
+			include: map[string]struct{}{"/v1": {}},
+			exclude: map[string]struct{}{"/v1/healthz": {}, "/v1/error": {}},
+			expect:  true,
+		},
+		{
+			name:    "exclude_healthz_should_not_log",
+			path:    "/v1/healthz",
+			include: map[string]struct{}{"/v1": {}},
+			exclude: map[string]struct{}{"/v1/healthz": {}, "/v1/error": {}},
+			expect:  false,
+		},
+		{
+			name:    "exclude_error_should_not_log",
+			path:    "/v1/error",
+			include: map[string]struct{}{"/v1": {}},
+			exclude: map[string]struct{}{"/v1/healthz": {}, "/v1/error": {}},
+			expect:  false,
+		},
+		{
+			name:    "not_included_path_should_not_log",
+			path:    "/v2/user",
+			include: map[string]struct{}{"/v1": {}},
+			exclude: map[string]struct{}{"/v1/healthz": {}, "/v1/error": {}},
+			expect:  false,
+		},
+		{
+			name:    "no_rules_should_log",
+			path:    "/any",
+			include: nil,
+			exclude: nil,
+			expect:  false,
+		},
 	}
 
 	for _, c := range testcases {
@@ -44,11 +76,32 @@ func TestGetIPAddress(t *testing.T) {
 		remote string
 		expect string
 	}{
-		{"real_ip", map[string]string{"X-Real-IP": "1.1.1.1"}, "", "1.1.1.1"},
-		{"forwarded", map[string]string{"X-Forwarded-For": "2.2.2.2, 10.0.0.1"}, "", "2.2.2.2"},
-		{"remote_addr", nil, "3.3.3.3:1234", "3.3.3.3"},
-		{"invalid", map[string]string{"X-Real-IP": "bad"}, "bad:123", ""},
+		{
+			name:   "real_ip",
+			hdr:    map[string]string{"X-Real-IP": "1.1.1.1"},
+			remote: "",
+			expect: "1.1.1.1",
+		},
+		{
+			name:   "forwarded",
+			hdr:    map[string]string{"X-Forwarded-For": "2.2.2.2, 10.0.0.1"},
+			remote: "",
+			expect: "2.2.2.2",
+		},
+		{
+			name:   "remote_addr",
+			hdr:    nil,
+			remote: "3.3.3.3:1234",
+			expect: "3.3.3.3",
+		},
+		{
+			name:   "invalid",
+			hdr:    map[string]string{"X-Real-IP": "bad"},
+			remote: "bad:123",
+			expect: "",
+		},
 	}
+
 	for _, c := range testcases {
 		t.Run(c.name, func(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
@@ -64,6 +117,28 @@ func TestGetIPAddress(t *testing.T) {
 	}
 }
 
+func TestIsValidIP(t *testing.T) {
+	tests := []struct {
+		ip      string
+		isValid bool
+	}{
+		{"192.168.1.1", true},
+		{"256.256.256.256", false},
+		{"not-a-ip", false},
+		{"::1", true},
+		{"::", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.ip, func(t *testing.T) {
+			result := middlewares.IsValidIP(tt.ip)
+			if result != tt.isValid {
+				t.Errorf("Expected %v for IP %v, got %v", tt.isValid, tt.ip, result)
+			}
+		})
+	}
+}
+
 func TestLoggingMiddleware(t *testing.T) {
 	// Prepare logger -> Write to buffer
 	buf := &bufWriter{}
@@ -73,9 +148,8 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	// Create middleware: include /v1*, exclude /v1/skip*
 	mw := middlewares.LoggingMiddleware(logger,
-		[]string{"/v1"},
-		[]string{"/healthz"},
-	)
+		map[string]struct{}{"/v1": {}},
+		map[string]struct{}{"/v1/healthz": {}})
 
 	// helper creates a handler with the desired status
 	makeHandler := func(status int) http.Handler {
@@ -90,10 +164,40 @@ func TestLoggingMiddleware(t *testing.T) {
 		status       int
 		shouldLog    bool
 		expectStatus string
+		expectCode   int
 	}{
-		{"log_201", "/v1/resource", http.StatusCreated, true, "success"},
-		{"log_500", "/v1/resource", http.StatusInternalServerError, true, "error"},
-		{"skip_path", "/healthz", http.StatusOK, false, ""},
+		{
+			name:         "log_201",
+			path:         "/v1/resource",
+			status:       http.StatusCreated,
+			shouldLog:    true,
+			expectStatus: "success",
+			expectCode:   http.StatusCreated,
+		},
+		{
+			name:         "log_500",
+			path:         "/v1/resource",
+			status:       http.StatusInternalServerError,
+			shouldLog:    true,
+			expectStatus: "error",
+			expectCode:   http.StatusInternalServerError,
+		},
+		{
+			name:         "skip_path",
+			path:         "/v1/healthz",
+			status:       http.StatusOK,
+			shouldLog:    false,
+			expectStatus: "",
+			expectCode:   http.StatusOK,
+		},
+		{
+			name:         "no_include",
+			path:         "/random/path",
+			status:       http.StatusOK,
+			shouldLog:    false,
+			expectStatus: "",
+			expectCode:   http.StatusOK,
+		},
 	}
 
 	for _, tc := range testCases {

@@ -17,45 +17,82 @@ func (w *captureWriter) Write(p []byte) (int, error) { return w.Buffer.Write(p) 
 
 func TestLogUserAction(t *testing.T) {
 	testCases := []struct {
-		name          string
-		ctx           context.Context
-		status        string
-		action        string
-		details       string
-		errMsg        string
-		ua            string
-		ip            string
-		expectedLevel string
+		name              string
+		ctx               context.Context
+		status            string
+		action            string
+		details           string
+		errMsg            string
+		ua                string
+		ip                string
+		expectedLevel     string
+		expectedRequestID string
 	}{
 		{
-			name:          "success_with_userid",
-			ctx:           context.WithValue(context.Background(), utils.ContextKeyUserID, "u-123"),
-			status:        "success",
-			action:        "signup",
-			details:       "local",
-			ua:            "agent-a",
-			ip:            "1.1.1.1",
-			expectedLevel: "info",
+			name:              "success_with_userid_and_requestid",
+			ctx:               context.WithValue(context.WithValue(context.Background(), utils.ContextKeyUserID, "u-123"), utils.ContextKeyRequestID, "req-123"),
+			status:            "success",
+			action:            "signup",
+			details:           "local",
+			ua:                "agent-a",
+			ip:                "1.1.1.1",
+			expectedLevel:     "info",
+			expectedRequestID: "req-123",
 		},
 		{
-			name:          "fail_with_error",
-			ctx:           context.WithValue(context.Background(), utils.ContextKeyUserID, "u-999"),
-			status:        "fail",
-			action:        "sign",
-			details:       "pwd mismatch",
-			errMsg:        "invalid password",
-			ua:            "agent-b",
-			ip:            "1.2.3.4",
-			expectedLevel: "error",
+			name:              "fail_with_error_and_requestid",
+			ctx:               context.WithValue(context.WithValue(context.Background(), utils.ContextKeyUserID, "u-999"), utils.ContextKeyRequestID, "req-999"),
+			status:            "fail",
+			action:            "sign",
+			details:           "pwd mismatch",
+			errMsg:            "invalid password",
+			ua:                "agent-b",
+			ip:                "1.2.3.4",
+			expectedLevel:     "error",
+			expectedRequestID: "req-999",
 		},
 		{
-			name:          "no_userid_ua_ip",
-			ctx:           context.Background(),
-			status:        "success",
-			action:        "health",
-			ua:            "",
-			ip:            "",
-			expectedLevel: "info",
+			name:              "no_userid_or_requestid_ua_ip",
+			ctx:               context.Background(),
+			status:            "success",
+			action:            "health",
+			ua:                "",
+			ip:                "",
+			expectedLevel:     "info",
+			expectedRequestID: "",
+		},
+		{
+			name:              "no_userid_with_requestid",
+			ctx:               context.WithValue(context.WithValue(context.Background(), utils.ContextKeyRequestID, "req-123"), utils.ContextKeyUserID, nil),
+			status:            "success",
+			action:            "login",
+			details:           "social login",
+			ua:                "agent-c",
+			ip:                "1.3.3.3",
+			expectedLevel:     "info",
+			expectedRequestID: "req-123",
+		},
+		{
+			name:              "no_requestid_no_userid",
+			ctx:               context.Background(),
+			status:            "success",
+			action:            "logout",
+			details:           "normal logout",
+			ua:                "agent-d",
+			ip:                "1.4.4.4",
+			expectedLevel:     "info",
+			expectedRequestID: "",
+		},
+		{
+			name:              "status_pending",
+			ctx:               context.WithValue(context.WithValue(context.Background(), utils.ContextKeyUserID, "u-456"), utils.ContextKeyRequestID, "req-456"),
+			status:            "pending",
+			action:            "verify",
+			details:           "verification in process",
+			ua:                "agent-e",
+			ip:                "1.5.5.5",
+			expectedLevel:     "info",
+			expectedRequestID: "req-456",
 		},
 	}
 
