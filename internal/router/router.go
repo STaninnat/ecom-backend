@@ -15,7 +15,12 @@ func SetupRouter(handlersCfg *handlers.HandlersConfig, logger *logrus.Logger) *c
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 
-	router.Use(middlewares.LoggingMiddleware(logger, []string{"/v1"}, []string{"/v1/healthz", "/v1/error"}))
+	router.Use(middlewares.RequestIDMiddleware)
+	router.Use(middlewares.LoggingMiddleware(
+		logger,
+		map[string]struct{}{"/v1": {}},
+		map[string]struct{}{"/v1/healthz": {}, "/v1/error": {}},
+	))
 
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},

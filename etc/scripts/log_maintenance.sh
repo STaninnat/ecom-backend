@@ -1,7 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-#log storage location
-LOG_DIR="./logs"
+# -e: Exit immediately if any command returns a non-zero exit status.
+#     This will stop the script as soon as a command fails, ensuring that errors don't go unnoticed.
+# -u: Treat unset variables as an error and exit immediately.
+#     This will stop the script if any variable is used without being initialized.
+set -eux
+
+ENV_FILE="/home/humblestuff/workspace/github.com/STaninnat/ecom-backend/.env.development"
+[ -f "$ENV_FILE" ] && . "$ENV_FILE"
+
+: "${LOG_DIR:?LOG_DIR is not set - check .env}"
 
 #compress .log files older than 1 day (except those that have been compressed).
 find "$LOG_DIR" -type f -name "*.log" -mtime +1 ! -name "*.gz" -exec gzip {} \;
