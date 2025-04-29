@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,29 +13,28 @@ import (
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandlerSignOut(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
-	mockAuth := &mocks.MockAuthHelper{}
+
 	userID := uuid.New()
 	refreshToken := "refresh-token"
 
-	type testCase struct {
+	testCases := []struct {
 		name           string
 		provider       string
-		setupMock      func()
+		setupMock      func(redismock.ClientMock, *mocks.MockAuthHelper)
 		expectedCode   int
 		expectedBody   string
 		expectedHeader string
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name:     "SignOut success with local provider",
 			provider: "local",
-			setupMock: func() {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "local"}, nil
 				}
@@ -46,10 +46,11 @@ func TestHandlerSignOut(t *testing.T) {
 		{
 			name:     "SignOut with google provider redirects",
 			provider: "google",
-			setupMock: func() {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "google"}, nil
 				}
+				redisMock.ExpectDel("refresh_token:" + userID.String()).SetVal(1)
 			},
 			expectedCode:   http.StatusFound,
 			expectedHeader: "https://accounts.google.com/o/oauth2/revoke?token=" + refreshToken,
@@ -57,7 +58,7 @@ func TestHandlerSignOut(t *testing.T) {
 		{
 			name:     "SignOut failed due to token mismatch",
 			provider: "local",
-			setupMock: func() {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return uuid.Nil, nil, fmt.Errorf("Invalid token")
 				}
@@ -68,7 +69,7 @@ func TestHandlerSignOut(t *testing.T) {
 		{
 			name:     "SignOut failed due to Redis deletion failure",
 			provider: "local",
-			setupMock: func() {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "local"}, nil
 				}
@@ -80,7 +81,7 @@ func TestHandlerSignOut(t *testing.T) {
 		{
 			name:     "SignOut failed due to token validation failure",
 			provider: "local",
-			setupMock: func() {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return uuid.Nil, nil, fmt.Errorf("Invalid token")
 				}
@@ -90,15 +91,22 @@ func TestHandlerSignOut(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setupMock()
+			mockAuth := &mocks.MockAuthHelper{}
+			tc.setupMock(redisMock, mockAuth)
+
+			buf := &bytes.Buffer{}
+			lg := logrus.New()
+			lg.SetFormatter(&logrus.JSONFormatter{})
+			lg.SetOutput(buf)
 
 			apicfg := &handlers.HandlersConfig{
 				APIConfig: &config.APIConfig{
 					RedisClient: redisClient,
 				},
 				AuthHelper: mockAuth,
+				Logger:     lg,
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/signout", nil)

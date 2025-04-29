@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"log"
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -17,44 +18,49 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		Password string `json:"password"`
 	}
 
+	ip, userAgent := GetRequestMetadata(r)
+
 	params, valid := auth.DecodeAndValidate[parameters](w, r)
 	if !valid {
+		apicfg.LogHandlerError(r.Context(), "signin-local", "invalid request", "Invalid signup payload", ip, userAgent, nil)
 		return
 	}
 
 	user, err := apicfg.DB.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
-		log.Printf("GetUserByEmail error: %v\n", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "get user failed", "Error getting user from email", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 
 	isValid, err := apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
 	if err != nil || !isValid {
+		apicfg.LogHandlerError(r.Context(), "signin-local", "check password failed", "Error checking password", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
 	userID, err := uuid.Parse(user.ID)
 	if err != nil {
-		log.Printf("Error parsing user id: %v\n", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "uuid parse failed", "Error parsing uuid", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
 	timeNow := time.Now().UTC()
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
+	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
+	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "signin-local", "generate tokens failed", "Error generating tokens", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		log.Println("Error starting transaction:", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "start tx failed", "Error starting transaction", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
 		return
 	}
@@ -68,26 +74,30 @@ func (apicfg *HandlersConfig) HandlerSignIn(w http.ResponseWriter, r *http.Reque
 		ID:        user.ID,
 	})
 	if err != nil {
-		log.Println("Error update signin status to database: ", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "update user status failed", "Error updating user status in database", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		log.Println("Error saving refresh token to Redis: ", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "store refresh token failed", "Error saving refresh token to Redis", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Println("Error committing transaction:", err)
+		apicfg.LogHandlerError(r.Context(), "signin-local", "commit tx failed", "Error committing transaction", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
+
+	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+
+	apicfg.LogHandlerSuccess(ctxWithUserID, "signin-local", "Local signin success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Signin successful",

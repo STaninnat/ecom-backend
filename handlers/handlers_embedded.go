@@ -1,20 +1,29 @@
 package handlers
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 )
 
 type HandlersConfig struct {
 	*config.APIConfig
-	Auth       *auth.AuthConfig
-	OAuth      *config.OAuthConfig
-	AuthHelper auth.AuthHelper
-	Logger     *logrus.Logger
+	Auth              *auth.AuthConfig
+	OAuth             *config.OAuthConfig
+	AuthHelper        auth.AuthHelper
+	Logger            *logrus.Logger
+	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
 }
+
+const (
+	AccessTokenTTL  = 30 * time.Minute
+	RefreshTokenTTL = 7 * 24 * time.Hour
+)
 
 func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	apicfg := config.LoadConfig()

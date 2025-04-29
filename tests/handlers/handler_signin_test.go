@@ -19,21 +19,20 @@ import (
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandlerSignIn(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 
-	type testCase struct {
+	testCases := []struct {
 		name           string
 		requestBody    map[string]string
 		mockSetup      func(sqlmock.Sqlmock, redismock.ClientMock, *mocks.MockAuthHelper)
 		expectedStatus int
 		expectedBody   string
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name: "Signin Success",
 			requestBody: map[string]string{
@@ -310,7 +309,7 @@ func TestHandlerSignIn(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
@@ -320,6 +319,12 @@ func TestHandlerSignIn(t *testing.T) {
 			tc.mockSetup(mock, redisMock, mockAuth)
 
 			q := database.New(db)
+
+			buf := &bytes.Buffer{}
+			lg := logrus.New()
+			lg.SetFormatter(&logrus.JSONFormatter{})
+			lg.SetOutput(buf)
+
 			apicfg := &handlers.HandlersConfig{
 				APIConfig: &config.APIConfig{
 					DB:          q,
@@ -327,6 +332,7 @@ func TestHandlerSignIn(t *testing.T) {
 					RedisClient: redisClient,
 				},
 				AuthHelper: mockAuth,
+				Logger:     lg,
 			}
 
 			body, _ := json.Marshal(tc.requestBody)

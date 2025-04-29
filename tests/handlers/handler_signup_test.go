@@ -23,15 +23,13 @@ import (
 func TestHandlerSignUp(t *testing.T) {
 	redisClient, redisMock := redismock.NewClientMock()
 
-	type testCase struct {
+	testCases := []struct {
 		name           string
 		requestBody    map[string]string
 		mockSetup      func(sqlmock.Sqlmock, redismock.ClientMock, *mocks.MockAuthHelper)
 		expectedStatus int
 		expectedBody   string
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name: "Signup Success",
 			requestBody: map[string]string{
@@ -260,7 +258,7 @@ func TestHandlerSignUp(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Prepare mocks
 			db, mock, err := sqlmock.New()

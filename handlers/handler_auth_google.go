@@ -4,16 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
+
+const oauthStatePrefix = "oauth_state:"
 
 type UserGoogleInfo struct {
 	ID    string `json:"id"`
@@ -22,9 +24,12 @@ type UserGoogleInfo struct {
 }
 
 func (apicfg *HandlersConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := GetRequestMetadata(r)
+
 	state := auth.GenerateState()
-	err := apicfg.RedisClient.Set(r.Context(), "oauth_state:"+state, "valid", 10*time.Minute).Err()
+	err := apicfg.RedisClient.Set(r.Context(), oauthStatePrefix+state, "valid", 10*time.Minute).Err()
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "signin-google", "store state failed", "Error storing state to Redis", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store state")
 		return
 	}
@@ -34,19 +39,23 @@ func (apicfg *HandlersConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http
 }
 
 func (apicfg *HandlersConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := GetRequestMetadata(r)
+
 	state := r.URL.Query().Get("state")
 	if state == "" {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "state parameter failed", "Error getting state from URL", ip, userAgent, nil)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing state parameter")
 		return
 	}
 
-	redisState, err := apicfg.RedisClient.Get(r.Context(), "oauth_state:"+state).Result()
+	redisState, err := apicfg.RedisClient.Get(r.Context(), oauthStatePrefix+state).Result()
 	if redisState == "" {
-		fmt.Println("State missing from Redis, redirecting to signin")
+		apicfg.LogHandlerError(r.Context(), "callback-google", "get state failed", "Error getting state from Redis, redirecting to signin", ip, userAgent, nil)
 		http.Redirect(w, r, "/v1/auth/google/signin", http.StatusTemporaryRedirect)
 		return
 	}
 	if err != nil || redisState != "valid" {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "get state failed", "Error getting state from Redis, invalid state", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid state parameter")
 		return
 	}
@@ -55,36 +64,44 @@ func (apicfg *HandlersConfig) HandlerGoogleCallback(w http.ResponseWriter, r *ht
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "authorization code failed", "Error getting authorization code from URL", ip, userAgent, nil)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing authorization code")
 		return
 	}
 
 	token, err := apicfg.exchangeGoogleToken(code)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "exchange token failed", "Error exchange Google token", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to exchange token")
 		return
 	}
 
 	user, err := apicfg.getUserInfoFromGoogle(token)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "retrieve user failed", "Error retrieving user info from Google", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve user info")
 		return
 	}
 
-	accessToken, refreshToken, err := apicfg.handleUserAuthentication(w, r, user, token, state)
+	accessToken, refreshToken, userID, err := apicfg.handleUserAuthentication(w, r, user, token, state)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "callback-google", "authentication failed", "Error during Google authentication", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Authentication error")
 		return
 	}
 
 	timeNow := time.Now().UTC()
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
+	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
+	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
+	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
+
+	apicfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
+
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
-		"message": "Google login successful",
+		"message": "Google signin successful",
 	})
 }
 
@@ -110,15 +127,13 @@ func (apicfg *HandlersConfig) getUserInfoFromGoogle(token *oauth2.Token) (*UserG
 }
 
 // handleUserAuthentication handles user signin/signup
-func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r *http.Request, user *UserGoogleInfo, token *oauth2.Token, state string) (string, string, error) {
+func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r *http.Request, user *UserGoogleInfo, token *oauth2.Token, state string) (string, string, string, error) {
 	ctx := r.Context()
 	existingUser, err := apicfg.DB.CheckExistsAndGetIDByEmail(ctx, user.Email)
 	if err != nil && err != sql.ErrNoRows {
-		fmt.Println("Error checking user existence:", err)
-		return "", "", err
+		return "", "", "", err
 	}
 	if err == sql.ErrNoRows || !existingUser.Exists {
-		fmt.Println("User not found, creating new user:", user.Email)
 		existingUser.ID = ""
 	}
 
@@ -127,13 +142,12 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 	providerID := sql.NullString{String: user.ID, Valid: true}
 
 	timeNow := time.Now().UTC()
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
+	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
+	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
 	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
 	if err != nil {
-		fmt.Println("Error starting DB transaction:", err)
-		return "", "", err
+		return "", "", "", err
 	}
 	defer tx.Rollback()
 
@@ -154,32 +168,28 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 			UpdatedAt:  timeNow,
 		})
 		if err != nil {
-			fmt.Println("Error creating user:", err)
-			return "", "", err
+			return "", "", "", err
 		}
 	}
 
 	accessToken, err := apicfg.Auth.GenerateAccessToken(userID, accessTokenExpiresAt)
 	if err != nil {
-		fmt.Println("Error generating access token:", err)
-		return "", "", err
+		return "", "", "", err
 	}
 
 	refreshToken, err := apicfg.RedisClient.Get(ctx, "refresh_token:"+userID).Result()
 	if err != nil || refreshToken == "" {
 		refreshToken = token.RefreshToken
-		fmt.Println("New refresh token from Google:", refreshToken)
 
 		if refreshToken != "" {
 			err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID, refreshToken, "google", refreshTokenExpiresAt.Sub(timeNow))
 			if err != nil {
-				fmt.Println("Error storing refresh token in Redis:", err)
-				return "", "", err
+				return "", "", "", err
 			}
 		} else {
 			authURL := apicfg.OAuth.Google.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 			http.Redirect(w, r, authURL, http.StatusFound)
-			return "", "", err
+			return "", "", "", err
 		}
 	}
 
@@ -190,14 +200,12 @@ func (apicfg *HandlersConfig) handleUserAuthentication(w http.ResponseWriter, r 
 		Email:      user.Email,
 	})
 	if err != nil {
-		fmt.Println("Error updating user signin status:", err)
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if err = tx.Commit(); err != nil {
-		fmt.Println("Error committing transaction:", err)
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, userID, nil
 }

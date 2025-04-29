@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"net/http"
 
+	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
@@ -43,4 +45,10 @@ func ErrMsgOrNil(err error) string {
 	}
 
 	return ""
+}
+
+func GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
+	ip = middlewares.GetIPAddress(r)
+	userAgent = r.UserAgent()
+	return
 }

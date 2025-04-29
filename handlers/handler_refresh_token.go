@@ -2,74 +2,94 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
 	"golang.org/x/oauth2"
 )
 
 func (apicfg *HandlersConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
-	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
+	ip, userAgent := GetRequestMetadata(r)
+
+	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "refresh token", "validate cookie failed", "Error validating cookie", ip, userAgent, err)
+		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
+	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+
+	timeNow := time.Now().UTC()
+	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
+	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
+
 	if storedData.Provider == "google" {
 		refreshToken := storedData.Token
-		log.Println("Using refresh token:", refreshToken)
 
-		newToken, err := apicfg.RefreshGoogleAccessToken(refreshToken)
+		newToken, err := apicfg.RefreshGoogleAccessToken(r, refreshToken)
 		if err != nil {
-			fmt.Println("Failed to refresh Google token: ", err)
+			apicfg.LogHandlerError(r.Context(), "refresh token", "refresh token failed", "Error refresh Google token", ip, userAgent, err)
 			middlewares.RespondWithError(w, http.StatusUnauthorized, "Failed to refresh Google token")
 			return
 		}
 
-		auth.SetTokensAsCookies(w, newToken.AccessToken, refreshToken, newToken.Expiry, time.Now().Add(7*24*time.Hour))
+		auth.SetTokensAsCookies(w, newToken.AccessToken, refreshToken, newToken.Expiry, refreshTokenExpiresAt)
+
+		apicfg.LogHandlerSuccess(ctxWithUserID, "refresh token", "Refresh Google token success", ip, userAgent)
+
 		middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 			"message": "Token refreshed successful",
 		})
+
 		return
 	}
 
-	err = apicfg.RedisClient.Del(r.Context(), "refresh_token:"+userID.String()).Err()
+	err = apicfg.RedisClient.Del(r.Context(), auth.RedisRefreshTokenPrefix+userID.String()).Err()
 	if err != nil {
-		log.Println("Error deleting old refresh token:", err)
+		apicfg.LogHandlerError(r.Context(), "signout", "delete token failed", "Error deleting refresh token from Redis", ip, userAgent, err)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove refresh token from Redis")
+		return
 	}
 
-	timeNow := time.Now().UTC()
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
-
-	accessToken, newRefreshToken, err := apicfg.Auth.GenerateTokens(userID.String(), accessTokenExpiresAt)
+	accessToken, newRefreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
+		apicfg.LogHandlerError(r.Context(), "refresh token", "generate tokens failed", "Error generating tokens", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
-	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
+	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		log.Println("Error saving refresh token to Redis: ", err)
+		apicfg.LogHandlerError(r.Context(), "refresh token", "store refresh token failed", "Error saving refresh token to Redis", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
 	auth.SetTokensAsCookies(w, accessToken, newRefreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
+	apicfg.LogHandlerSuccess(ctxWithUserID, "refresh token", "Refresh token success", ip, userAgent)
+
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Token refreshed successful",
 	})
 }
 
-func (apicfg *HandlersConfig) RefreshGoogleAccessToken(refreshToken string) (*oauth2.Token, error) {
-	tokenSource := apicfg.OAuth.Google.TokenSource(context.Background(), &oauth2.Token{RefreshToken: refreshToken})
+func (apicfg *HandlersConfig) RefreshGoogleAccessToken(r *http.Request, refreshToken string) (*oauth2.Token, error) {
+	var tokenSource oauth2.TokenSource
+	if apicfg.CustomTokenSource != nil {
+		tokenSource = apicfg.CustomTokenSource(r.Context(), refreshToken)
+	} else {
+		tokenSource = apicfg.OAuth.Google.TokenSource(r.Context(), &oauth2.Token{RefreshToken: refreshToken})
+	}
+
 	newToken, err := tokenSource.Token()
 	if err != nil {
 		return nil, err
 	}
+
 	return newToken, nil
 }

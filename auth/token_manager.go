@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const RedisRefreshTokenPrefix = "refresh_token:"
+
 func (cfg *AuthConfig) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
 	if cfg == nil {
 		return "", errors.New("cfg is nil")
@@ -115,7 +117,7 @@ func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refresh
 		return err
 	}
 
-	err = cfg.RedisClient.Set(r.Context(), "refresh_token:"+userID, jsonData, ttl).Err()
+	err = cfg.RedisClient.Set(r.Context(), RedisRefreshTokenPrefix+userID, jsonData, ttl).Err()
 	if err != nil {
 		log.Println("Failed to save refresh token to Redis:", err)
 		return err

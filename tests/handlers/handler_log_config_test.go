@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -86,6 +88,59 @@ func TestLogHandlerFunctions(t *testing.T) {
 				require.Nil(t, entry["userID"])
 			}
 			require.Equal(t, "1.1.1.1", entry["ip"])
+		})
+	}
+}
+
+func TestGetRequestMetadata(t *testing.T) {
+	testCases := []struct {
+		name      string
+		ip        string
+		userAgent string
+		setupReq  func() *http.Request
+		wantIP    string
+		wantUA    string
+	}{
+		{
+			name:      "normal case",
+			ip:        "192.168.1.1",
+			userAgent: "Go-http-client/1.1",
+			setupReq: func() *http.Request {
+				req := httptest.NewRequest("GET", "/", nil)
+				req.Header.Set("X-Forwarded-For", "192.168.1.1")
+				req.Header.Set("User-Agent", "Go-http-client/1.1")
+				return req
+			},
+			wantIP: "192.168.1.1",
+			wantUA: "Go-http-client/1.1",
+		},
+		{
+			name:      "no ip, default remote addr",
+			ip:        "",
+			userAgent: "Test-Agent",
+			setupReq: func() *http.Request {
+				req := httptest.NewRequest("GET", "/", nil)
+				req.RemoteAddr = "10.0.0.1:12345"
+				req.Header.Set("User-Agent", "Test-Agent")
+				return req
+			},
+			wantIP: "10.0.0.1",
+			wantUA: "Test-Agent",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := tc.setupReq()
+
+			ip, userAgent := handlers.GetRequestMetadata(req)
+
+			if ip != tc.wantIP {
+				t.Errorf("expected ip %s, got %s", tc.wantIP, ip)
+			}
+			if userAgent != tc.wantUA {
+				t.Errorf("expected userAgent %s, got %s", tc.wantUA, userAgent)
+			}
 		})
 	}
 }
