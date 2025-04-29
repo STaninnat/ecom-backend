@@ -4,6 +4,8 @@
 #     This will stop the script as soon as a command fails, ensuring that errors don't go unnoticed.
 # -u: Treat unset variables as an error and exit immediately.
 #     This will stop the script if any variable is used without being initialized.
+# -x: Print each command and its arguments as they are executed.
+#     Useful for debugging during development, but should be disabled in production for cleaner logs and security.
 set -eux
 
 ENV_FILE="/home/humblestuff/workspace/github.com/STaninnat/ecom-backend/.env.development"

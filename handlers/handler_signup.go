@@ -20,8 +20,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		Password string `json:"password"`
 	}
 
-	ip := middlewares.GetIPAddress(r)
-	userAgent := r.UserAgent()
+	ip, userAgent := GetRequestMetadata(r)
 
 	params, valid := auth.DecodeAndValidate[parameters](w, r)
 	if !valid {
@@ -90,12 +89,12 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	accessTokenExpiresAt := timeNow.Add(30 * time.Minute)
-	refreshTokenExpiresAt := timeNow.Add(7 * 24 * time.Hour)
+	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
+	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "generate token failed", "Failed to generate token", ip, userAgent, err)
+		apicfg.LogHandlerError(r.Context(), "signup-local", "generate tokens failed", "Error generating tokens", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
@@ -118,7 +117,7 @@ func (apicfg *HandlersConfig) HandlerSignUp(w http.ResponseWriter, r *http.Reque
 
 	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
 
-	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "signup success", ip, userAgent)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
 		"message": "Signup successful",
