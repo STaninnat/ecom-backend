@@ -12,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
@@ -275,14 +276,16 @@ func TestHandlerSignUp(t *testing.T) {
 			lg.SetFormatter(&logrus.JSONFormatter{})
 			lg.SetOutput(buf)
 
-			apicfg := &handlers.HandlersConfig{
-				APIConfig: &config.APIConfig{
-					DB:          q,
-					DBConn:      db,
-					RedisClient: redisClient,
+			apicfg := &auth_handler.HandlersAuthConfig{
+				HandlersConfig: &handlers.HandlersConfig{
+					APIConfig: &config.APIConfig{
+						DB:          q,
+						DBConn:      db,
+						RedisClient: redisClient,
+					},
+					AuthHelper: mockAuth,
+					Logger:     lg,
 				},
-				AuthHelper: mockAuth,
-				Logger:     lg,
 			}
 
 			// Prepare request

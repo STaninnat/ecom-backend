@@ -9,6 +9,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
@@ -101,12 +102,14 @@ func TestHandlerSignOut(t *testing.T) {
 			lg.SetFormatter(&logrus.JSONFormatter{})
 			lg.SetOutput(buf)
 
-			apicfg := &handlers.HandlersConfig{
-				APIConfig: &config.APIConfig{
-					RedisClient: redisClient,
+			apicfg := &auth_handler.HandlersAuthConfig{
+				HandlersConfig: &handlers.HandlersConfig{
+					APIConfig: &config.APIConfig{
+						RedisClient: redisClient,
+					},
+					AuthHelper: mockAuth,
+					Logger:     lg,
 				},
-				AuthHelper: mockAuth,
-				Logger:     lg,
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/signout", nil)

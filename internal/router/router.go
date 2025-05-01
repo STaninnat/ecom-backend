@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -9,7 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func SetupRouter(handlersCfg *handlers.HandlersConfig, logger *logrus.Logger) *chi.Mux {
+type RouterConfig struct {
+	*handlers.HandlersConfig
+}
+
+func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -31,18 +36,20 @@ func SetupRouter(handlersCfg *handlers.HandlersConfig, logger *logrus.Logger) *c
 		MaxAge:           300,
 	}))
 
+	authHandlers := &auth_handler.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
+
 	v1Router := chi.NewRouter()
 
 	v1Router.Get("/healthz", handlers.HandlerReadiness)
 	v1Router.Get("/error", handlers.HandlerError)
 
-	v1Router.Post("/auth/signup", handlersCfg.HandlerSignUp)
-	v1Router.Post("/auth/signin", handlersCfg.HandlerSignIn)
-	v1Router.Post("/auth/signout", handlersCfg.HandlerSignOut)
-	v1Router.Post("/auth/refresh", handlersCfg.HandlerRefreshToken)
+	v1Router.Post("/auth/signup", authHandlers.HandlerSignUp)
+	v1Router.Post("/auth/signin", authHandlers.HandlerSignIn)
+	v1Router.Post("/auth/signout", authHandlers.HandlerSignOut)
+	v1Router.Post("/auth/refresh", authHandlers.HandlerRefreshToken)
 
-	v1Router.Get("/auth/google/signin", handlersCfg.HandlerGoogleSignIn)
-	v1Router.Get("/auth/google/callback", handlersCfg.HandlerGoogleCallback)
+	v1Router.Get("/auth/google/signin", authHandlers.HandlerGoogleSignIn)
+	v1Router.Get("/auth/google/callback", authHandlers.HandlerGoogleCallback)
 
 	router.Mount("/v1", v1Router)
 	return router

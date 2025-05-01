@@ -22,10 +22,10 @@ func main() {
 
 	port := handlersConfig.APIConfig.Port
 
-	r := router.SetupRouter(handlersConfig, logger)
+	r := &router.RouterConfig{HandlersConfig: handlersConfig}
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      r,
+		Handler:      r.SetupRouter(logger),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,

@@ -12,6 +12,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/tests/handlers/mocks"
 	"github.com/go-redis/redismock/v9"
@@ -56,15 +57,17 @@ func TestRefreshGoogleAccessToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			apicfg := &handlers.HandlersConfig{
-				CustomTokenSource: func(ctx context.Context, refreshToken string) oauth2.TokenSource {
-					if refreshToken != tt.refreshToken {
-						t.Errorf("unexpected refreshToken: got %s, want %s", refreshToken, tt.refreshToken)
-					}
-					return &mockTokenSource{
-						token: tt.mockToken,
-						err:   tt.mockErr,
-					}
+			apicfg := &auth_handler.HandlersAuthConfig{
+				HandlersConfig: &handlers.HandlersConfig{
+					CustomTokenSource: func(ctx context.Context, refreshToken string) oauth2.TokenSource {
+						if refreshToken != tt.refreshToken {
+							t.Errorf("unexpected refreshToken: got %s, want %s", refreshToken, tt.refreshToken)
+						}
+						return &mockTokenSource{
+							token: tt.mockToken,
+							err:   tt.mockErr,
+						}
+					},
 				},
 			}
 
@@ -90,14 +93,14 @@ func TestHandlerRefreshToken(t *testing.T) {
 	testCases := []struct {
 		name         string
 		provider     string
-		setupMock    func(redismock.ClientMock, *mocks.MockAuthHelper, *handlers.HandlersConfig)
+		setupMock    func(redismock.ClientMock, *mocks.MockAuthHelper, *auth_handler.HandlersAuthConfig)
 		expectedCode int
 		expectedBody string
 	}{
 		{
 			name:     "Google provider - success",
 			provider: "google",
-			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *handlers.HandlersConfig) {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *auth_handler.HandlersAuthConfig) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "google"}, nil
 				}
@@ -117,7 +120,7 @@ func TestHandlerRefreshToken(t *testing.T) {
 		{
 			name:     "Google provider - refresh fail",
 			provider: "google",
-			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *handlers.HandlersConfig) {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *auth_handler.HandlersAuthConfig) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "google"}, nil
 				}
@@ -134,7 +137,7 @@ func TestHandlerRefreshToken(t *testing.T) {
 		{
 			name:     "Local provider - success",
 			provider: "local",
-			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *handlers.HandlersConfig) {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *auth_handler.HandlersAuthConfig) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "local"}, nil
 				}
@@ -152,7 +155,7 @@ func TestHandlerRefreshToken(t *testing.T) {
 		{
 			name:     "Local provider - redis delete fail",
 			provider: "local",
-			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *handlers.HandlersConfig) {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *auth_handler.HandlersAuthConfig) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return userID, &auth.RefreshTokenData{Token: refreshToken, Provider: "local"}, nil
 				}
@@ -164,7 +167,7 @@ func TestHandlerRefreshToken(t *testing.T) {
 		{
 			name:     "Validation failed",
 			provider: "any",
-			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *handlers.HandlersConfig) {
+			setupMock: func(redisMock redismock.ClientMock, mockAuth *mocks.MockAuthHelper, apicfg *auth_handler.HandlersAuthConfig) {
 				mockAuth.ValidateCookieRefreshTokenDataFn = func(w http.ResponseWriter, r *http.Request) (uuid.UUID, *auth.RefreshTokenData, error) {
 					return uuid.Nil, nil, fmt.Errorf("invalid cookie")
 				}
@@ -183,12 +186,14 @@ func TestHandlerRefreshToken(t *testing.T) {
 			lg.SetFormatter(&logrus.JSONFormatter{})
 			lg.SetOutput(buf)
 
-			apicfg := &handlers.HandlersConfig{
-				APIConfig: &config.APIConfig{
-					RedisClient: redisClient,
+			apicfg := &auth_handler.HandlersAuthConfig{
+				HandlersConfig: &handlers.HandlersConfig{
+					APIConfig: &config.APIConfig{
+						RedisClient: redisClient,
+					},
+					AuthHelper: mockAuth,
+					Logger:     lg,
 				},
-				AuthHelper: mockAuth,
-				Logger:     lg,
 			}
 
 			tc.setupMock(redisMock, mockAuth, apicfg)
