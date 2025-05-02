@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/handlers/auth_handler"
+	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -36,7 +36,7 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	authHandlers := &auth_handler.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
+	authHandlers := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
