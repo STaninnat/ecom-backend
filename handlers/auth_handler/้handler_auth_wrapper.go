@@ -1,4 +1,4 @@
-package auth_handler
+package authhandlers
 
 import "github.com/STaninnat/ecom-backend/handlers"
 
