@@ -47,8 +47,8 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	isValid, err := apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
-	if err != nil || !isValid {
+	err = apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
+	if err != nil {
 		apicfg.LogHandlerError(
 			r.Context(),
 			"signin-local",
