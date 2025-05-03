@@ -72,8 +72,8 @@ func TestHandlerSignIn(t *testing.T) {
 					))
 
 				// Mock password check
-				mockAuth.CheckPasswordHashFn = func(pw, hash string) (bool, error) {
-					return true, nil
+				mockAuth.CheckPasswordHashFn = func(pw, hash string) error {
+					return nil
 				}
 
 				// Mock token generation
@@ -159,8 +159,8 @@ func TestHandlerSignIn(t *testing.T) {
 						now,
 					))
 
-				mockAuth.CheckPasswordHashFn = func(pw, hash string) (bool, error) {
-					return false, nil
+				mockAuth.CheckPasswordHashFn = func(pw, hash string) error {
+					return errors.New("password mismatch")
 				}
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -193,8 +193,8 @@ func TestHandlerSignIn(t *testing.T) {
 						now,
 					))
 
-				mockAuth.CheckPasswordHashFn = func(pw, hash string) (bool, error) {
-					return true, nil
+				mockAuth.CheckPasswordHashFn = func(pw, hash string) error {
+					return nil
 				}
 
 				mockAuth.GenerateTokensFn = func(userID string, expiresAt time.Time) (string, string, error) {
@@ -231,8 +231,8 @@ func TestHandlerSignIn(t *testing.T) {
 						now,
 					))
 
-				mockAuth.CheckPasswordHashFn = func(pw, hash string) (bool, error) {
-					return true, nil
+				mockAuth.CheckPasswordHashFn = func(pw, hash string) error {
+					return nil
 				}
 
 				mockAuth.GenerateTokensFn = func(userID string, expiresAt time.Time) (string, string, error) {
@@ -290,8 +290,8 @@ func TestHandlerSignIn(t *testing.T) {
 						now,
 						now,
 					))
-				mockAuth.CheckPasswordHashFn = func(pw, hash string) (bool, error) {
-					return true, nil
+				mockAuth.CheckPasswordHashFn = func(pw, hash string) error {
+					return nil
 				}
 
 				// Mock token generation

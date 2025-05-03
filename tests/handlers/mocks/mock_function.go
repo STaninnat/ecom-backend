@@ -10,7 +10,7 @@ import (
 
 type MockAuthHelper struct {
 	HashPasswordFn                   func(string) (string, error)
-	CheckPasswordHashFn              func(string, string) (bool, error)
+	CheckPasswordHashFn              func(string, string) error
 	GenerateTokensFn                 func(string, time.Time) (string, string, error)
 	StoreRefreshTokenInRedisFn       func(*http.Request, string, string, string, time.Duration) error
 	ValidateCookieRefreshTokenDataFn func(http.ResponseWriter, *http.Request) (uuid.UUID, *auth.RefreshTokenData, error)
@@ -23,11 +23,11 @@ func (m *MockAuthHelper) HashPassword(password string) (string, error) {
 	return "hashed-password", nil
 }
 
-func (m *MockAuthHelper) CheckPasswordHash(password, hash string) (bool, error) {
+func (m *MockAuthHelper) CheckPasswordHash(password, hash string) error {
 	if m.CheckPasswordHashFn != nil {
 		return m.CheckPasswordHashFn(password, hash)
 	}
-	return true, nil
+	return nil
 }
 
 func (m *MockAuthHelper) GenerateTokens(userID string, expiresAt time.Time) (string, string, error) {

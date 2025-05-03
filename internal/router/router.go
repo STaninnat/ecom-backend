@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
+	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -37,6 +38,7 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	}))
 
 	authHandlers := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
+	userHandlers := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
@@ -50,6 +52,9 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	v1Router.Get("/auth/google/signin", authHandlers.HandlerGoogleSignIn)
 	v1Router.Get("/auth/google/callback", authHandlers.HandlerGoogleCallback)
+
+	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlers.HandlerGetUser))
+	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlers.HandlerUpdateUser))
 
 	router.Mount("/v1", v1Router)
 	return router

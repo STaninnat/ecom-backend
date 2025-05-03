@@ -41,14 +41,36 @@ func TestCheckPasswordHash(t *testing.T) {
 	tests := []struct {
 		name     string
 		password string
-		match    bool
+		hash     string
 		wantErr  bool
 	}{
-		{"Matching password", "password123", true, false},       // Test with a matching password
-		{"Non-matching password", "wrongpassword", false, true}, // Test with a non-matching password
-		{"Empty password", "", false, true},                     // Test with an empty password
-		{"Empty hash", "password123", false, true},              // Test with an empty hash
-		{"Invalid hash format", "password123", false, true},     // Test with an invalid hash format
+		{
+			name:     "Matching password",
+			password: "password123",
+			wantErr:  false,
+		},
+		{
+			name:     "Non-matching password",
+			password: "wrongpassword",
+			wantErr:  true,
+		},
+		{
+			name:     "Empty password",
+			password: "",
+			wantErr:  true,
+		},
+		{
+			name:     "Empty hash",
+			password: "password123",
+			hash:     "",
+			wantErr:  true,
+		},
+		{
+			name:     "Invalid hash format",
+			password: "password123",
+			hash:     "invalidhash",
+			wantErr:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -56,28 +78,19 @@ func TestCheckPasswordHash(t *testing.T) {
 			var hash string
 			var err error
 
-			// Only hash the password if it's needed for the test
-			if tt.match || tt.password != "" {
+			// ใช้ hash ที่ generate เฉพาะในกรณีที่ไม่ได้กำหนดไว้
+			if tt.hash == "" && tt.name != "Empty hash" {
 				hash, err = auth.HashPassword("password123")
 				if err != nil {
 					t.Fatalf("Failed to hash password: %v", err)
 				}
+			} else {
+				hash = tt.hash
 			}
 
-			if tt.name == "Invalid hash format" {
-				hash = "invalidhash"
-			}
-
-			if tt.name == "Empty hash" {
-				hash = ""
-			}
-
-			match, err := auth.CheckPasswordHash(tt.password, hash)
+			err = auth.CheckPasswordHash(tt.password, hash)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if match != tt.match {
-				t.Errorf("CheckPasswordHash() match = %v, want %v", match, tt.match)
 			}
 		})
 	}

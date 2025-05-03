@@ -30,7 +30,13 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *
 	state := auth.GenerateState()
 	err := apicfg.RedisClient.Set(r.Context(), oauthStatePrefix+state, "valid", 10*time.Minute).Err()
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signin-google", "store state failed", "Error storing state to Redis", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signin-google",
+			"store state failed",
+			"Error storing state to Redis",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store state")
 		return
 	}
@@ -44,19 +50,37 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 
 	state := r.URL.Query().Get("state")
 	if state == "" {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "state parameter failed", "Error getting state from URL", ip, userAgent, nil)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"state parameter failed",
+			"Error getting state from URL",
+			ip, userAgent, nil,
+		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing state parameter")
 		return
 	}
 
 	redisState, err := apicfg.RedisClient.Get(r.Context(), oauthStatePrefix+state).Result()
 	if redisState == "" {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "get state failed", "Error getting state from Redis, redirecting to signin", ip, userAgent, nil)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"get state failed",
+			"Error getting state from Redis, redirecting to signin",
+			ip, userAgent, nil,
+		)
 		http.Redirect(w, r, "/v1/auth/google/signin", http.StatusTemporaryRedirect)
 		return
 	}
 	if err != nil || redisState != "valid" {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "get state failed", "Error getting state from Redis, invalid state", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"get state failed",
+			"Error getting state from Redis, invalid state",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid state parameter")
 		return
 	}
@@ -65,28 +89,52 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "authorization code failed", "Error getting authorization code from URL", ip, userAgent, nil)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"authorization code failed",
+			"Error getting authorization code from URL",
+			ip, userAgent, nil,
+		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing authorization code")
 		return
 	}
 
 	token, err := apicfg.exchangeGoogleToken(code)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "exchange token failed", "Error exchange Google token", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"exchange token failed",
+			"Error exchange Google token",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to exchange token")
 		return
 	}
 
 	user, err := apicfg.getUserInfoFromGoogle(token)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "retrieve user failed", "Error retrieving user info from Google", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"retrieve user failed",
+			"Error retrieving user info from Google",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve user info")
 		return
 	}
 
 	accessToken, refreshToken, userID, err := apicfg.handleUserAuthentication(w, r, user, token, state)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "callback-google", "authentication failed", "Error during Google authentication", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"callback-google",
+			"authentication failed",
+			"Error during Google authentication",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Authentication error")
 		return
 	}
@@ -98,7 +146,6 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
 	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
-
 	apicfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{

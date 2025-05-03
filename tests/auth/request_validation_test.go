@@ -26,6 +26,7 @@ func TestDecodeAndValidate(t *testing.T) {
 		body          string
 		expectError   bool
 		expectedValue any
+		targetType    string
 	}{
 		{
 			name:        "Valid SignUp JSON",
@@ -36,6 +37,7 @@ func TestDecodeAndValidate(t *testing.T) {
 				Email:    "john@example.com",
 				Password: "password123",
 			},
+			targetType: "signup",
 		},
 		{
 			name:        "Valid SignIn JSON",
@@ -45,45 +47,49 @@ func TestDecodeAndValidate(t *testing.T) {
 				Email:    "john@example.com",
 				Password: "password123",
 			},
+			targetType: "signin",
 		},
 		{
 			name:        "Invalid JSON",
 			body:        `{"name":"John","email"}`,
 			expectError: true,
+			targetType:  "signup",
 		},
 		{
 			name:        "Missing fields",
 			body:        `{"name":""}`,
 			expectError: true,
+			targetType:  "signup",
 		},
 		{
 			name:        "Empty body",
 			body:        ``,
 			expectError: true,
+			targetType:  "signup",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create an HTTP request with the test body
 			req := httptest.NewRequest("POST", "/test", bytes.NewReader([]byte(tt.body)))
 			w := httptest.NewRecorder()
 
+			var err error
 			var result any
-			var ok bool
 
-			if tt.name == "Valid SignUp JSON" || tt.name == "Invalid JSON" {
-				result, ok = auth.DecodeAndValidate[DummySignUpParameters](w, req)
-			} else if tt.name == "Valid SignIn JSON" {
-				result, ok = auth.DecodeAndValidate[DummySignInParameters](w, req)
+			switch tt.targetType {
+			case "signup":
+				result, err = auth.DecodeAndValidate[DummySignUpParameters](w, req)
+			case "signin":
+				result, err = auth.DecodeAndValidate[DummySignInParameters](w, req)
 			}
 
-			if (ok == false) != tt.expectError {
-				t.Errorf("Expected error status: %v, got: %v", tt.expectError, ok)
+			if (err != nil) != tt.expectError {
+				t.Errorf("Expected error: %v, got error: %v", tt.expectError, err)
 			}
 
 			if !tt.expectError && !reflect.DeepEqual(result, tt.expectedValue) {
-				t.Errorf("Expected value: %v, got: %v", tt.expectedValue, result)
+				t.Errorf("Expected value: %+v, got: %+v", tt.expectedValue, result)
 			}
 		})
 	}

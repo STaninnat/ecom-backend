@@ -13,7 +13,7 @@ type RealHelper struct {
 
 type AuthHelper interface {
 	HashPassword(password string) (string, error)
-	CheckPasswordHash(password, hash string) (bool, error)
+	CheckPasswordHash(password, hash string) error
 	GenerateTokens(userID string, expiresAt time.Time) (string, string, error)
 	StoreRefreshTokenInRedis(r *http.Request, userID, token, provider string, ttl time.Duration) error
 	ValidateCookieRefreshTokenData(w http.ResponseWriter, r *http.Request) (uuid.UUID, *RefreshTokenData, error)
@@ -23,7 +23,7 @@ func (r *RealHelper) HashPassword(password string) (string, error) {
 	return HashPassword(password)
 }
 
-func (r *RealHelper) CheckPasswordHash(password, hash string) (bool, error) {
+func (r *RealHelper) CheckPasswordHash(password, hash string) error {
 	return CheckPasswordHash(password, hash)
 }
 

@@ -22,13 +22,15 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), nil
 }
 
-func CheckPasswordHash(password, hash string) (bool, error) {
+func CheckPasswordHash(password, hash string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return false, errors.New("password mismatch")
+			return errors.New("password mismatch")
 		}
-		return false, fmt.Errorf("error comparing password: %w", err)
+
+		return fmt.Errorf("error comparing password: %w", err)
 	}
-	return true, nil
+
+	return nil
 }

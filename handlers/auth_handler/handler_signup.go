@@ -23,32 +23,63 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
-	params, valid := auth.DecodeAndValidate[parameters](w, r)
-	if !valid {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "invalid request", "Invalid signup payload", ip, userAgent, nil)
+	params, err := auth.DecodeAndValidate[parameters](w, r)
+	if err != nil {
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"invalid request",
+			"Invalid signup payload",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "check name failed", "Error checking name existence", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"check name failed",
+			"Error checking name existence",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if nameExists {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "name exists", "Duplicate name", ip, userAgent, nil)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"name exists",
+			"Duplicate name",
+			ip, userAgent, nil,
+		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this name already exists")
 		return
 	}
 
 	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "check email failed", "Error checking email existence", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"check email failed",
+			"Error checking email existence",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if emailExists {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "email exists", "Duplicate email", ip, userAgent, nil)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"email exists",
+			"Duplicate email",
+			ip, userAgent, nil,
+		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "An account with this email already exists")
 		return
 	}
@@ -56,7 +87,13 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	userID := uuid.New()
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "hash password failed", "Error hashing password", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"hash password failed",
+			"Error hashing password",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -65,7 +102,13 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "start tx failed", "Error starting transaction", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
 		return
 	}
@@ -85,7 +128,13 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 		UpdatedAt:  timeNow,
 	})
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "create user failed", "Error creating user in database", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"create user failed",
+			"Error creating user in database",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		return
 	}
@@ -95,21 +144,39 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "generate tokens failed", "Error generating tokens", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"generate tokens failed",
+			"Error generating tokens",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "store refresh token failed", "Error saving refresh token to Redis", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"store refresh token failed",
+			"Error saving refresh token to Redis",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signup-local", "commit tx failed", "Error committing transaction", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signup-local",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
@@ -117,7 +184,6 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
 	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
-
 	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{

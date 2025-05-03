@@ -308,11 +308,10 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 	validStoredJSON, _ := json.Marshal(validStoredData)
 
 	tests := []struct {
-		name         string
-		setupRequest func() *http.Request
-		setupRedis   func()
-		expectedErr  string
-		expectedCode int
+		name           string
+		setupRequest   func() *http.Request
+		setupRedis     func()
+		expectedErrMsg string
 	}{
 		{
 			name: "No refresh_token cookie",
@@ -320,8 +319,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				return req
 			},
-			expectedErr:  "Refresh token is required", // No token provided
-			expectedCode: http.StatusUnauthorized,
+			expectedErrMsg: "http: named cookie not present",
 		},
 		{
 			name: "Invalid refresh_token format",
@@ -330,8 +328,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "invalid_token"})
 				return req
 			},
-			expectedErr:  "Invalid refresh token", // Token format does not match expectations
-			expectedCode: http.StatusUnauthorized,
+			expectedErrMsg: "invalid refresh token format",
 		},
 		{
 			name: "Refresh token not found in Redis",
@@ -343,8 +340,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 			setupRedis: func() {
 				mock.ExpectGet("refresh_token:" + validUserID).RedisNil() // Token does not exist
 			},
-			expectedErr:  "Invalid session", // Session does not exist
-			expectedCode: http.StatusUnauthorized,
+			expectedErrMsg: "redis: nil",
 		},
 		{
 			name: "Failed to unmarshal refresh token data",
@@ -356,8 +352,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 			setupRedis: func() {
 				mock.ExpectGet("refresh_token:" + validUserID).SetVal("invalid_json") // Corrupt data
 			},
-			expectedErr:  "Failed to process session",
-			expectedCode: http.StatusInternalServerError,
+			expectedErrMsg: "invalid character",
 		},
 		{
 			name: "Refresh token mismatch",
@@ -374,8 +369,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 				invalidJSON, _ := json.Marshal(invalidData)
 				mock.ExpectGet("refresh_token:" + validUserID).SetVal(string(invalidJSON))
 			},
-			expectedErr:  "Invalid session", // Stored token does not match the provided one
-			expectedCode: http.StatusUnauthorized,
+			expectedErrMsg: "invalid session",
 		},
 		{
 			name: "Valid refresh token",
@@ -387,8 +381,7 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 			setupRedis: func() {
 				mock.ExpectGet("refresh_token:" + validUserID).SetVal(string(validStoredJSON)) // Valid session
 			},
-			expectedErr:  "",
-			expectedCode: 0, // No error expected
+			expectedErrMsg: "",
 		},
 	}
 
@@ -402,10 +395,9 @@ func TestValidateCookieRefreshTokenData(t *testing.T) {
 
 			_, _, err := cfg.ValidateCookieRefreshTokenData(w, r)
 
-			if tt.expectedErr != "" {
+			if tt.expectedErrMsg != "" {
 				assert.Error(t, err)
-				assert.Contains(t, w.Body.String(), tt.expectedErr)
-				assert.Equal(t, tt.expectedCode, w.Code)
+				assert.Contains(t, err.Error(), tt.expectedErrMsg)
 			} else {
 				assert.NoError(t, err)
 			}
