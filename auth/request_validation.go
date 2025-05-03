@@ -2,31 +2,25 @@ package auth
 
 import (
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"reflect"
-
-	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
-func DecodeAndValidate[T any](w http.ResponseWriter, r *http.Request) (*T, bool) {
+func DecodeAndValidate[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 	defer r.Body.Close()
 
 	var params T
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		log.Println("Decode error: ", err)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
-		return nil, false
+		return nil, errors.New("invalid request format")
 	}
 
 	v := reflect.ValueOf(params)
 	for i := range v.NumField() {
 		if v.Field(i).Interface() == "" {
-			log.Println("Invalid request format: missing fields")
-			middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request format")
-			return nil, false
+			return nil, errors.New("missing required fields")
 		}
 	}
 
-	return &params, true
+	return &params, nil
 }

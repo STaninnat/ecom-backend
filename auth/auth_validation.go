@@ -7,14 +7,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -103,35 +101,26 @@ func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, err
 func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *http.Request) (uuid.UUID, *RefreshTokenData, error) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Refresh token is required")
 		return uuid.Nil, nil, err
 	}
 	refreshToken := cookie.Value
 
 	userID, err := cfg.ValidateRefreshToken(refreshToken)
 	if err != nil {
-		log.Println("Invalid refresh token:", err)
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid refresh token")
 		return uuid.Nil, nil, err
 	}
 
 	storedTokenJSON, err := cfg.RedisClient.Get(r.Context(), "refresh_token:"+userID.String()).Result()
 	if err != nil {
-		log.Println("Refresh token mismatch:", err)
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid session")
 		return uuid.Nil, nil, err
 	}
 
 	storedData, err := ParseRefreshTokenData(storedTokenJSON)
 	if err != nil {
-		log.Println("Failed to unmarshal refresh token data:", err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to process session")
 		return uuid.Nil, nil, err
 	}
 
 	if storedData.Token != refreshToken {
-		log.Println("Refresh token mismatch")
-		middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid session")
 		return uuid.Nil, nil, errors.New("invalid session")
 	}
 

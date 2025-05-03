@@ -17,7 +17,13 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "refresh token", "validate cookie failed", "Error validating cookie", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"refresh token",
+			"validate cookie failed",
+			"Error validating cookie",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -33,7 +39,13 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 		newToken, err := apicfg.RefreshGoogleAccessToken(r, refreshToken)
 		if err != nil {
-			apicfg.LogHandlerError(r.Context(), "refresh token", "refresh token failed", "Error refresh Google token", ip, userAgent, err)
+			apicfg.LogHandlerError(
+				r.Context(),
+				"refresh token",
+				"refresh token failed",
+				"Error refresh Google token",
+				ip, userAgent, err,
+			)
 			middlewares.RespondWithError(w, http.StatusUnauthorized, "Failed to refresh Google token")
 			return
 		}
@@ -51,21 +63,39 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 	err = apicfg.RedisClient.Del(r.Context(), auth.RedisRefreshTokenPrefix+userID.String()).Err()
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signout", "delete token failed", "Error deleting refresh token from Redis", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"signout",
+			"delete token failed",
+			"Error deleting refresh token from Redis",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove refresh token from Redis")
 		return
 	}
 
 	accessToken, newRefreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "refresh token", "generate tokens failed", "Error generating tokens", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"refresh token",
+			"generate tokens failed",
+			"Error generating tokens",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "refresh token", "store refresh token failed", "Error saving refresh token to Redis", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"refresh token",
+			"store refresh token failed",
+			"Error saving refresh token to Redis",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to store session")
 		return
 	}

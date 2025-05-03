@@ -111,7 +111,7 @@ func TestHandlerSignUp(t *testing.T) {
 				// no db or redis call expected
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request format",
+			expectedBody:   "Invalid request payload",
 		},
 		{
 			name: "Password hash fail",

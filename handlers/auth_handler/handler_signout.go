@@ -16,14 +16,26 @@ func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.
 
 	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signout", "validate cookie failed", "Error validating cookie", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"sign out",
+			"validate cookie failed",
+			"Error validating cookie",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	err = apicfg.RedisClient.Del(r.Context(), auth.RedisRefreshTokenPrefix+userID.String()).Err()
 	if err != nil {
-		apicfg.LogHandlerError(r.Context(), "signout", "delete token failed", "Error deleting refresh token from Redis", ip, userAgent, err)
+		apicfg.LogHandlerError(
+			r.Context(),
+			"sign out",
+			"delete token failed",
+			"Error deleting refresh token from Redis",
+			ip, userAgent, err,
+		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove refresh token from Redis")
 		return
 	}
