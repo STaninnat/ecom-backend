@@ -8,8 +8,10 @@ import (
 
 type ContextKey string
 
-const ContextKeyUserID ContextKey = "userID"
-const ContextKeyRequestID ContextKey = "reqestID"
+const (
+	ContextKeyUserID    ContextKey = "userID"
+	ContextKeyRequestID ContextKey = "reqestID"
+)
 
 type ActionLogParams struct {
 	Logger    *logrus.Logger
