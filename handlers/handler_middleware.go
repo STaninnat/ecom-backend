@@ -9,11 +9,31 @@ import (
 
 type authhandler func(http.ResponseWriter, *http.Request, database.User)
 
+func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler authhandler) http.HandlerFunc {
+	return apicfg.HandlerMiddleware(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		ip, userAgent := GetRequestMetadata(r)
+
+		if user.Role != "admin" {
+			apicfg.LogHandlerError(
+				r.Context(),
+				"admin middleware",
+				"user is not admin",
+				"unauthorized access attempt",
+				ip, userAgent, nil,
+			)
+			middlewares.RespondWithError(w, http.StatusForbidden, "Access Denied")
+			return
+		}
+
+		handler(w, r, user)
+	})
+}
+
 func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip, userAgent := GetRequestMetadata(r)
 
-		tokenString, err := r.Cookie("access_token")
+		cookie, err := r.Cookie("access_token")
 		if err != nil {
 			apicfg.LogHandlerError(
 				r.Context(),
@@ -26,7 +46,7 @@ func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.Handle
 			return
 		}
 
-		token := tokenString.Value
+		token := cookie.Value
 
 		claims, err := apicfg.Auth.ValidateAccessToken(token, apicfg.JWTSecret)
 		if err != nil {
@@ -40,6 +60,7 @@ func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.Handle
 			middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
+
 		user, err := apicfg.DB.GetUserByID(r.Context(), claims.UserID)
 		if err != nil {
 			apicfg.LogHandlerError(

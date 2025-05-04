@@ -55,8 +55,8 @@ func (q *Queries) CheckUserExistsByName(ctx context.Context, name string) (bool,
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, name, email, password, provider, provider_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO users (id, name, email, password, provider, provider_id, role, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type CreateUserParams struct {
@@ -66,6 +66,7 @@ type CreateUserParams struct {
 	Password   sql.NullString
 	Provider   string
 	ProviderID sql.NullString
+	Role       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -78,6 +79,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.Password,
 		arg.Provider,
 		arg.ProviderID,
+		arg.Role,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -85,7 +87,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, provider, provider_id, phone, address, created_at, updated_at FROM users
+SELECT id, name, email, password, provider, provider_id, phone, address, role, created_at, updated_at FROM users
 WHERE email = $1
 LIMIT 1
 `
@@ -102,6 +104,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ProviderID,
 		&i.Phone,
 		&i.Address,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -109,7 +112,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password, provider, provider_id, phone, address, created_at, updated_at FROM users
+SELECT id, name, email, password, provider, provider_id, phone, address, role, created_at, updated_at FROM users
 WHERE id = $1
 LIMIT 1
 `
@@ -126,6 +129,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.ProviderID,
 		&i.Phone,
 		&i.Address,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -156,6 +160,21 @@ func (q *Queries) UpdateUserInfo(ctx context.Context, arg UpdateUserInfoParams) 
 		arg.Address,
 		arg.ID,
 	)
+	return err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :exec
+UPDATE users 
+SET role = $1 WHERE id = $2
+`
+
+type UpdateUserRoleParams struct {
+	Role string
+	ID   string
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserRole, arg.Role, arg.ID)
 	return err
 }
 

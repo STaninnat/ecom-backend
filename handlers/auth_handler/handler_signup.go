@@ -124,6 +124,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 		Password:   sql.NullString{String: hashedPassword, Valid: true},
 		Provider:   "local",
 		ProviderID: sql.NullString{},
+		Role:       "user",
 		CreatedAt:  timeNow,
 		UpdatedAt:  timeNow,
 	})

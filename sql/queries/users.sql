@@ -1,6 +1,10 @@
 -- name: CreateUser :exec
-INSERT INTO users (id, name, email, password, provider, provider_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+INSERT INTO users (id, name, email, password, provider, provider_id, role, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: UpdateUserRole :exec
+UPDATE users 
+SET role = $1 WHERE id = $2;
 
 -- name: GetUserByID :one
 SELECT * FROM users

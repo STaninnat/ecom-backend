@@ -56,6 +56,7 @@ func TestHandlerSignIn(t *testing.T) {
 						"provider_id",
 						"phone",
 						"address",
+						"role",
 						"created_at",
 						"updated_at",
 					}).AddRow(
@@ -67,6 +68,7 @@ func TestHandlerSignIn(t *testing.T) {
 						sql.NullString{Valid: false},
 						sql.NullString{String: "", Valid: false},
 						sql.NullString{String: "", Valid: false},
+						"user",
 						now,
 						now,
 					))
@@ -116,7 +118,7 @@ func TestHandlerSignIn(t *testing.T) {
 				mock.ExpectQuery(`SELECT .* FROM users WHERE email = \$1 LIMIT 1`).
 					WithArgs("invalid@example.com").
 					WillReturnRows(sqlmock.NewRows([]string{
-						"id", "name", "email", "password", "provider", "provider_id", "phone", "address", "created_at", "updated_at",
+						"id", "name", "email", "password", "provider", "provider_id", "phone", "address", "role", "created_at", "updated_at",
 					}))
 
 			},
@@ -144,6 +146,7 @@ func TestHandlerSignIn(t *testing.T) {
 						"provider_id",
 						"phone",
 						"address",
+						"role",
 						"created_at",
 						"updated_at",
 					}).AddRow(
@@ -155,6 +158,7 @@ func TestHandlerSignIn(t *testing.T) {
 						sql.NullString{Valid: false},
 						sql.NullString{String: "", Valid: false},
 						sql.NullString{String: "", Valid: false},
+						"user",
 						now,
 						now,
 					))
@@ -179,7 +183,17 @@ func TestHandlerSignIn(t *testing.T) {
 				mock.ExpectQuery(`SELECT .* FROM users WHERE email = \$1 LIMIT 1`).
 					WithArgs("test@example.com").
 					WillReturnRows(sqlmock.NewRows([]string{
-						"id", "name", "email", "password", "provider", "provider_id", "phone", "address", "created_at", "updated_at",
+						"id",
+						"name",
+						"email",
+						"password",
+						"provider",
+						"provider_id",
+						"phone",
+						"address",
+						"role",
+						"created_at",
+						"updated_at",
 					}).AddRow(
 						userID,
 						"testuser",
@@ -189,6 +203,7 @@ func TestHandlerSignIn(t *testing.T) {
 						sql.NullString{Valid: false},
 						sql.NullString{String: "", Valid: false},
 						sql.NullString{String: "", Valid: false},
+						"user",
 						now,
 						now,
 					))
@@ -217,7 +232,17 @@ func TestHandlerSignIn(t *testing.T) {
 				mock.ExpectQuery(`SELECT .* FROM users WHERE email = \$1 LIMIT 1`).
 					WithArgs("test@example.com").
 					WillReturnRows(sqlmock.NewRows([]string{
-						"id", "name", "email", "password", "provider", "provider_id", "phone", "address", "created_at", "updated_at",
+						"id",
+						"name",
+						"email",
+						"password",
+						"provider",
+						"provider_id",
+						"phone",
+						"address",
+						"role",
+						"created_at",
+						"updated_at",
 					}).AddRow(
 						userID,
 						"testuser",
@@ -227,6 +252,7 @@ func TestHandlerSignIn(t *testing.T) {
 						sql.NullString{Valid: false},
 						sql.NullString{String: "", Valid: false},
 						sql.NullString{String: "", Valid: false},
+						"user",
 						now,
 						now,
 					))
@@ -276,6 +302,7 @@ func TestHandlerSignIn(t *testing.T) {
 						"provider_id",
 						"phone",
 						"address",
+						"role",
 						"created_at",
 						"updated_at",
 					}).AddRow(
@@ -287,6 +314,7 @@ func TestHandlerSignIn(t *testing.T) {
 						sql.NullString{Valid: false},
 						sql.NullString{String: "", Valid: false},
 						sql.NullString{String: "", Valid: false},
+						"user",
 						now,
 						now,
 					))
