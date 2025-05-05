@@ -107,9 +107,9 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	queries := apicfg.DB.WithTx(tx)
 
 	err = queries.UpdateUserStatusByID(r.Context(), database.UpdateUserStatusByIDParams{
-		UpdatedAt: timeNow,
-		Provider:  "local",
 		ID:        user.ID,
+		Provider:  "local",
+		UpdatedAt: timeNow,
 	})
 	if err != nil {
 		apicfg.LogHandlerError(
