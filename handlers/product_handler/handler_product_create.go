@@ -89,7 +89,7 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 	}
 
 	productResp := map[string]string{
-		"message":    "Product  created successfully",
+		"message":    "Product created successfully",
 		"product_id": id,
 	}
 
