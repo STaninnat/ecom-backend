@@ -138,82 +138,82 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 
 const updateUserInfo = `-- name: UpdateUserInfo :exec
 UPDATE users
-SET updated_at = $1, name = $2, email = $3, phone = $4, address = $5
-WHERE id = $6
+SET  name = $2, email = $3, phone = $4, address = $5, updated_at = $6
+WHERE id = $1
 `
 
 type UpdateUserInfoParams struct {
-	UpdatedAt time.Time
+	ID        string
 	Name      string
 	Email     string
 	Phone     sql.NullString
 	Address   sql.NullString
-	ID        string
+	UpdatedAt time.Time
 }
 
 func (q *Queries) UpdateUserInfo(ctx context.Context, arg UpdateUserInfoParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserInfo,
-		arg.UpdatedAt,
+		arg.ID,
 		arg.Name,
 		arg.Email,
 		arg.Phone,
 		arg.Address,
-		arg.ID,
+		arg.UpdatedAt,
 	)
 	return err
 }
 
 const updateUserRole = `-- name: UpdateUserRole :exec
 UPDATE users 
-SET role = $1 WHERE id = $2
+SET role = $2 WHERE id = $1
 `
 
 type UpdateUserRoleParams struct {
-	Role string
 	ID   string
+	Role string
 }
 
 func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserRole, arg.Role, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateUserRole, arg.ID, arg.Role)
 	return err
 }
 
 const updateUserSigninStatusByEmail = `-- name: UpdateUserSigninStatusByEmail :exec
 UPDATE users
-SET updated_at = $1, provider = $2, provider_id = $3
-WHERE email = $4
+SET provider = $2, provider_id = $3, updated_at = $4
+WHERE email = $1
 `
 
 type UpdateUserSigninStatusByEmailParams struct {
-	UpdatedAt  time.Time
+	Email      string
 	Provider   string
 	ProviderID sql.NullString
-	Email      string
+	UpdatedAt  time.Time
 }
 
 func (q *Queries) UpdateUserSigninStatusByEmail(ctx context.Context, arg UpdateUserSigninStatusByEmailParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserSigninStatusByEmail,
-		arg.UpdatedAt,
+		arg.Email,
 		arg.Provider,
 		arg.ProviderID,
-		arg.Email,
+		arg.UpdatedAt,
 	)
 	return err
 }
 
 const updateUserStatusByID = `-- name: UpdateUserStatusByID :exec
 UPDATE users
-SET updated_at = $1, provider = $2
-WHERE id = $3
+SET provider = $2, updated_at = $3
+WHERE id = $1
 `
 
 type UpdateUserStatusByIDParams struct {
-	UpdatedAt time.Time
-	Provider  string
 	ID        string
+	Provider  string
+	UpdatedAt time.Time
 }
 
 func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserStatusByID, arg.UpdatedAt, arg.Provider, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateUserStatusByID, arg.ID, arg.Provider, arg.UpdatedAt)
 	return err
 }

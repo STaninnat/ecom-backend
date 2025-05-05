@@ -87,7 +87,7 @@ func TestHandlerSignIn(t *testing.T) {
 				mock.ExpectBegin()
 
 				// Mock DB update
-				mock.ExpectExec(`UPDATE users SET updated_at = \$1, provider = \$2 WHERE id = \$3`).
+				mock.ExpectExec(`UPDATE users SET provider = \$2, updated_at = \$3 WHERE id = \$1`).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 
 				// Redis expect
@@ -267,7 +267,7 @@ func TestHandlerSignIn(t *testing.T) {
 
 				mock.ExpectBegin()
 
-				mock.ExpectExec(`UPDATE users SET updated_at = \$1, provider = \$2 WHERE id = \$3`).
+				mock.ExpectExec(`UPDATE users SET provider = \$2, updated_at = \$3 WHERE id = \$1`).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mockAuth.StoreRefreshTokenInRedisFn = func(r *http.Request, userID, token, provider string, duration time.Duration) error {
@@ -328,7 +328,7 @@ func TestHandlerSignIn(t *testing.T) {
 				}
 
 				mock.ExpectBegin()
-				mock.ExpectExec(`UPDATE users SET updated_at = \$1, provider = \$2 WHERE id = \$3`).
+				mock.ExpectExec(`UPDATE users SET provider = \$2, updated_at = \$3 WHERE id = \$1`).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit().WillReturnError(errors.New("commit error"))
 

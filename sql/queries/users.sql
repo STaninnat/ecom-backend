@@ -4,7 +4,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: UpdateUserRole :exec
 UPDATE users 
-SET role = $1 WHERE id = $2;
+SET role = $2 WHERE id = $1;
 
 -- name: GetUserByID :one
 SELECT * FROM users
@@ -32,15 +32,15 @@ SELECT EXISTS (SELECT email FROM users WHERE email = $1);
 
 -- name: UpdateUserStatusByID :exec
 UPDATE users
-SET updated_at = $1, provider = $2
-WHERE id = $3;
+SET provider = $2, updated_at = $3
+WHERE id = $1;
 
 -- name: UpdateUserSigninStatusByEmail :exec
 UPDATE users
-SET updated_at = $1, provider = $2, provider_id = $3
-WHERE email = $4;
+SET provider = $2, provider_id = $3, updated_at = $4
+WHERE email = $1;
 
 -- name: UpdateUserInfo :exec
 UPDATE users
-SET updated_at = $1, name = $2, email = $3, phone = $4, address = $5
-WHERE id = $6;
+SET  name = $2, email = $3, phone = $4, address = $5, updated_at = $6
+WHERE id = $1;

@@ -9,6 +9,8 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/router"
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/joho/godotenv"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {

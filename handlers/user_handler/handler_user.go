@@ -2,7 +2,6 @@ package userhandlers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -54,16 +53,13 @@ func (apicfg *HandlersUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *ht
 		return
 	}
 
-	phone := sql.NullString{Valid: params.Phone != "", String: params.Phone}
-	address := sql.NullString{Valid: params.Address != "", String: params.Address}
-
 	err := apicfg.DB.UpdateUserInfo(r.Context(), database.UpdateUserInfoParams{
-		UpdatedAt: time.Now().UTC(),
+		ID:        user.ID,
 		Name:      params.Name,
 		Email:     params.Email,
-		Phone:     phone,
-		Address:   address,
-		ID:        user.ID,
+		Phone:     utils.ToNullString(params.Phone),
+		Address:   utils.ToNullString(params.Address),
+		UpdatedAt: time.Now().UTC(),
 	})
 	if err != nil {
 		apicfg.LogHandlerError(r.Context(), "update user", "update failed", "DB update error", ip, userAgent, err)
