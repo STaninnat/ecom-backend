@@ -3,5 +3,3 @@ dump.rdb
 logs/
 
 google_credentials.json
-
-handlers/product_handler/

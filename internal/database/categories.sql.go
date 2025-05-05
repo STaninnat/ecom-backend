@@ -35,6 +35,16 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return err
 }
 
+const deleteCategory = `-- name: DeleteCategory :exec
+DELETE FROM categories
+WHERE id = $1
+`
+
+func (q *Queries) DeleteCategory(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteCategory, id)
+	return err
+}
+
 const getAllCategories = `-- name: GetAllCategories :many
 SELECT id, name, description, created_at, updated_at FROM categories ORDER BY name
 `
@@ -66,4 +76,27 @@ func (q *Queries) GetAllCategories(ctx context.Context) ([]Category, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCategories = `-- name: UpdateCategories :exec
+UPDATE categories
+SET name = $2, description = $3, updated_at = $4
+WHERE id = $1
+`
+
+type UpdateCategoriesParams struct {
+	ID          string
+	Name        string
+	Description sql.NullString
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) UpdateCategories(ctx context.Context, arg UpdateCategoriesParams) error {
+	_, err := q.db.ExecContext(ctx, updateCategories,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.UpdatedAt,
+	)
+	return err
 }

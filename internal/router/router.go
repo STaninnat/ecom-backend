@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
+	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
 	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
@@ -38,27 +39,45 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	authHandlers := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
-	userHandlers := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
-	roleHandlers := &rolehandlers.HandlersRoleConfig{HandlersConfig: apicfg.HandlersConfig}
+	roleHandlersConfig := &rolehandlers.HandlersRoleConfig{HandlersConfig: apicfg.HandlersConfig}
+	authHandlersConfig := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
+	userHandlersConfig := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
+	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
+	// check resp endoint
 	v1Router.Get("/healthz", handlers.HandlerReadiness)
 	v1Router.Get("/error", handlers.HandlerError)
 
-	v1Router.Post("/auth/signup", authHandlers.HandlerSignUp)
-	v1Router.Post("/auth/signin", authHandlers.HandlerSignIn)
-	v1Router.Post("/auth/signout", authHandlers.HandlerSignOut)
-	v1Router.Post("/auth/refresh", authHandlers.HandlerRefreshToken)
+	// normal endpoint
+	v1Router.Post("/auth/signup", authHandlersConfig.HandlerSignUp)
+	v1Router.Post("/auth/signin", authHandlersConfig.HandlerSignIn)
+	v1Router.Post("/auth/signout", authHandlersConfig.HandlerSignOut)
+	v1Router.Post("/auth/refresh", authHandlersConfig.HandlerRefreshToken)
 
-	v1Router.Get("/auth/google/signin", authHandlers.HandlerGoogleSignIn)
-	v1Router.Get("/auth/google/callback", authHandlers.HandlerGoogleCallback)
+	v1Router.Get("/auth/google/signin", authHandlersConfig.HandlerGoogleSignIn)
+	v1Router.Get("/auth/google/callback", authHandlersConfig.HandlerGoogleCallback)
 
-	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlers.HandlerGetUser))
-	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlers.HandlerUpdateUser))
+	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerGetUser))
+	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerUpdateUser))
 
-	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(roleHandlers.PromoteUserToAdmin))
+	v1Router.Get("/products/{id}", apicfg.HandlerMiddleware(productHandlersConfig.HandlerGetProductByID))
+
+	v1Router.Get("/products", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllProducts))
+	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
+	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllCategories))
+
+	// admin endpoint
+	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(roleHandlersConfig.PromoteUserToAdmin))
+
+	v1Router.Post("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateCategory))
+	v1Router.Put("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateCategory))
+	v1Router.Delete("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteCategory))
+
+	v1Router.Post("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateProduct))
+	v1Router.Put("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateProduct))
+	v1Router.Delete("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteProduct))
 
 	router.Mount("/v1", v1Router)
 	return router
