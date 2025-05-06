@@ -1,11 +1,14 @@
 package config
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
 
 	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -19,6 +22,9 @@ type APIConfig struct {
 	Issuer        string
 	Audience      string
 	CredsPath     string
+	S3Bucket      string
+	S3Region      string
+	S3Client      *s3.Client
 }
 
 func LoadConfig() *APIConfig {
@@ -52,7 +58,25 @@ func LoadConfig() *APIConfig {
 		log.Fatal("Warning: Google credentials path environment variable is not set")
 	}
 
+	s3Bucket := os.Getenv("S3_BUCKET")
+	if s3Bucket == "" {
+		log.Fatal("S3_BUCKET environment variable is not set")
+	}
+
+	s3Region := os.Getenv("S3_REGION")
+	if s3Region == "" {
+		log.Fatal("S3_REGION environment variable is not set")
+	}
+
 	redisClient := InitRedis()
+
+	awsCfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion(s3Region),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := s3.NewFromConfig(awsCfg)
 
 	return &APIConfig{
 		Port:          port,
@@ -62,5 +86,8 @@ func LoadConfig() *APIConfig {
 		Issuer:        issuerName,
 		Audience:      audienceName,
 		CredsPath:     credsPath,
+		S3Bucket:      s3Bucket,
+		S3Region:      s3Region,
+		S3Client:      client,
 	}
 }

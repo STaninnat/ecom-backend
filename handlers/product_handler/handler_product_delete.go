@@ -8,6 +8,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
+	utilsuploaders "github.com/STaninnat/ecom-backend/utils/uploader"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -28,7 +29,7 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		return
 	}
 
-	existing, err := apicfg.DB.GetProductByID(ctx, productID)
+	product, err := apicfg.DB.GetProductByID(ctx, productID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -41,8 +42,9 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		return
 	}
 
-	if existing.ImageUrl.Valid && existing.ImageUrl.String != "" {
-		_ = utils.DeleteFileIfExists(existing.ImageUrl.String)
+	if product.ImageUrl.Valid && product.ImageUrl.String != "" {
+		_ = utilsuploaders.DeleteFileIfExists(product.ImageUrl.String)
+		_ = utilsuploaders.DeleteFileFromS3IfExists(apicfg.S3Client, apicfg.S3Bucket, product.ImageUrl.String)
 	}
 
 	err = apicfg.DB.DeleteProductByID(ctx, productID)
