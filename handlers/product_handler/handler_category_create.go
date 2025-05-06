@@ -91,7 +91,7 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "create_category", "Created category successful", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
-		"message": "Created category successful",
+	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
+		Message: "Created category successful",
 	})
 }

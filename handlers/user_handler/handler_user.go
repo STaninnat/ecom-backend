@@ -77,7 +77,7 @@ func (apicfg *HandlersUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *ht
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "update_user", "User info updated", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
-		"message": "Updated user info successful",
+	middlewares.RespondWithJSON(w, http.StatusNoContent, handlers.HandlerResponse{
+		Message: "Updated user info successful",
 	})
 }

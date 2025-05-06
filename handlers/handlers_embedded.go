@@ -20,6 +20,10 @@ type HandlersConfig struct {
 	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
 }
 
+type HandlerResponse struct {
+	Message string `json:"message"`
+}
+
 const (
 	AccessTokenTTL  = 30 * time.Minute
 	RefreshTokenTTL = 7 * 24 * time.Hour

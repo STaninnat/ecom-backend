@@ -85,7 +85,7 @@ func (apicfg *HandlersProductConfig) HandlerUpdateCategory(w http.ResponseWriter
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "update_category", "Updated category successful", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusNoContent, map[string]string{
-		"message": "Updated category successful",
+	middlewares.RespondWithJSON(w, http.StatusNoContent, handlers.HandlerResponse{
+		Message: "Updated category successful",
 	})
 }

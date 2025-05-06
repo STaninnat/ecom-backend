@@ -58,7 +58,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.
 
 	apicfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
-		"message": "Sign out successful",
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Sign out successful",
 	})
 }

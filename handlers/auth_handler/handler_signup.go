@@ -188,7 +188,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
 	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
-		"message": "Signup successful",
+	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
+		Message: "Signup successful",
 	})
 }
