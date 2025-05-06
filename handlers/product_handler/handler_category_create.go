@@ -16,12 +16,13 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var params CategoryWithIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create category",
+			ctx,
+			"create_category",
 			"invalid request body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -32,8 +33,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 
 	if params.Name == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create category",
+			ctx,
+			"create_category",
 			"missing category name",
 			"Name of category is empty",
 			ip, userAgent, nil,
@@ -56,7 +57,7 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 
 	timeNow := time.Now().UTC()
 
-	err := apicfg.DB.CreateCategory(r.Context(), database.CreateCategoryParams{
+	err := apicfg.DB.CreateCategory(ctx, database.CreateCategoryParams{
 		ID:          uuid.New().String(),
 		Name:        params.Name,
 		Description: utils.ToNullString(params.Description),
@@ -66,8 +67,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"create category",
+				ctx,
+				"create_category",
 				"create category failed",
 				"Error category name already exists",
 				ip, userAgent, err,
@@ -77,8 +78,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 		}
 
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create category",
+			ctx,
+			"create_category",
 			"create category failed",
 			"Error creating category",
 			ip, userAgent, err,
@@ -87,8 +88,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "create category", "Created category successful", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "create_category", "Created category successful", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
 		"message": "Created category successful",

@@ -47,11 +47,12 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *
 
 func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	state := r.URL.Query().Get("state")
 	if state == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"state parameter failed",
 			"Error getting state from URL",
@@ -61,10 +62,10 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 		return
 	}
 
-	redisState, err := apicfg.RedisClient.Get(r.Context(), oauthStatePrefix+state).Result()
+	redisState, err := apicfg.RedisClient.Get(ctx, oauthStatePrefix+state).Result()
 	if redisState == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"get state failed",
 			"Error getting state from Redis, redirecting to signin",
@@ -75,7 +76,7 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	}
 	if err != nil || redisState != "valid" {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"get state failed",
 			"Error getting state from Redis, invalid state",
@@ -85,12 +86,12 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 		return
 	}
 
-	_ = apicfg.RedisClient.Expire(r.Context(), "oauth_state:"+state, 1*time.Minute).Err()
+	_ = apicfg.RedisClient.Expire(ctx, "oauth_state:"+state, 1*time.Minute).Err()
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"authorization code failed",
 			"Error getting authorization code from URL",
@@ -103,7 +104,7 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	token, err := apicfg.exchangeGoogleToken(code)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"exchange token failed",
 			"Error exchange Google token",
@@ -116,7 +117,7 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	user, err := apicfg.getUserInfoFromGoogle(token)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"retrieve user failed",
 			"Error retrieving user info from Google",
@@ -129,7 +130,7 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	accessToken, refreshToken, userID, err := apicfg.handleUserAuthentication(w, r, user, token, state)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"callback-google",
 			"authentication failed",
 			"Error during Google authentication",
@@ -145,7 +146,7 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{

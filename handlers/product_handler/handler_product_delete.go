@@ -17,12 +17,13 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 	}
 
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var params DeleteProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete product",
+			ctx,
+			"delete_product",
 			"invalid body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -33,8 +34,8 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 
 	if params.ID == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete product",
+			ctx,
+			"delete_product",
 			"missing product id",
 			"ID of product is empty",
 			ip, userAgent, nil,
@@ -43,11 +44,11 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		return
 	}
 
-	err := apicfg.DB.DeleteProductByID(r.Context(), params.ID)
+	err := apicfg.DB.DeleteProductByID(ctx, params.ID)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete product",
+			ctx,
+			"delete_product",
 			"deletion failed",
 			"Error deleting product",
 			ip, userAgent, err,
@@ -56,8 +57,8 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "delete product", "Delete success", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "delete_product", "Delete success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Product deleted successfully",

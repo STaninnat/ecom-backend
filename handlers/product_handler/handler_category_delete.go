@@ -13,12 +13,13 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerDeleteCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var params CategoryWithIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete category",
+			ctx,
+			"delete_category",
 			"invalid request body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -29,8 +30,8 @@ func (apicfg *HandlersProductConfig) HandlerDeleteCategory(w http.ResponseWriter
 
 	if params.ID == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete category",
+			ctx,
+			"delete_category",
 			"missing category id",
 			"ID of category is empty",
 			ip, userAgent, nil,
@@ -39,11 +40,11 @@ func (apicfg *HandlersProductConfig) HandlerDeleteCategory(w http.ResponseWriter
 		return
 	}
 
-	err := apicfg.DB.DeleteCategory(r.Context(), params.ID)
+	err := apicfg.DB.DeleteCategory(ctx, params.ID)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"delete category",
+			ctx,
+			"delete_category",
 			"delete category failed",
 			"Error deleting category",
 			ip, userAgent, err,
@@ -52,8 +53,8 @@ func (apicfg *HandlersProductConfig) HandlerDeleteCategory(w http.ResponseWriter
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "delete category", "Deleted category successful", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "delete_category", "Deleted category successful", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusNoContent, map[string]string{
 		"message": "Deleted category successful",

@@ -15,12 +15,13 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var params FilterProductsRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"filter products",
+			ctx,
+			"filter_products",
 			"invalid request body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -29,7 +30,7 @@ func (apicfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter
 		return
 	}
 
-	products, err := apicfg.DB.FilterProducts(r.Context(), database.FilterProductsParams{
+	products, err := apicfg.DB.FilterProducts(ctx, database.FilterProductsParams{
 		CategoryID: params.CategoryID.NullString,
 		IsActive:   params.IsActive.NullBool,
 		MinPrice: sql.NullString{
@@ -43,8 +44,8 @@ func (apicfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter
 	})
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"filter products",
+			ctx,
+			"filter_products",
 			"failed to fetch products",
 			"Error filtering products",
 			ip, userAgent, err,
@@ -64,8 +65,8 @@ func (apicfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter
 		userID = user.ID
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "filter products", "Filter products success", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "filter_products", "Filter products success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, productResp)
 }
