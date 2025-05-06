@@ -7,7 +7,8 @@ import (
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
 	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
-	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_handler"
+	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws_handler"
+	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_local_handler"
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
@@ -50,6 +51,7 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	userHandlersConfig := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
 	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
 	uploadHandlersConfig := &uploadhandlers.HandlersUploadConfig{HandlersConfig: apicfg.HandlersConfig}
+	uploadAWSHandlers := &uploadawshandlers.HandlersUploadAWSConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
@@ -88,6 +90,9 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	v1Router.Post("/products/upload-image", apicfg.HandlerAdminOnlyMiddleware(uploadHandlersConfig.HandlerUploadProductImage))
 	v1Router.Post("/products/{id}/image", apicfg.HandlerAdminOnlyMiddleware(uploadHandlersConfig.HandlerUpdateProductImageByID))
+
+	v1Router.Post("/products/upload-image-s3", apicfg.HandlerAdminOnlyMiddleware(uploadAWSHandlers.HandlersUploadProductImageS3))
+	v1Router.Post("/products/{id}/image-s3", apicfg.HandlerAdminOnlyMiddleware(uploadAWSHandlers.HandlerUpdateProductImageS3ByID))
 
 	router.Mount("/v1", v1Router)
 	return router

@@ -10,6 +10,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
+	utilsuploaders "github.com/STaninnat/ecom-backend/utils/uploader"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -30,7 +31,7 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 		return
 	}
 
-	existing, err := apicfg.DB.GetProductByID(ctx, productID)
+	product, err := apicfg.DB.GetProductByID(ctx, productID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -43,11 +44,11 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 		return
 	}
 
-	file, fileHeader, err := utils.ParseAndGetImageFile(r)
+	file, fileHeader, err := utilsuploaders.ParseAndGetImageFile(r)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
-			"upload_image_product-local",
+			"product_image_upload-local",
 			"invalid form",
 			err.Error(),
 			ip, userAgent, err,
@@ -57,15 +58,15 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 	}
 	defer file.Close()
 
-	if existing.ImageUrl.Valid && existing.ImageUrl.String != "" {
-		_ = utils.DeleteFileIfExists(existing.ImageUrl.String)
+	if product.ImageUrl.Valid && product.ImageUrl.String != "" {
+		_ = utilsuploaders.DeleteFileIfExists(product.ImageUrl.String)
 	}
 
-	filename, err := utils.SaveUploadedFile(file, fileHeader)
+	filename, err := utilsuploaders.SaveUploadedFile(file, fileHeader)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
-			"upload_image_product-local",
+			"product_image_upload-local",
 			"file save failed",
 			err.Error(),
 			ip, userAgent, err,
@@ -84,7 +85,7 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
-			"upload_image_product-local",
+			"product_image_upload-local",
 			"db update failed",
 			"Failed to update product image_url",
 			ip, userAgent, err,
@@ -94,7 +95,7 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 	}
 
 	ctxWithUser := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUser, "upload_image_product-local", "Product image updated", ip, userAgent)
+	apicfg.LogHandlerSuccess(ctxWithUser, "product_image_upload-local", "Product image updated", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, imageUploadResponse{
 		Message:  "Product image updated successfully",
