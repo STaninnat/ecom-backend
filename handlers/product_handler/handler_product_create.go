@@ -17,13 +17,14 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var params ProductRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create product",
+			ctx,
+			"create_product",
 			"invalid request body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -34,8 +35,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 
 	if params.CategoryID == "" || params.Name == "" || params.Price <= 0 || params.Stock < 0 {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create product",
+			ctx,
+			"create_product",
 			"missing fields",
 			"Required fields are missing",
 			ip, userAgent, nil,
@@ -51,7 +52,7 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		isActive = *params.IsActive
 	}
 
-	err := apicfg.DB.CreateProduct(r.Context(), database.CreateProductParams{
+	err := apicfg.DB.CreateProduct(ctx, database.CreateProductParams{
 		ID:          id,
 		CategoryID:  utils.ToNullString(params.CategoryID),
 		Name:        params.Name,
@@ -66,8 +67,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"create product",
+				ctx,
+				"create_product",
 				"create product failed",
 				"Error product name already exists",
 				ip, userAgent, err,
@@ -77,8 +78,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		}
 
 		apicfg.LogHandlerError(
-			r.Context(),
-			"create product",
+			ctx,
+			"create_product",
 			"create product failed",
 			"Error creating product",
 			ip, userAgent, err,
@@ -93,8 +94,8 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		"product_id": id,
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "create product", "Created product successful", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "create_product", "Created product successful", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, productResp)
 }

@@ -12,6 +12,7 @@ func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler optionalHandler)
 	return func(w http.ResponseWriter, r *http.Request) {
 		var user *database.User
 		ip, userAgent := GetRequestMetadata(r)
+		ctx := r.Context()
 
 		cookie, err := r.Cookie("access_token")
 		if err == nil {
@@ -19,11 +20,23 @@ func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler optionalHandler)
 
 			claims, err := apicfg.Auth.ValidateAccessToken(token, apicfg.JWTSecret)
 			if err != nil {
-				apicfg.LogHandlerError(r.Context(), "optional auth", "invalid token", "token validation failed", ip, userAgent, err)
+				apicfg.LogHandlerError(
+					ctx,
+					"optional_auth",
+					"invalid token",
+					"token validation failed",
+					ip, userAgent, err,
+				)
 			} else {
-				u, err := apicfg.DB.GetUserByID(r.Context(), claims.UserID)
+				u, err := apicfg.DB.GetUserByID(ctx, claims.UserID)
 				if err != nil {
-					apicfg.LogHandlerError(r.Context(), "optional auth", "user not found", "user lookup failed", ip, userAgent, err)
+					apicfg.LogHandlerError(
+						ctx,
+						"optional_auth",
+						"user not found",
+						"user lookup failed",
+						ip, userAgent, err,
+					)
 				} else {
 					user = &u
 				}

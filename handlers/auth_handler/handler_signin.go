@@ -20,11 +20,12 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	}
 
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	params, err := auth.DecodeAndValidate[parameters](w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"invalid request body",
 			"Invalid signin payload",
@@ -34,10 +35,10 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	user, err := apicfg.DB.GetUserByEmail(r.Context(), params.Email)
+	user, err := apicfg.DB.GetUserByEmail(ctx, params.Email)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"get user failed",
 			"Error getting user from email",
@@ -50,7 +51,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	err = apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"check password failed",
 			"Error checking password",
@@ -63,7 +64,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	userID, err := uuid.Parse(user.ID)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"uuid parse failed",
 			"Error parsing uuid",
@@ -80,7 +81,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"generate tokens failed",
 			"Error generating tokens",
@@ -90,10 +91,10 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"start tx failed",
 			"Error starting transaction",
@@ -106,14 +107,14 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 
 	queries := apicfg.DB.WithTx(tx)
 
-	err = queries.UpdateUserStatusByID(r.Context(), database.UpdateUserStatusByIDParams{
+	err = queries.UpdateUserStatusByID(ctx, database.UpdateUserStatusByIDParams{
 		ID:        user.ID,
 		Provider:  "local",
 		UpdatedAt: timeNow,
 	})
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"update user status failed",
 			"Error updating user status in database",
@@ -126,7 +127,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"store refresh token failed",
 			"Error saving refresh token to Redis",
@@ -139,7 +140,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	err = tx.Commit()
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signin-local",
 			"commit tx failed",
 			"Error committing transaction",
@@ -151,7 +152,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
 	apicfg.LogHandlerSuccess(ctxWithUserID, "signin-local", "Local signin success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{

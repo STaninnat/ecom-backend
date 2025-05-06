@@ -17,11 +17,12 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 	}
 
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	if user.Role != "admin" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"promote admin",
+			ctx,
+			"promote_admin",
 			"unauthorized user",
 			"User is not admin",
 			ip, userAgent, nil,
@@ -33,8 +34,8 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 	var req promoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"promote admin",
+			ctx,
+			"promote_admin",
 			"invalid payload",
 			"Failed to decode request",
 			ip, userAgent, err,
@@ -43,11 +44,11 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 		return
 	}
 
-	targetUser, err := apicfg.DB.GetUserByID(r.Context(), req.UserID)
+	targetUser, err := apicfg.DB.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"promote admin",
+			ctx,
+			"promote_admin",
 			"user not found",
 			"Target user not found",
 			ip, userAgent, err,
@@ -57,8 +58,8 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 	}
 	if targetUser.Role == "admin" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"promote admin",
+			ctx,
+			"promote_admin",
 			"already admin",
 			"Target user is already admin",
 			ip, userAgent, nil,
@@ -67,14 +68,14 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 		return
 	}
 
-	err = apicfg.DB.UpdateUserRole(r.Context(), database.UpdateUserRoleParams{
+	err = apicfg.DB.UpdateUserRole(ctx, database.UpdateUserRoleParams{
 		Role: "admin",
 		ID:   req.UserID,
 	})
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"promote admin",
+			ctx,
+			"promote_admin",
 			"update error",
 			"failed to update user role",
 			ip, userAgent, err,
@@ -83,8 +84,8 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "promote admin", "User promoted to admin success", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "promote_admin", "User promoted to admin success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "User promoted to admin",

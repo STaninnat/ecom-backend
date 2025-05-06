@@ -22,11 +22,12 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	}
 
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	params, err := auth.DecodeAndValidate[parameters](w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"invalid request",
 			"Invalid signup payload",
@@ -36,10 +37,10 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	nameExists, err := apicfg.DB.CheckUserExistsByName(r.Context(), params.Name)
+	nameExists, err := apicfg.DB.CheckUserExistsByName(ctx, params.Name)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"check name failed",
 			"Error checking name existence",
@@ -50,7 +51,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	}
 	if nameExists {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"name exists",
 			"Duplicate name",
@@ -60,10 +61,10 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	emailExists, err := apicfg.DB.CheckUserExistsByEmail(r.Context(), params.Email)
+	emailExists, err := apicfg.DB.CheckUserExistsByEmail(ctx, params.Email)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"check email failed",
 			"Error checking email existence",
@@ -74,7 +75,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	}
 	if emailExists {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"email exists",
 			"Duplicate email",
@@ -88,7 +89,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"hash password failed",
 			"Error hashing password",
@@ -100,10 +101,10 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	timeNow := time.Now().UTC()
 
-	tx, err := apicfg.DBConn.BeginTx(r.Context(), nil)
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"start tx failed",
 			"Error starting transaction",
@@ -117,7 +118,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	queries := apicfg.DB.WithTx(tx)
 
-	err = queries.CreateUser(r.Context(), database.CreateUserParams{
+	err = queries.CreateUser(ctx, database.CreateUserParams{
 		ID:         userID.String(),
 		Name:       params.Name,
 		Email:      params.Email,
@@ -130,7 +131,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	})
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"create user failed",
 			"Error creating user in database",
@@ -146,7 +147,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"generate tokens failed",
 			"Error generating tokens",
@@ -159,7 +160,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"store refresh token failed",
 			"Error saving refresh token to Redis",
@@ -172,7 +173,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 	err = tx.Commit()
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
+			ctx,
 			"signup-local",
 			"commit tx failed",
 			"Error committing transaction",
@@ -184,7 +185,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.R
 
 	auth.SetTokensAsCookies(w, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
 	apicfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{

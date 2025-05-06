@@ -13,12 +13,13 @@ import (
 
 func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"sign out",
+			ctx,
+			"sign_out",
 			"validate cookie failed",
 			"Error validating cookie",
 			ip, userAgent, err,
@@ -27,11 +28,11 @@ func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = apicfg.RedisClient.Del(r.Context(), auth.RedisRefreshTokenPrefix+userID.String()).Err()
+	err = apicfg.RedisClient.Del(ctx, auth.RedisRefreshTokenPrefix+userID.String()).Err()
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"sign out",
+			ctx,
+			"sign_out",
 			"delete token failed",
 			"Error deleting refresh token from Redis",
 			ip, userAgent, err,
@@ -45,17 +46,17 @@ func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.
 
 	auth.SetTokensAsCookies(w, "", "", newKeyExpiredAt, newKeyExpiredAt)
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
 
 	if storedData.Provider == "google" {
-		apicfg.LogHandlerSuccess(ctxWithUserID, "signout", "Sign out success", ip, userAgent)
+		apicfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
 
 		googleRevokeURL := "https://accounts.google.com/o/oauth2/revoke?token=" + storedData.Token
 		http.Redirect(w, r, googleRevokeURL, http.StatusFound)
 		return
 	}
 
-	apicfg.LogHandlerSuccess(ctxWithUserID, "signout", "Sign out success", ip, userAgent)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Sign out successful",

@@ -13,6 +13,7 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	var (
 		products []database.Product
@@ -20,15 +21,15 @@ func (apicfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter
 	)
 
 	if user.Role == "admin" {
-		products, err = apicfg.DB.GetAllProducts(r.Context())
+		products, err = apicfg.DB.GetAllProducts(ctx)
 	} else {
-		products, err = apicfg.DB.GetAllActiveProducts(r.Context())
+		products, err = apicfg.DB.GetAllActiveProducts(ctx)
 	}
 
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"get products",
+			ctx,
+			"get_products",
 			"query failed",
 			"Failed to fetch products",
 			ip, userAgent, err,
@@ -42,20 +43,21 @@ func (apicfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter
 		userID = user.ID
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get products", "Get all products success", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "get_products", "Get all products success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, products)
 }
 
 func (apicfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	productID := chi.URLParam(r, "id")
 	if productID == "" {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"get product by id",
+			ctx,
+			"get_product_by_id",
 			"missing product id",
 			"ID of product is empty",
 			ip, userAgent, nil,
@@ -70,15 +72,15 @@ func (apicfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter
 	)
 
 	if user.Role == "admin" {
-		product, err = apicfg.DB.GetProductByID(r.Context(), productID)
+		product, err = apicfg.DB.GetProductByID(ctx, productID)
 	} else {
-		product, err = apicfg.DB.GetActiveProductByID(r.Context(), productID)
+		product, err = apicfg.DB.GetActiveProductByID(ctx, productID)
 	}
 
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"get product by id",
+			ctx,
+			"get_product_by_id",
 			"query failed",
 			"Product not found or error",
 			ip, userAgent, err,
@@ -87,8 +89,8 @@ func (apicfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get product by id", "Get products success", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "get_product_by_id", "Get products success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, product)
 }

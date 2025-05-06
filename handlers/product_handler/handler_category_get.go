@@ -12,12 +12,13 @@ import (
 
 func (apicfg *HandlersProductConfig) HandlerGetAllCategories(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
-	categories, err := apicfg.DB.GetAllCategories(r.Context())
+	categories, err := apicfg.DB.GetAllCategories(ctx)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"get all categories",
+			ctx,
+			"get_all_categories",
 			"get categories failed",
 			"Error fetching all categories",
 			ip, userAgent, err,
@@ -30,8 +31,8 @@ func (apicfg *HandlersProductConfig) HandlerGetAllCategories(w http.ResponseWrit
 	if user != nil {
 		userID = user.ID
 	}
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get categories", "Fetched successful", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "get_all_categories", "Fetched successful", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, categories)
 }

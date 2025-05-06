@@ -14,12 +14,13 @@ import (
 
 func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
 
 	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"refresh token",
+			ctx,
+			"refresh_token",
 			"validate cookie failed",
 			"Error validating cookie",
 			ip, userAgent, err,
@@ -28,7 +29,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 		return
 	}
 
-	ctxWithUserID := context.WithValue(r.Context(), utils.ContextKeyUserID, userID.String())
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
 
 	timeNow := time.Now().UTC()
 	accessTokenExpiresAt := timeNow.Add(handlers.AccessTokenTTL)
@@ -40,8 +41,8 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 		newToken, err := apicfg.RefreshGoogleAccessToken(r, refreshToken)
 		if err != nil {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"refresh token",
+				ctx,
+				"refresh_token",
 				"refresh token failed",
 				"Error refresh Google token",
 				ip, userAgent, err,
@@ -52,7 +53,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 		auth.SetTokensAsCookies(w, newToken.AccessToken, refreshToken, newToken.Expiry, refreshTokenExpiresAt)
 
-		apicfg.LogHandlerSuccess(ctxWithUserID, "refresh token", "Refresh Google token success", ip, userAgent)
+		apicfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh Google token success", ip, userAgent)
 
 		middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 			"message": "Token refreshed successful",
@@ -61,11 +62,11 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 		return
 	}
 
-	err = apicfg.RedisClient.Del(r.Context(), auth.RedisRefreshTokenPrefix+userID.String()).Err()
+	err = apicfg.RedisClient.Del(ctx, auth.RedisRefreshTokenPrefix+userID.String()).Err()
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"signout",
+			ctx,
+			"refresh_token",
 			"delete token failed",
 			"Error deleting refresh token from Redis",
 			ip, userAgent, err,
@@ -77,8 +78,8 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 	accessToken, newRefreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"refresh token",
+			ctx,
+			"refresh_token",
 			"generate tokens failed",
 			"Error generating tokens",
 			ip, userAgent, err,
@@ -90,8 +91,8 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		apicfg.LogHandlerError(
-			r.Context(),
-			"refresh token",
+			ctx,
+			"refresh_token",
 			"store refresh token failed",
 			"Error saving refresh token to Redis",
 			ip, userAgent, err,
@@ -102,7 +103,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 	auth.SetTokensAsCookies(w, accessToken, newRefreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
-	apicfg.LogHandlerSuccess(ctxWithUserID, "refresh token", "Refresh token success", ip, userAgent)
+	apicfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh token success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "Token refreshed successful",

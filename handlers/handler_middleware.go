@@ -12,11 +12,12 @@ type authhandler func(http.ResponseWriter, *http.Request, database.User)
 func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler authhandler) http.HandlerFunc {
 	return apicfg.HandlerMiddleware(func(w http.ResponseWriter, r *http.Request, user database.User) {
 		ip, userAgent := GetRequestMetadata(r)
+		ctx := r.Context()
 
 		if user.Role != "admin" {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"admin middleware",
+				ctx,
+				"admin_middleware",
 				"user is not admin",
 				"unauthorized access attempt",
 				ip, userAgent, nil,
@@ -32,12 +33,13 @@ func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler authhandler) ht
 func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip, userAgent := GetRequestMetadata(r)
+		ctx := r.Context()
 
 		cookie, err := r.Cookie("access_token")
 		if err != nil {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"auth middleware",
+				ctx,
+				"auth_middleware",
 				"missing access token cookie",
 				"Access token cookie not found",
 				ip, userAgent, err,
@@ -51,8 +53,8 @@ func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.Handle
 		claims, err := apicfg.Auth.ValidateAccessToken(token, apicfg.JWTSecret)
 		if err != nil {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"auth middleware",
+				ctx,
+				"auth_middleware",
 				"invalid access token",
 				"Access token validation failed",
 				ip, userAgent, err,
@@ -61,11 +63,11 @@ func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.Handle
 			return
 		}
 
-		user, err := apicfg.DB.GetUserByID(r.Context(), claims.UserID)
+		user, err := apicfg.DB.GetUserByID(ctx, claims.UserID)
 		if err != nil {
 			apicfg.LogHandlerError(
-				r.Context(),
-				"auth middleware",
+				ctx,
+				"auth_middleware",
 				"user lookup failed",
 				"Failed to fetch user from database",
 				ip, userAgent, err,
