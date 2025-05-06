@@ -1,10 +1,13 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
 	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
+	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_handler"
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
@@ -39,10 +42,14 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 		MaxAge:           300,
 	}))
 
+	fs := http.FileServer(http.Dir("./uploads"))
+	router.Handle("/static/*", http.StripPrefix("/static/", fs))
+
 	roleHandlersConfig := &rolehandlers.HandlersRoleConfig{HandlersConfig: apicfg.HandlersConfig}
 	authHandlersConfig := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
 	userHandlersConfig := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
 	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
+	uploadHandlersConfig := &uploadhandlers.HandlersUploadConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
@@ -73,11 +80,14 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	v1Router.Post("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateCategory))
 	v1Router.Put("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateCategory))
-	v1Router.Delete("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteCategory))
+	v1Router.Delete("/categories/{id}", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteCategory))
 
 	v1Router.Post("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateProduct))
 	v1Router.Put("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateProduct))
-	v1Router.Delete("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteProduct))
+	v1Router.Delete("/products/{id}", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteProduct))
+
+	v1Router.Post("/products/upload-image", apicfg.HandlerAdminOnlyMiddleware(uploadHandlersConfig.HandlerUploadProductImage))
+	v1Router.Post("/products/{id}/image", apicfg.HandlerAdminOnlyMiddleware(uploadHandlersConfig.HandlerUpdateProductImageByID))
 
 	router.Mount("/v1", v1Router)
 	return router

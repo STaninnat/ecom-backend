@@ -27,6 +27,11 @@ UPDATE products
 SET category_id = $2, name = $3, description = $4, price = $5, stock = $6, image_url = $7, is_active = $8, updated_at = $9
 WHERE id = $1;
 
+-- name: UpdateProductImageURL :exec
+UPDATE products
+SET image_url = $2, updated_at = $3
+WHERE id = $1;
+
 -- name: DeleteProductByID :exec
 DELETE FROM products 
 WHERE id = $1;

@@ -55,8 +55,8 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 		apicfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh Google token success", ip, userAgent)
 
-		middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
-			"message": "Token refreshed successful",
+		middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+			Message: "Token refreshed successful",
 		})
 
 		return
@@ -105,8 +105,8 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 
 	apicfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh token success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
-		"message": "Token refreshed successful",
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Token refreshed successful",
 	})
 }
 

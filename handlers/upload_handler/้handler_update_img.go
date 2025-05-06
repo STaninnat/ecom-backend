@@ -1,0 +1,103 @@
+package uploadhandlers
+
+import (
+	"context"
+	"database/sql"
+	"net/http"
+	"time"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
+	"github.com/go-chi/chi/v5"
+)
+
+func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.ResponseWriter, r *http.Request, user database.User) {
+	ctx := r.Context()
+	ip, userAgent := handlers.GetRequestMetadata(r)
+
+	productID := chi.URLParam(r, "id")
+	if productID == "" {
+		apicfg.LogHandlerError(
+			ctx,
+			"product_image_upload-local",
+			"missing product id",
+			"Product ID not found",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing product ID")
+		return
+	}
+
+	existing, err := apicfg.DB.GetProductByID(ctx, productID)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"product_image_upload-local",
+			"get product by ID failed",
+			"Product not found",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusNotFound, "Product not found")
+		return
+	}
+
+	file, fileHeader, err := utils.ParseAndGetImageFile(r)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"upload_image_product-local",
+			"invalid form",
+			err.Error(),
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid form or image not found in form")
+		return
+	}
+	defer file.Close()
+
+	if existing.ImageUrl.Valid && existing.ImageUrl.String != "" {
+		_ = utils.DeleteFileIfExists(existing.ImageUrl.String)
+	}
+
+	filename, err := utils.SaveUploadedFile(file, fileHeader)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"upload_image_product-local",
+			"file save failed",
+			err.Error(),
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to save image")
+		return
+	}
+
+	imageURL := "/static/" + filename
+
+	err = apicfg.DB.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
+		ID:        productID,
+		ImageUrl:  sql.NullString{String: imageURL, Valid: true},
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"upload_image_product-local",
+			"db update failed",
+			"Failed to update product image_url",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update product image")
+		return
+	}
+
+	ctxWithUser := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	apicfg.LogHandlerSuccess(ctxWithUser, "upload_image_product-local", "Product image updated", ip, userAgent)
+
+	middlewares.RespondWithJSON(w, http.StatusOK, imageUploadResponse{
+		Message:  "Product image updated successfully",
+		ImageURL: imageURL,
+	})
+}

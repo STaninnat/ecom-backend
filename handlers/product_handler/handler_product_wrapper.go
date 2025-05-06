@@ -32,3 +32,8 @@ type CategoryWithIDRequest struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 }
+
+type productResponse struct {
+	Message   string `json:"message"`
+	ProductID string `json:"product_id"`
+}

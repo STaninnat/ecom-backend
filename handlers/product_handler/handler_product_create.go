@@ -89,13 +89,11 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		return
 	}
 
-	productResp := map[string]string{
-		"message":    "Product created successfully",
-		"product_id": id,
-	}
-
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "create_product", "Created product successful", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, productResp)
+	middlewares.RespondWithJSON(w, http.StatusCreated, productResponse{
+		Message:   "Product created successfully",
+		ProductID: id,
+	})
 }

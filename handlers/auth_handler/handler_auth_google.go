@@ -149,8 +149,8 @@ func (apicfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, map[string]string{
-		"message": "Google signin successful",
+	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
+		Message: "Google signin successful",
 	})
 }
 

@@ -73,7 +73,7 @@ func (apicfg *HandlersProductConfig) HandlerUpdateProduct(w http.ResponseWriter,
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
 	apicfg.LogHandlerSuccess(ctxWithUserID, "update_product", "Updated product successfully", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{
-		"message": "Product updated successfully"},
-	)
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Product updated successfully",
+	})
 }
