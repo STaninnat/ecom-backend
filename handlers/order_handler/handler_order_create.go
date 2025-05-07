@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -81,6 +82,18 @@ func (apicfg *HandlersOrderConfig) HandlerCreateOrder(w http.ResponseWriter, r *
 	}
 
 	for _, item := range params.Items {
+		if item.Quantity > math.MaxInt32 || item.Quantity < math.MinInt32 {
+			apicfg.LogHandlerError(
+				ctx,
+				"create_order",
+				"quantity overflow",
+				fmt.Sprintf("Quantity %d exceeds the max limit for int32", item.Quantity),
+				ip, userAgent, nil,
+			)
+			middlewares.RespondWithError(w, http.StatusBadRequest, "Quantity exceeds max limit")
+			return
+		}
+
 		err := queries.CreateOrderItem(ctx, database.CreateOrderItemParams{
 			ID:        uuid.New().String(),
 			OrderID:   orderID,
