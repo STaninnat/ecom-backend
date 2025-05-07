@@ -33,8 +33,12 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	log.Printf("Serving on port: %s\n", port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server failed: %v\n", err)
-	}
+	go func() {
+		log.Printf("Serving on port: %s\n", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v\n", err)
+		}
+	}()
+
+	utils.GracefulShutdown(srv, handlersConfig.APIConfig)
 }

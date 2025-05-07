@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type APIConfig struct {
@@ -27,6 +28,8 @@ type APIConfig struct {
 	S3Client            *s3.Client
 	StripeSecretKey     string
 	StripeWebhookSecret string
+	MongoClient         *mongo.Client
+	MongoDB             *mongo.Database
 }
 
 func LoadConfig() *APIConfig {
@@ -90,6 +93,12 @@ func LoadConfig() *APIConfig {
 	}
 	client := s3.NewFromConfig(awsCfg)
 
+	mongoURI := os.Getenv("MONGO_URI")
+	if mongoURI == "" {
+		log.Fatal("Warning: Mongo URI environment variable is not set")
+	}
+	mongoClient, mongoDB := ConnectMongoDB(mongoURI)
+
 	return &APIConfig{
 		Port:                port,
 		RedisClient:         redisClient,
@@ -103,5 +112,7 @@ func LoadConfig() *APIConfig {
 		S3Client:            client,
 		StripeSecretKey:     stripeSecretKey,
 		StripeWebhookSecret: stripeWebhookSecret,
+		MongoClient:         mongoClient,
+		MongoDB:             mongoDB,
 	}
 }

@@ -8,10 +8,12 @@ import (
 	orderhandlers "github.com/STaninnat/ecom-backend/handlers/order_handler"
 	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment_handler"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
+	reviewhandlers "github.com/STaninnat/ecom-backend/handlers/review_handler"
 	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
 	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws_handler"
 	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_local_handler"
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
+	"github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -57,6 +59,12 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{HandlersConfig: apicfg.HandlersConfig}
 	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{HandlersConfig: apicfg.HandlersConfig}
 
+	reviewMongoRepo := mongo.NewReviewMongo(apicfg.MongoDB)
+	reviewHandlersConfig := &reviewhandlers.HandlersReviewConfig{
+		ReviewRepo:     reviewMongoRepo,
+		HandlersConfig: apicfg.HandlersConfig,
+	}
+
 	v1Router := chi.NewRouter()
 
 	// check resp endoint
@@ -73,6 +81,9 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Get("/auth/google/callback", authHandlersConfig.HandlerGoogleCallback)
 
 	v1Router.Post("/payments/webhook", paymentHandlersConfig.HandlerStripeWebhook)
+
+	v1Router.Get("/reviews/product/{product_id}", reviewHandlersConfig.HandlerGetReviewsByProductID)
+	v1Router.Get("/reviews/{id}", reviewHandlersConfig.HandlerGetReviewByID)
 
 	v1Router.Get("/products", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllProducts))
 	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
@@ -92,6 +103,11 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Get("/payments/{order_id}", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerGetPayment))
 	v1Router.Get("/payments/history", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerGetPaymentHistory))
 	v1Router.Post("/payments/{order_id}/refund", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerRefundPayment))
+
+	v1Router.Post("/reviews", apicfg.HandlerMiddleware(reviewHandlersConfig.HandlerCreateReview))
+	v1Router.Get("/reviews/user", apicfg.HandlerMiddleware(reviewHandlersConfig.HandlerGetReviewsByUserID))
+	v1Router.Put("/reviews/{id}", apicfg.HandlerMiddleware(reviewHandlersConfig.HandlerUpdateReviewByID))
+	v1Router.Delete("/reviews/{id}", apicfg.HandlerMiddleware(reviewHandlersConfig.HandlerDeleteReviewByID))
 
 	// admin endpoint
 	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(roleHandlersConfig.PromoteUserToAdmin))
