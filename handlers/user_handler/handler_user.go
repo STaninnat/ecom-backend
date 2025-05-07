@@ -54,7 +54,23 @@ func (apicfg *HandlersUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *ht
 		return
 	}
 
-	err := apicfg.DB.UpdateUserInfo(ctx, database.UpdateUserInfoParams{
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"update_user",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.UpdateUserInfo(ctx, database.UpdateUserInfoParams{
 		ID:        user.ID,
 		Name:      params.Name,
 		Email:     params.Email,
@@ -71,6 +87,19 @@ func (apicfg *HandlersUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *ht
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update user info")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"update_user",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

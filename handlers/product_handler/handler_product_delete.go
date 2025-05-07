@@ -29,7 +29,23 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		return
 	}
 
-	product, err := apicfg.DB.GetProductByID(ctx, productID)
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"delete_product",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	product, err := queries.GetProductByID(ctx, productID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -47,7 +63,7 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 		_ = utilsuploaders.DeleteFileFromS3IfExists(apicfg.S3Client, apicfg.S3Bucket, product.ImageUrl.String)
 	}
 
-	err = apicfg.DB.DeleteProductByID(ctx, productID)
+	err = queries.DeleteProductByID(ctx, productID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -57,6 +73,19 @@ func (apicfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter,
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to delete product")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"delete_product",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

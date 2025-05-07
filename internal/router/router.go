@@ -5,6 +5,8 @@ import (
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
+	orderhandlers "github.com/STaninnat/ecom-backend/handlers/order_handler"
+	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment_handler"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
 	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
 	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws_handler"
@@ -52,6 +54,8 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
 	uploadHandlersConfig := &uploadhandlers.HandlersUploadConfig{HandlersConfig: apicfg.HandlersConfig}
 	uploadAWSHandlers := &uploadawshandlers.HandlersUploadAWSConfig{HandlersConfig: apicfg.HandlersConfig}
+	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{HandlersConfig: apicfg.HandlersConfig}
+	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{HandlersConfig: apicfg.HandlersConfig}
 
 	v1Router := chi.NewRouter()
 
@@ -68,14 +72,26 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Get("/auth/google/signin", authHandlersConfig.HandlerGoogleSignIn)
 	v1Router.Get("/auth/google/callback", authHandlersConfig.HandlerGoogleCallback)
 
+	v1Router.Post("/payments/webhook", paymentHandlersConfig.HandlerStripeWebhook)
+
+	v1Router.Get("/products", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllProducts))
+	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
+	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllCategories))
+
 	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerGetUser))
 	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerUpdateUser))
 
 	v1Router.Get("/products/{id}", apicfg.HandlerMiddleware(productHandlersConfig.HandlerGetProductByID))
 
-	v1Router.Get("/products", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllProducts))
-	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
-	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllCategories))
+	v1Router.Post("/orders", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerCreateOrder))
+	v1Router.Get("/orders/user", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerGetUserOrders))
+	v1Router.Get("/orders/items/{order_id}", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerGetOrderItemsByOrderID))
+
+	v1Router.Post("/payments/intent", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerCreatePayment))
+	v1Router.Post("/payments/confirm", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerConfirmPayment))
+	v1Router.Get("/payments/{order_id}", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerGetPayment))
+	v1Router.Get("/payments/history", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerGetPaymentHistory))
+	v1Router.Post("/payments/{order_id}/refund", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerRefundPayment))
 
 	// admin endpoint
 	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(roleHandlersConfig.PromoteUserToAdmin))
@@ -93,6 +109,12 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	v1Router.Post("/products/upload-image-s3", apicfg.HandlerAdminOnlyMiddleware(uploadAWSHandlers.HandlersUploadProductImageS3))
 	v1Router.Post("/products/{id}/image-s3", apicfg.HandlerAdminOnlyMiddleware(uploadAWSHandlers.HandlerUpdateProductImageS3ByID))
+
+	v1Router.Put("/orders/{order_id}/status", apicfg.HandlerAdminOnlyMiddleware(orderHandlersConfig.HandlerUpdateOrderStatus))
+	v1Router.Delete("/orders/{order_id}", apicfg.HandlerAdminOnlyMiddleware(orderHandlersConfig.HandlerDeleteOrder))
+	v1Router.Get("/orders", apicfg.HandlerAdminOnlyMiddleware(orderHandlersConfig.HandlerGetAllOrders))
+
+	v1Router.Get("/admin/payments/{status}", apicfg.HandlerAdminOnlyMiddleware(paymentHandlersConfig.HandlerAdminGetPayments))
 
 	router.Mount("/v1", v1Router)
 	return router

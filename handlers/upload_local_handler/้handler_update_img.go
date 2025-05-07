@@ -31,7 +31,23 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 		return
 	}
 
-	product, err := apicfg.DB.GetProductByID(ctx, productID)
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"product_image_upload-local",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	product, err := queries.GetProductByID(ctx, productID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -77,7 +93,7 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 
 	imageURL := "/static/" + filename
 
-	err = apicfg.DB.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
+	err = queries.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
 		ID:        productID,
 		ImageUrl:  sql.NullString{String: imageURL, Valid: true},
 		UpdatedAt: time.Now(),
@@ -91,6 +107,19 @@ func (apicfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.Respons
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update product image")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"product_image_upload-local",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

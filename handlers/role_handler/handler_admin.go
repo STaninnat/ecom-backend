@@ -44,7 +44,23 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 		return
 	}
 
-	targetUser, err := apicfg.DB.GetUserByID(ctx, req.UserID)
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"promote_admin",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	targetUser, err := queries.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -68,7 +84,7 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 		return
 	}
 
-	err = apicfg.DB.UpdateUserRole(ctx, database.UpdateUserRoleParams{
+	err = queries.UpdateUserRole(ctx, database.UpdateUserRoleParams{
 		Role: "admin",
 		ID:   req.UserID,
 	})
@@ -81,6 +97,19 @@ func (apicfg *HandlersRoleConfig) PromoteUserToAdmin(w http.ResponseWriter, r *h
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Error promoting user to admin")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"promote_admin",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 
