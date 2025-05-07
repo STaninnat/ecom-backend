@@ -57,7 +57,23 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 
 	timeNow := time.Now().UTC()
 
-	err := apicfg.DB.CreateCategory(ctx, database.CreateCategoryParams{
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"create_category",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.CreateCategory(ctx, database.CreateCategoryParams{
 		ID:          uuid.New().String(),
 		Name:        params.Name,
 		Description: utils.ToNullString(params.Description),
@@ -85,6 +101,19 @@ func (apicfg *HandlersProductConfig) HandlerCreateCategory(w http.ResponseWriter
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to create category")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"create_category",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

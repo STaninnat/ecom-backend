@@ -52,7 +52,23 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		isActive = *params.IsActive
 	}
 
-	err := apicfg.DB.CreateProduct(ctx, database.CreateProductParams{
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"create_product",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.CreateProduct(ctx, database.CreateProductParams{
 		ID:          id,
 		CategoryID:  utils.ToNullString(params.CategoryID),
 		Name:        params.Name,
@@ -86,6 +102,19 @@ func (apicfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter,
 		)
 
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Couldn't create product")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"create_product",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

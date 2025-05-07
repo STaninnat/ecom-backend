@@ -52,7 +52,23 @@ func (apicfg *HandlersProductConfig) HandlerUpdateCategory(w http.ResponseWriter
 		return
 	}
 
-	err := apicfg.DB.UpdateCategories(ctx, database.UpdateCategoriesParams{
+	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"update_category",
+			"start tx failed",
+			"Error starting transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		return
+	}
+	defer tx.Rollback()
+
+	queries := apicfg.DB.WithTx(tx)
+
+	err = queries.UpdateCategories(ctx, database.UpdateCategoriesParams{
 		ID:          params.ID,
 		Name:        params.Name,
 		Description: utils.ToNullString(params.Description),
@@ -79,6 +95,19 @@ func (apicfg *HandlersProductConfig) HandlerUpdateCategory(w http.ResponseWriter
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Couldn't update category")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		apicfg.LogHandlerError(
+			ctx,
+			"update_category",
+			"commit tx failed",
+			"Error committing transaction",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

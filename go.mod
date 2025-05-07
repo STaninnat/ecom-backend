@@ -3,8 +3,8 @@ module github.com/STaninnat/ecom-backend
 go 1.23.4
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -16,6 +16,7 @@ require (
 	github.com/redis/go-redis/v9 v9.7.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
+	github.com/stripe/stripe-go/v82 v82.1.0
 	golang.org/x/crypto v0.36.0
 	golang.org/x/oauth2 v0.28.0
 )

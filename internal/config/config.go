@@ -13,18 +13,20 @@ import (
 )
 
 type APIConfig struct {
-	Port          string
-	DB            *database.Queries
-	DBConn        *sql.DB
-	RedisClient   redis.Cmdable
-	JWTSecret     string
-	RefreshSecret string
-	Issuer        string
-	Audience      string
-	CredsPath     string
-	S3Bucket      string
-	S3Region      string
-	S3Client      *s3.Client
+	Port                string
+	DB                  *database.Queries
+	DBConn              *sql.DB
+	RedisClient         redis.Cmdable
+	JWTSecret           string
+	RefreshSecret       string
+	Issuer              string
+	Audience            string
+	CredsPath           string
+	S3Bucket            string
+	S3Region            string
+	S3Client            *s3.Client
+	StripeSecretKey     string
+	StripeWebhookSecret string
 }
 
 func LoadConfig() *APIConfig {
@@ -60,12 +62,22 @@ func LoadConfig() *APIConfig {
 
 	s3Bucket := os.Getenv("S3_BUCKET")
 	if s3Bucket == "" {
-		log.Fatal("S3_BUCKET environment variable is not set")
+		log.Fatal("Warning: S3 bucket environment variable is not set")
 	}
 
 	s3Region := os.Getenv("S3_REGION")
 	if s3Region == "" {
-		log.Fatal("S3_REGION environment variable is not set")
+		log.Fatal("Warning: S3 region environment variable is not set")
+	}
+
+	stripeSecretKey := os.Getenv("STRIPE_SECRET_KEY")
+	if s3Region == "" {
+		log.Fatal("Warning: stripe secret key environment variable is not set")
+	}
+
+	stripeWebhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	if s3Region == "" {
+		log.Fatal("Warning: stripe webhook secret environment variable is not set")
 	}
 
 	redisClient := InitRedis()
@@ -79,15 +91,17 @@ func LoadConfig() *APIConfig {
 	client := s3.NewFromConfig(awsCfg)
 
 	return &APIConfig{
-		Port:          port,
-		RedisClient:   redisClient,
-		JWTSecret:     jwtSecret,
-		RefreshSecret: refreshSecret,
-		Issuer:        issuerName,
-		Audience:      audienceName,
-		CredsPath:     credsPath,
-		S3Bucket:      s3Bucket,
-		S3Region:      s3Region,
-		S3Client:      client,
+		Port:                port,
+		RedisClient:         redisClient,
+		JWTSecret:           jwtSecret,
+		RefreshSecret:       refreshSecret,
+		Issuer:              issuerName,
+		Audience:            audienceName,
+		CredsPath:           credsPath,
+		S3Bucket:            s3Bucket,
+		S3Region:            s3Region,
+		S3Client:            client,
+		StripeSecretKey:     stripeSecretKey,
+		StripeWebhookSecret: stripeWebhookSecret,
 	}
 }
