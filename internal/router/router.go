@@ -4,16 +4,17 @@ import (
 	"net/http"
 
 	"github.com/STaninnat/ecom-backend/handlers"
-	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth_handler"
-	orderhandlers "github.com/STaninnat/ecom-backend/handlers/order_handler"
-	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment_handler"
-	producthandlers "github.com/STaninnat/ecom-backend/handlers/product_handler"
-	reviewhandlers "github.com/STaninnat/ecom-backend/handlers/review_handler"
-	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role_handler"
-	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws_handler"
-	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_local_handler"
-	userhandlers "github.com/STaninnat/ecom-backend/handlers/user_handler"
-	"github.com/STaninnat/ecom-backend/internal/mongo"
+	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth"
+	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
+	orderhandlers "github.com/STaninnat/ecom-backend/handlers/order"
+	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment"
+	producthandlers "github.com/STaninnat/ecom-backend/handlers/product"
+	reviewhandlers "github.com/STaninnat/ecom-backend/handlers/review"
+	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role"
+	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws"
+	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_local"
+	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
+	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -59,9 +60,16 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{HandlersConfig: apicfg.HandlersConfig}
 	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{HandlersConfig: apicfg.HandlersConfig}
 
-	reviewMongoRepo := mongo.NewReviewMongo(apicfg.MongoDB)
+	reviewMongoRepo := intmongo.NewReviewMongo(apicfg.MongoDB)
+	cartMongoRepo := intmongo.NewCartMongo(apicfg.MongoDB)
+
 	reviewHandlersConfig := &reviewhandlers.HandlersReviewConfig{
-		ReviewRepo:     reviewMongoRepo,
+		ReviewMG:       reviewMongoRepo,
+		HandlersConfig: apicfg.HandlersConfig,
+	}
+
+	cartHandlersConfig := &carthandlers.HandlersCartConfig{
+		CartMG:         cartMongoRepo,
 		HandlersConfig: apicfg.HandlersConfig,
 	}
 
@@ -97,6 +105,19 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Post("/orders", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerCreateOrder))
 	v1Router.Get("/orders/user", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerGetUserOrders))
 	v1Router.Get("/orders/items/{order_id}", apicfg.HandlerMiddleware(orderHandlersConfig.HandlerGetOrderItemsByOrderID))
+
+	v1Router.Post("/cart/items", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerAddItemToUserCart))
+	v1Router.Put("/cart/items", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerUpdateItemInUserCart))
+	v1Router.Get("/cart/items", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerGetUserCart))
+	v1Router.Delete("/cart/items", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerRemoveItemFromUserCart))
+	v1Router.Delete("/cart", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerClearUserCart))
+	v1Router.Post("/cart/checkout", apicfg.HandlerMiddleware(cartHandlersConfig.HandlerCheckoutCart))
+
+	v1Router.Post("/guest-cart/items", cartHandlersConfig.HandlerAddItemToGuestCart)
+	v1Router.Get("/guest-cart", cartHandlersConfig.HandlerGetGuestCart)
+	v1Router.Put("/guest-cart/items", cartHandlersConfig.HandlerUpdateGuestCartItem)
+	v1Router.Delete("/guest-cart/items", cartHandlersConfig.HandlerRemoveItemFromGuestCart)
+	v1Router.Delete("/guest-cart", cartHandlersConfig.HandlerClearGuestCart)
 
 	v1Router.Post("/payments/intent", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerCreatePayment))
 	v1Router.Post("/payments/confirm", apicfg.HandlerMiddleware(paymentHandlersConfig.HandlerConfirmPayment))

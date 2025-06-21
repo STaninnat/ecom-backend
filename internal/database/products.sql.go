@@ -288,3 +288,19 @@ func (q *Queries) UpdateProductImageURL(ctx context.Context, arg UpdateProductIm
 	_, err := q.db.ExecContext(ctx, updateProductImageURL, arg.ID, arg.ImageUrl, arg.UpdatedAt)
 	return err
 }
+
+const updateProductStock = `-- name: UpdateProductStock :exec
+UPDATE products
+SET stock = $2
+WHERE id = $1
+`
+
+type UpdateProductStockParams struct {
+	ID    string
+	Stock int32
+}
+
+func (q *Queries) UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) error {
+	_, err := q.db.ExecContext(ctx, updateProductStock, arg.ID, arg.Stock)
+	return err
+}
