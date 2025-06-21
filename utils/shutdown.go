@@ -3,16 +3,21 @@ package utils
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/STaninnat/ecom-backend/internal/config"
 )
 
-func GracefulShutdown(srv *http.Server, cfg *config.APIConfig) {
+type ServerWithShutdown interface {
+	Shutdown(ctx context.Context) error
+}
+
+type APIConfigWithDisconnect interface {
+	DisconnectMongoDB(ctx context.Context) error
+}
+
+func GracefulShutdown(srv ServerWithShutdown, cfg APIConfigWithDisconnect) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
