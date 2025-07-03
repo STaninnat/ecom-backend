@@ -17,24 +17,20 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	userNameRegex = regexp.MustCompile(`^[a-zA-Z0-9]+([-._]?[a-zA-Z0-9]+)*$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+(?:\.[a-zA-Z0-9._%+-]+)*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+)
+
 func IsValidUserNameFormat(name string) bool {
-	nameRegex := `^[a-zA-Z0-9]+([-._]?[a-zA-Z0-9]+)*$`
-
-	re := regexp.MustCompile(nameRegex)
-
-	return len(name) >= 3 && len(name) <= 30 && re.MatchString(name)
+	return len(name) >= 3 && len(name) <= 30 && userNameRegex.MatchString(name)
 }
 
 func IsValidEmailFormat(email string) bool {
-	emailRegex := `^[a-zA-Z0-9._%+-]+(?:\.[a-zA-Z0-9._%+-]+)*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-
 	if strings.Contains(email, "..") {
 		return false
 	}
-
-	re := regexp.MustCompile(emailRegex)
-
-	return re.MatchString(email)
+	return emailRegex.MatchString(email)
 }
 
 func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*Claims, error) {
@@ -127,6 +123,7 @@ func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *
 	return userID, &storedData, nil
 }
 
+// WARNING: GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
 func (cfg *AuthConfig) GetUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
 	keys, err := cfg.RedisClient.Keys(context.Background(), "refresh_token:*").Result()
 	if err != nil {

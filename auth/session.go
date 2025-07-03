@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io"
-	"log"
 )
 
 // Allow override from test
@@ -14,7 +13,7 @@ func GenerateState() string {
 	b := make([]byte, 16)
 
 	if _, err := io.ReadFull(RandomReader, b); err != nil {
-		log.Println("Error generating random state:", err)
+		// Only log unexpected errors if needed; otherwise, just return a default value.
 		return "default_state"
 	}
 

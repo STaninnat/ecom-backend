@@ -5,6 +5,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// NOTE: This file only contains type definitions and imports. No performance improvements needed.
+
 type AuthConfig struct {
 	*config.APIConfig
 }

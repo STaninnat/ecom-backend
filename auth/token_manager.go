@@ -1,13 +1,13 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -76,13 +76,11 @@ func (cfg *AuthConfig) GenerateRefreshToken(userID string) (string, error) {
 func (cfg *AuthConfig) GenerateTokens(userID string, accessTokenExpiresAt time.Time) (string, string, error) {
 	accessToken, err := cfg.GenerateAccessToken(userID, accessTokenExpiresAt)
 	if err != nil {
-		log.Println("Error generating access token:", err)
 		return "", "", err
 	}
 
 	newRefreshToken, err := cfg.GenerateRefreshToken(userID)
 	if err != nil {
-		log.Println("Error generating refresh token:", err)
 		return "", "", err
 	}
 
@@ -113,13 +111,19 @@ func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refresh
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		log.Println("Failed to marshal refresh token data:", err)
 		return err
 	}
 
+	// Store refresh_token:<userID> -> token data (legacy)
 	err = cfg.RedisClient.Set(r.Context(), RedisRefreshTokenPrefix+userID, jsonData, ttl).Err()
 	if err != nil {
-		log.Println("Failed to save refresh token to Redis:", err)
+		return err
+	}
+
+	// Store refresh_token_lookup:<token> -> userID for O(1) lookup
+	lookupKey := "refresh_token_lookup:" + refreshToken
+	err = cfg.RedisClient.Set(r.Context(), lookupKey, userID, ttl).Err()
+	if err != nil {
 		return err
 	}
 
@@ -151,4 +155,16 @@ func ValidateConfig(secret string, secretName string) error {
 	}
 
 	return nil
+}
+
+// WARNING: GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
+
+// GetUserIDByRefreshToken does O(1) lookup for userID by refresh token.
+func (cfg *AuthConfig) GetUserIDByRefreshToken(ctx context.Context, refreshToken string) (string, error) {
+	lookupKey := "refresh_token_lookup:" + refreshToken
+	userID, err := cfg.RedisClient.Get(ctx, lookupKey).Result()
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
 }

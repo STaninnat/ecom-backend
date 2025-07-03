@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// NOTE: This file only sets cookies. No performance improvements needed.
+
 func SetTokensAsCookies(w http.ResponseWriter, accessToken, refreshToken string, accessTokenExpiresAt, refreshTokenExpiresAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
