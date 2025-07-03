@@ -10,7 +10,7 @@ type ContextKey string
 
 const (
 	ContextKeyUserID    ContextKey = "userID"
-	ContextKeyRequestID ContextKey = "reqestID"
+	ContextKeyRequestID ContextKey = "requestID"
 )
 
 type ActionLogParams struct {
@@ -44,11 +44,12 @@ func LogUserAction(p ActionLogParams) {
 
 	entry := p.Logger.WithFields(fields)
 
-	if p.Status == "pending" {
+	switch p.Status {
+	case "pending":
 		entry.Info("User action pending")
-	} else if p.Status == "fail" {
+	case "fail":
 		entry.Error("User action failed")
-	} else {
+	default:
 		entry.Info("User action success")
 	}
 }

@@ -40,5 +40,5 @@ func main() {
 		}
 	}()
 
-	utils.GracefulShutdown(srv, handlersConfig.APIConfig)
+	utils.GracefulShutdown(srv, handlersConfig.APIConfig, 10*time.Second)
 }

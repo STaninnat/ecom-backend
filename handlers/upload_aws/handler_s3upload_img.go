@@ -34,7 +34,7 @@ func (apicfg *HandlersUploadAWSConfig) HandlersUploadProductImageS3(w http.Respo
 		BucketName: apicfg.S3Bucket,
 	}
 
-	imageURL, err := uploader.UploadFileToS3(ctx, file, fileHeader)
+	_, imageURL, err := uploader.UploadFileToS3(ctx, file, fileHeader)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,

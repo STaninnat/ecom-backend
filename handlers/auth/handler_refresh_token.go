@@ -16,7 +16,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
+	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -75,7 +75,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 		return
 	}
 
-	accessToken, newRefreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
+	accessToken, newRefreshToken, err := apicfg.Auth.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -88,7 +88,7 @@ func (apicfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *
 		return
 	}
 
-	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
+	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), newRefreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,

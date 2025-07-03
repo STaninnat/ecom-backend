@@ -5,19 +5,14 @@ import (
 	"encoding/json"
 )
 
+// ToNullString returns a sql.NullString that is valid if s is not empty.
 func ToNullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
-	}
-
 	return sql.NullString{String: s, Valid: s != ""}
 }
 
+// ToNullStringIfNotEmpty returns a NullString only if it is valid and not empty.
 func ToNullStringIfNotEmpty(s sql.NullString) sql.NullString {
-	if !s.Valid || s.String == "" {
-		return sql.NullString{Valid: false}
-	}
-
+	s.Valid = s.Valid && s.String != ""
 	return s
 }
 
@@ -28,6 +23,40 @@ func ToNullBoolFromSQL(b sql.NullBool) sql.NullBool {
 // NullString is a wrapper for sql.NullString with JSON support
 type NullString struct {
 	sql.NullString
+}
+
+// MarshalJSON implements json.Marshaler for NullString.
+func (ns NullString) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.String)
+	}
+	return json.Marshal(nil)
+}
+
+// NullBool with JSON support
+type NullBool struct {
+	sql.NullBool
+}
+
+// MarshalJSON implements json.Marshaler for NullBool.
+func (nb NullBool) MarshalJSON() ([]byte, error) {
+	if nb.Valid {
+		return json.Marshal(nb.Bool)
+	}
+	return json.Marshal(nil)
+}
+
+// NullFloat64 with JSON support
+type NullFloat64 struct {
+	sql.NullFloat64
+}
+
+// MarshalJSON implements json.Marshaler for NullFloat64.
+func (nf NullFloat64) MarshalJSON() ([]byte, error) {
+	if nf.Valid {
+		return json.Marshal(nf.Float64)
+	}
+	return json.Marshal(nil)
 }
 
 func (ns *NullString) UnmarshalJSON(data []byte) error {
@@ -45,11 +74,6 @@ func (ns *NullString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// NullBool with JSON support
-type NullBool struct {
-	sql.NullBool
-}
-
 func (nb *NullBool) UnmarshalJSON(data []byte) error {
 	var b *bool
 	if err := json.Unmarshal(data, &b); err != nil {
@@ -63,11 +87,6 @@ func (nb *NullBool) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
-}
-
-// NullFloat64 with JSON support
-type NullFloat64 struct {
-	sql.NullFloat64
 }
 
 func (nf *NullFloat64) UnmarshalJSON(data []byte) error {

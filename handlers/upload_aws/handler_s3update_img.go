@@ -83,7 +83,7 @@ func (apicfg *HandlersUploadAWSConfig) HandlerUpdateProductImageS3ByID(w http.Re
 		_ = utilsuploaders.DeleteFileFromS3IfExists(apicfg.S3Client, apicfg.S3Bucket, product.ImageUrl.String)
 	}
 
-	imageURL, err := uploader.UploadFileToS3(ctx, file, fileHeader)
+	_, imageURL, err := uploader.UploadFileToS3(ctx, file, fileHeader)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,

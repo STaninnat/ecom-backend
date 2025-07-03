@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ParseAndGetImageFile parses the multipart form and retrieves the image file and header.
 func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
 	// Parse multipart form
 	err := r.ParseMultipartForm(10 << 20) // 10 MB max
@@ -26,17 +27,26 @@ func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeade
 		return nil, nil, fmt.Errorf("failed to retrieve image file: %w", err)
 	}
 
+	// Validate file extension
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if _, ok := AllowedImageExtensions[ext]; !ok {
+		file.Close()
+		return nil, nil, fmt.Errorf("unsupported file extension: %s", ext)
+	}
+
 	return file, fileHeader, nil
 }
 
+// SaveUploadedFile saves the uploaded file to disk and returns the full file path.
 func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, uploadPath string) (string, error) {
+	defer file.Close()
 	// Create uploads folder if not exists
 	if err := os.MkdirAll(uploadPath, 0750); err != nil {
 		return "", fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
 	// Generate unique filename
-	ext := filepath.Ext(fileHeader.Filename)
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	filename := fmt.Sprintf("%s_%d%s", uuid.New().String(), time.Now().Unix(), ext)
 	filePath := filepath.Join(uploadPath, filename)
 
@@ -57,7 +67,7 @@ func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, upl
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
 
-	return filename, nil
+	return cleanFilePath, nil
 }
 
 func DeleteFileIfExists(imageURL, uploadPath string) error {

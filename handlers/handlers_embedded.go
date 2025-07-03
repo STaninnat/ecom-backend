@@ -15,7 +15,6 @@ type HandlersConfig struct {
 	*config.APIConfig
 	Auth              *auth.AuthConfig
 	OAuth             *config.OAuthConfig
-	AuthHelper        auth.AuthHelper
 	Logger            *logrus.Logger
 	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
 }
@@ -46,9 +45,6 @@ func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 		APIConfig: apicfg,
 		Auth:      authCfg,
 		OAuth:     oauthConfig,
-		AuthHelper: &auth.RealHelper{
-			AuthConfig: authCfg,
-		},
-		Logger: logger,
+		Logger:    logger,
 	}
 }

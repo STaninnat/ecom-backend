@@ -12,25 +12,35 @@ import (
 
 type WriterHook struct {
 	Writer    io.Writer
-	LogLevels []logrus.Level
+	LogLevels map[logrus.Level]struct{}
+}
+
+func NewWriterHook(writer io.Writer, levels []logrus.Level) *WriterHook {
+	levelMap := make(map[logrus.Level]struct{}, len(levels))
+	for _, lvl := range levels {
+		levelMap[lvl] = struct{}{}
+	}
+	return &WriterHook{Writer: writer, LogLevels: levelMap}
 }
 
 func (hook *WriterHook) Fire(entry *logrus.Entry) error {
-	for _, level := range hook.LogLevels {
-		if entry.Level == level {
-			line, err := entry.String()
-			if err != nil {
-				return err
-			}
-			_, err = hook.Writer.Write([]byte(line))
+	if _, ok := hook.LogLevels[entry.Level]; ok {
+		line, err := entry.String()
+		if err != nil {
 			return err
 		}
+		_, err = hook.Writer.Write([]byte(line))
+		return err
 	}
 	return nil // do nothing if level not in LogLevels
 }
 
 func (hook *WriterHook) Levels() []logrus.Level {
-	return hook.LogLevels
+	levels := make([]logrus.Level, 0, len(hook.LogLevels))
+	for lvl := range hook.LogLevels {
+		levels = append(levels, lvl)
+	}
+	return levels
 }
 
 func InitLogger() *logrus.Logger {
@@ -73,23 +83,17 @@ func InitLogger() *logrus.Logger {
 		errorOutput = io.MultiWriter(errorWriter, os.Stdout)
 	}
 
-	logger.AddHook(&WriterHook{
-		Writer: infoOutput,
-		LogLevels: []logrus.Level{
-			logrus.InfoLevel,
-			logrus.WarnLevel,
-			logrus.DebugLevel,
-		},
-	})
+	logger.AddHook(NewWriterHook(infoOutput, []logrus.Level{
+		logrus.InfoLevel,
+		logrus.WarnLevel,
+		logrus.DebugLevel,
+	}))
 
-	logger.AddHook(&WriterHook{
-		Writer: errorOutput,
-		LogLevels: []logrus.Level{
-			logrus.ErrorLevel,
-			logrus.FatalLevel,
-			logrus.PanicLevel,
-		},
-	})
+	logger.AddHook(NewWriterHook(errorOutput, []logrus.Level{
+		logrus.ErrorLevel,
+		logrus.FatalLevel,
+		logrus.PanicLevel,
+	}))
 
 	logger.SetLevel(logrus.DebugLevel)
 	return logger

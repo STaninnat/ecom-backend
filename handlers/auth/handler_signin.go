@@ -48,7 +48,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = apicfg.AuthHelper.CheckPasswordHash(params.Password, user.Password.String)
+	err = auth.CheckPasswordHash(params.Password, user.Password.String)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -78,7 +78,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 	accessTokenExpiresAt := timeNow.Add(handlers.AccessTokenTTL)
 	refreshTokenExpiresAt := timeNow.Add(handlers.RefreshTokenTTL)
 
-	accessToken, refreshToken, err := apicfg.AuthHelper.GenerateTokens(userID.String(), accessTokenExpiresAt)
+	accessToken, refreshToken, err := apicfg.Auth.GenerateTokens(userID.String(), accessTokenExpiresAt)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
@@ -124,7 +124,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = apicfg.AuthHelper.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
+	err = apicfg.Auth.StoreRefreshTokenInRedis(r, userID.String(), refreshToken, "local", refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,

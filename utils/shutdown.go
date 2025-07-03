@@ -17,21 +17,23 @@ type APIConfigWithDisconnect interface {
 	DisconnectMongoDB(ctx context.Context) error
 }
 
-func GracefulShutdown(srv ServerWithShutdown, cfg APIConfigWithDisconnect) {
+func GracefulShutdown(srv ServerWithShutdown, cfg APIConfigWithDisconnect, timeout time.Duration) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	<-ctx.Done()
 	log.Println("Shutdown signal received")
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	if err := srv.Shutdown(ctxTimeout); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("Server forced to shutdown: %v", err)
+	} else {
+		log.Println("Server shutdown gracefully.")
 	}
 
 	if err := cfg.DisconnectMongoDB(context.Background()); err != nil {
-		log.Println("Error disconnecting MongoDB:", err)
+		log.Printf("Error disconnecting MongoDB: %v", err)
 	} else {
 		log.Println("MongoDB disconnected.")
 	}

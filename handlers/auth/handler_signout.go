@@ -15,7 +15,7 @@ func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	userID, storedData, err := apicfg.AuthHelper.ValidateCookieRefreshTokenData(w, r)
+	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
 		apicfg.LogHandlerError(
 			ctx,
