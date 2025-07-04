@@ -8,6 +8,47 @@ import (
 
 type optionalHandler func(http.ResponseWriter, *http.Request, *database.User)
 
+// HandlerOptionalMiddleware creates middleware that optionally authenticates users
+func (cfg *HandlerConfig) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var user *database.User
+		ip, userAgent := cfg.GetRequestMetadata(r)
+		ctx := r.Context()
+
+		cookie, err := r.Cookie("access_token")
+		if err == nil {
+			token := cookie.Value
+
+			claims, err := cfg.AuthService.ValidateAccessToken(token, cfg.JWTSecret)
+			if err != nil {
+				cfg.LogHandlerError(
+					ctx,
+					"optional_auth",
+					"invalid token",
+					"token validation failed",
+					ip, userAgent, err,
+				)
+			} else {
+				u, err := cfg.UserService.GetUserByID(ctx, claims.UserID)
+				if err != nil {
+					cfg.LogHandlerError(
+						ctx,
+						"optional_auth",
+						"user not found",
+						"user lookup failed",
+						ip, userAgent, err,
+					)
+				} else {
+					user = &u
+				}
+			}
+		}
+
+		handler(w, r, user)
+	}
+}
+
+// Legacy compatibility method for existing HandlersConfig
 func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler optionalHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var user *database.User

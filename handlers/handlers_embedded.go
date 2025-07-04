@@ -11,6 +11,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// HandlersConfig represents the main configuration for handlers
 type HandlersConfig struct {
 	*config.APIConfig
 	Auth              *auth.AuthConfig
@@ -19,24 +20,31 @@ type HandlersConfig struct {
 	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
 }
 
+// HandlerResponse represents a standard handler response
 type HandlerResponse struct {
 	Message string `json:"message"`
 }
 
+// TokenTTL constants
 const (
 	AccessTokenTTL  = 30 * time.Minute
 	RefreshTokenTTL = 7 * 24 * time.Hour
 )
 
+// SetupHandlersConfig creates and configures a new HandlersConfig instance
 func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	apicfg := config.LoadConfig()
+
+	// Connect to database
 	apicfg.ConnectDB()
 
+	// Load OAuth configuration with error handling
 	oauthConfig, err := config.NewOAuthConfig(apicfg.CredsPath)
 	if err != nil {
 		log.Fatal("Failed to load oauth config: ", err)
 	}
 
+	// Create auth configuration
 	authCfg := &auth.AuthConfig{
 		APIConfig: apicfg,
 	}
@@ -47,4 +55,49 @@ func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 		OAuth:     oauthConfig,
 		Logger:    logger,
 	}
+}
+
+// NewHandlerConfig creates a new HandlerConfig with interfaces for better testability
+func NewHandlerConfig(
+	authService AuthService,
+	userService UserService,
+	loggerService LoggerService,
+	requestMetadataService RequestMetadataService,
+	jwtSecret, refreshSecret, issuer, audience string,
+	oauth *OAuthConfig,
+	customTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource,
+) *HandlerConfig {
+	return &HandlerConfig{
+		AuthService:            authService,
+		UserService:            userService,
+		LoggerService:          loggerService,
+		RequestMetadataService: requestMetadataService,
+		JWTSecret:              jwtSecret,
+		RefreshSecret:          refreshSecret,
+		Issuer:                 issuer,
+		Audience:               audience,
+		OAuth:                  oauth,
+		CustomTokenSource:      customTokenSource,
+	}
+}
+
+// ValidateConfig validates the handler configuration
+func (cfg *HandlersConfig) ValidateConfig() error {
+	if cfg.Logger == nil {
+		return ErrInvalidConfig("logger is required")
+	}
+	if cfg.Auth == nil {
+		return ErrInvalidConfig("auth configuration is required")
+	}
+	if cfg.APIConfig == nil {
+		return ErrInvalidConfig("API configuration is required")
+	}
+	return nil
+}
+
+// ErrInvalidConfig represents an invalid configuration error
+type ErrInvalidConfig string
+
+func (e ErrInvalidConfig) Error() string {
+	return string(e)
 }
