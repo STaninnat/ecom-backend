@@ -3,87 +3,37 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/middlewares"
 )
-
-type optionalHandler func(http.ResponseWriter, *http.Request, *database.User)
 
 // HandlerOptionalMiddleware creates middleware that optionally authenticates users
 func (cfg *HandlerConfig) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var user *database.User
-		ip, userAgent := cfg.GetRequestMetadata(r)
-		ctx := r.Context()
-
-		cookie, err := r.Cookie("access_token")
-		if err == nil {
-			token := cookie.Value
-
-			claims, err := cfg.AuthService.ValidateAccessToken(token, cfg.JWTSecret)
-			if err != nil {
-				cfg.LogHandlerError(
-					ctx,
-					"optional_auth",
-					"invalid token",
-					"token validation failed",
-					ip, userAgent, err,
-				)
-			} else {
-				u, err := cfg.UserService.GetUserByID(ctx, claims.UserID)
-				if err != nil {
-					cfg.LogHandlerError(
-						ctx,
-						"optional_auth",
-						"user not found",
-						"user lookup failed",
-						ip, userAgent, err,
-					)
-				} else {
-					user = &u
-				}
-			}
-		}
-
-		handler(w, r, user)
-	}
+	authService := &handlerConfigAuthAdapter{authService: cfg.AuthService}
+	userService := &handlerConfigUserAdapter{userService: cfg.UserService}
+	loggerService := &handlerConfigLoggerAdapter{loggerService: cfg.LoggerService}
+	metadataService := &handlerConfigMetadataAdapter{metadataService: cfg.RequestMetadataService}
+	optionalAuthMiddleware := middlewares.CreateOptionalAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		cfg.JWTSecret,
+	)
+	return optionalAuthMiddleware(middlewares.OptionalHandler(handler))
 }
 
 // Legacy compatibility method for existing HandlersConfig
-func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler optionalHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var user *database.User
-		ip, userAgent := GetRequestMetadata(r)
-		ctx := r.Context()
-
-		cookie, err := r.Cookie("access_token")
-		if err == nil {
-			token := cookie.Value
-
-			claims, err := apicfg.Auth.ValidateAccessToken(token, apicfg.JWTSecret)
-			if err != nil {
-				apicfg.LogHandlerError(
-					ctx,
-					"optional_auth",
-					"invalid token",
-					"token validation failed",
-					ip, userAgent, err,
-				)
-			} else {
-				u, err := apicfg.DB.GetUserByID(ctx, claims.UserID)
-				if err != nil {
-					apicfg.LogHandlerError(
-						ctx,
-						"optional_auth",
-						"user not found",
-						"user lookup failed",
-						ip, userAgent, err,
-					)
-				} else {
-					user = &u
-				}
-			}
-		}
-
-		handler(w, r, user)
-	}
+func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
+	authService := &legacyAuthService{auth: apicfg.Auth}
+	userService := &legacyUserService{db: apicfg.DB}
+	loggerService := &legacyLoggerService{logger: apicfg.Logger}
+	metadataService := &legacyMetadataService{}
+	optionalAuthMiddleware := middlewares.CreateOptionalAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		apicfg.JWTSecret,
+	)
+	return optionalAuthMiddleware(middlewares.OptionalHandler(handler))
 }

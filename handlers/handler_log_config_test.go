@@ -20,19 +20,19 @@ func (m *MockLoggerService) WithError(err error) *logrus.Entry {
 	return args.Get(0).(*logrus.Entry)
 }
 
-func (m *MockLoggerService) Error(args ...interface{}) {
+func (m *MockLoggerService) Error(args ...any) {
 	m.Called(args...)
 }
 
-func (m *MockLoggerService) Info(args ...interface{}) {
+func (m *MockLoggerService) Info(args ...any) {
 	m.Called(args...)
 }
 
-func (m *MockLoggerService) Debug(args ...interface{}) {
+func (m *MockLoggerService) Debug(args ...any) {
 	m.Called(args...)
 }
 
-func (m *MockLoggerService) Warn(args ...interface{}) {
+func (m *MockLoggerService) Warn(args ...any) {
 	m.Called(args...)
 }
 
@@ -210,4 +210,34 @@ func TestHandlersConfig_LogHandlerSuccess_Legacy(t *testing.T) {
 	assert.NotPanics(t, func() {
 		cfg.LogHandlerSuccess(ctx, action, details, ip, ua)
 	})
+}
+
+func TestLogHandlerError_NilLoggerService(t *testing.T) {
+	cfg := &HandlerConfig{
+		LoggerService: nil,
+	}
+	// Should not panic
+	assert.NotPanics(t, func() {
+		cfg.LogHandlerError(context.Background(), "action", "details", "logMsg", "ip", "ua", assert.AnError)
+	})
+}
+
+func TestLogHandlerSuccess_NilLoggerService(t *testing.T) {
+	cfg := &HandlerConfig{
+		LoggerService: nil,
+	}
+	// Should not panic
+	assert.NotPanics(t, func() {
+		cfg.LogHandlerSuccess(context.Background(), "action", "details", "ip", "ua")
+	})
+}
+
+func TestGetRequestMetadata_NilRequest(t *testing.T) {
+	cfg := &HandlerConfig{
+		RequestMetadataService: nil,
+	}
+	// Should not panic, should return empty strings
+	ip, ua := cfg.GetRequestMetadata(nil)
+	assert.Equal(t, "", ip)
+	assert.Equal(t, "", ua)
 }

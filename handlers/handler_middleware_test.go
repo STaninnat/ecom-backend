@@ -345,3 +345,171 @@ func TestHandlerConfig_HandlerAdminOnlyMiddleware_NonAdminUser(t *testing.T) {
 	mockUser.AssertExpectations(t)
 	mockRequestMetadata.AssertExpectations(t)
 }
+
+func TestHandlerAdminOnlyMiddleware_UnknownRole(t *testing.T) {
+	mockAuth := &MockAuthService{}
+	mockUser := &MockUserService{}
+	mockLogger := &MockLoggerService{}
+	mockRequestMetadata := &MockRequestMetadataService{}
+
+	cfg := &HandlerConfig{
+		AuthService:            mockAuth,
+		UserService:            mockUser,
+		LoggerService:          mockLogger,
+		RequestMetadataService: mockRequestMetadata,
+		JWTSecret:              "test-secret",
+	}
+
+	req := httptest.NewRequest("GET", "/admin", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "admin-token"})
+	w := httptest.NewRecorder()
+
+	expectedUser := database.User{ID: "user999", Role: "unknown"}
+	expectedClaims := &Claims{UserID: "user999"}
+
+	mockRequestMetadata.On("GetIPAddress", req).Return("10.0.0.1")
+	mockRequestMetadata.On("GetUserAgent", req).Return("test-agent")
+	mockAuth.On("ValidateAccessToken", "admin-token", "test-secret").Return(expectedClaims, nil)
+	mockUser.On("GetUserByID", req.Context(), "user999").Return(expectedUser, nil)
+
+	// Set up logger expectations for error logging
+	logger := logrus.New()
+	entry := logger.WithError(nil)
+	mockLogger.On("WithError", mock.Anything).Return(entry).Maybe()
+	mockLogger.On("Error", mock.Anything).Return().Maybe()
+
+	handlerCalled := false
+	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		handlerCalled = true
+	})
+
+	middleware := cfg.HandlerAdminOnlyMiddleware(testHandler)
+	middleware.ServeHTTP(w, req)
+
+	assert.False(t, handlerCalled)
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	mockAuth.AssertExpectations(t)
+	mockUser.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+	mockRequestMetadata.AssertExpectations(t)
+}
+
+func TestHandlerMiddleware_HandlerWritesError(t *testing.T) {
+	mockAuth := &MockAuthService{}
+	mockUser := &MockUserService{}
+	mockLogger := &MockLoggerService{}
+	mockRequestMetadata := &MockRequestMetadataService{}
+
+	cfg := &HandlerConfig{
+		AuthService:            mockAuth,
+		UserService:            mockUser,
+		LoggerService:          mockLogger,
+		RequestMetadataService: mockRequestMetadata,
+		JWTSecret:              "test-secret",
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
+	w := httptest.NewRecorder()
+
+	expectedUser := database.User{ID: "user123", Role: "user"}
+	expectedClaims := &Claims{UserID: "user123"}
+
+	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
+	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
+	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
+	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+
+	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		http.Error(w, "handler error", http.StatusTeapot)
+	})
+
+	middleware := cfg.HandlerMiddleware(testHandler)
+	middleware.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusTeapot, w.Code)
+	mockAuth.AssertExpectations(t)
+	mockUser.AssertExpectations(t)
+	mockRequestMetadata.AssertExpectations(t)
+}
+
+func TestHandlerMiddleware_TokenExpired(t *testing.T) {
+	mockAuth := &MockAuthService{}
+	mockLogger := &MockLoggerService{}
+	mockRequestMetadata := &MockRequestMetadataService{}
+
+	cfg := &HandlerConfig{
+		AuthService:            mockAuth,
+		LoggerService:          mockLogger,
+		RequestMetadataService: mockRequestMetadata,
+		JWTSecret:              "test-secret",
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "expired-token"})
+	w := httptest.NewRecorder()
+
+	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
+	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
+	mockAuth.On("ValidateAccessToken", "expired-token", "test-secret").Return(nil, assert.AnError)
+
+	// Set up logger expectations for error logging
+	logger := logrus.New()
+	entry := logger.WithError(assert.AnError)
+	mockLogger.On("WithError", assert.AnError).Return(entry)
+
+	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		// Should not be called
+		assert.Fail(t, "handler should not be called for expired token")
+	})
+
+	middleware := cfg.HandlerMiddleware(testHandler)
+	middleware.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	mockAuth.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+	mockRequestMetadata.AssertExpectations(t)
+}
+
+func TestHandlerMiddleware_LoggerServiceNil(t *testing.T) {
+	mockAuth := &MockAuthService{}
+	mockUser := &MockUserService{}
+	mockRequestMetadata := &MockRequestMetadataService{}
+
+	cfg := &HandlerConfig{
+		AuthService:            mockAuth,
+		UserService:            mockUser,
+		RequestMetadataService: mockRequestMetadata,
+		JWTSecret:              "test-secret",
+		LoggerService:          nil, // Intentionally nil
+	}
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
+	w := httptest.NewRecorder()
+
+	expectedUser := database.User{ID: "user123", Role: "user"}
+	expectedClaims := &Claims{UserID: "user123"}
+
+	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
+	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
+	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
+	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+
+	handlerCalled := false
+	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		handlerCalled = true
+		assert.Equal(t, expectedUser, user)
+	})
+
+	middleware := cfg.HandlerMiddleware(testHandler)
+	assert.NotPanics(t, func() {
+		middleware.ServeHTTP(w, req)
+	})
+	assert.True(t, handlerCalled)
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockAuth.AssertExpectations(t)
+	mockUser.AssertExpectations(t)
+	mockRequestMetadata.AssertExpectations(t)
+}

@@ -10,6 +10,9 @@ import (
 
 // LogHandlerError logs an error with structured logging and user action tracking
 func (cfg *HandlerConfig) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+	if cfg.LoggerService == nil {
+		return
+	}
 	if err != nil {
 		cfg.LoggerService.WithError(err).Error(logMsg)
 	} else {
@@ -36,6 +39,9 @@ func ErrMsgOrNil(err error) string {
 
 // GetRequestMetadata extracts IP address and user agent from the request
 func (cfg *HandlerConfig) GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
+	if cfg.RequestMetadataService == nil {
+		return "", ""
+	}
 	ip = cfg.RequestMetadataService.GetIPAddress(r)
 	userAgent = cfg.RequestMetadataService.GetUserAgent(r)
 	return

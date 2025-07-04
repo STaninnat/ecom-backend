@@ -36,10 +36,10 @@ type UserService interface {
 // LoggerService defines the interface for logging operations
 type LoggerService interface {
 	WithError(err error) *logrus.Entry
-	Error(args ...interface{})
-	Info(args ...interface{})
-	Debug(args ...interface{})
-	Warn(args ...interface{})
+	Error(args ...any)
+	Info(args ...any)
+	Debug(args ...any)
+	Warn(args ...any)
 }
 
 // RequestMetadataService defines the interface for extracting request metadata
