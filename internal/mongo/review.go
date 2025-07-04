@@ -334,7 +334,7 @@ func (r *ReviewMongo) DeleteReviewsByUserID(ctx context.Context, userID string) 
 }
 
 // GetProductRatingStats gets rating statistics for a product
-func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID string) (map[string]interface{}, error) {
+func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID string) (map[string]any, error) {
 	if productID == "" {
 		return nil, fmt.Errorf("product ID cannot be empty")
 	}
@@ -349,7 +349,7 @@ func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID strin
 		}},
 		{"$project": bson.M{
 			"_id":           0,
-			"averageRating": bson.M{"$round": []interface{}{"$averageRating", 2}},
+			"averageRating": bson.M{"$round": []any{"$averageRating", 2}},
 			"totalReviews":  1,
 			"ratingCounts":  1,
 		}},
@@ -361,13 +361,13 @@ func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID strin
 	}
 	defer cursor.Close(ctx)
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, fmt.Errorf("failed to decode aggregation results: %w", err)
 	}
 
 	if len(results) == 0 {
-		return map[string]interface{}{
+		return map[string]any{
 			"averageRating": 0.0,
 			"totalReviews":  0,
 			"ratingCounts":  []int{},

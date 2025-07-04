@@ -195,7 +195,7 @@ func TestPaginationOptions(t *testing.T) {
 			expected: &PaginationOptions{
 				Page:     2,
 				PageSize: 20,
-				Sort:     map[string]interface{}{"created_at": -1},
+				Sort:     map[string]any{"created_at": -1},
 			},
 		},
 		{
@@ -205,7 +205,7 @@ func TestPaginationOptions(t *testing.T) {
 			expected: &PaginationOptions{
 				Page:     1,
 				PageSize: 10,
-				Sort:     map[string]interface{}{"created_at": -1},
+				Sort:     map[string]any{"created_at": -1},
 			},
 		},
 		{
@@ -215,7 +215,7 @@ func TestPaginationOptions(t *testing.T) {
 			expected: &PaginationOptions{
 				Page:     1,
 				PageSize: 10,
-				Sort:     map[string]interface{}{"created_at": -1},
+				Sort:     map[string]any{"created_at": -1},
 			},
 		},
 		{
@@ -225,7 +225,7 @@ func TestPaginationOptions(t *testing.T) {
 			expected: &PaginationOptions{
 				Page:     1,
 				PageSize: 100,
-				Sort:     map[string]interface{}{"created_at": -1},
+				Sort:     map[string]any{"created_at": -1},
 			},
 		},
 	}
@@ -425,7 +425,7 @@ func TestNewPaginationOptions(t *testing.T) {
 	opt := NewPaginationOptions(2, 20)
 	assert.Equal(t, int64(2), opt.Page)
 	assert.Equal(t, int64(20), opt.PageSize)
-	assert.Equal(t, map[string]interface{}{"created_at": -1}, opt.Sort)
+	assert.Equal(t, map[string]any{"created_at": -1}, opt.Sort)
 
 	// Page less than 1
 	opt = NewPaginationOptions(0, 10)

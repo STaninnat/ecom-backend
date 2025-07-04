@@ -319,7 +319,7 @@ func (c *CartMongo) MergeGuestCartToUser(ctx context.Context, userID string, ite
 }
 
 // GetCartStats gets statistics about carts
-func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]interface{}, error) {
+func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]any, error) {
 	pipeline := []bson.M{
 		{"$group": bson.M{
 			"_id":             nil,
@@ -331,7 +331,7 @@ func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]interface{}, e
 			"_id":             0,
 			"totalCarts":      1,
 			"totalItems":      1,
-			"avgItemsPerCart": bson.M{"$round": []interface{}{"$avgItemsPerCart", 2}},
+			"avgItemsPerCart": bson.M{"$round": []any{"$avgItemsPerCart", 2}},
 		}},
 	}
 
@@ -341,13 +341,13 @@ func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]interface{}, e
 	}
 	defer cursor.Close(ctx)
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, fmt.Errorf("failed to decode aggregation results: %w", err)
 	}
 
 	if len(results) == 0 {
-		return map[string]interface{}{
+		return map[string]any{
 			"totalCarts":      0,
 			"totalItems":      0,
 			"avgItemsPerCart": 0.0,

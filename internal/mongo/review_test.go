@@ -902,7 +902,7 @@ func TestGetProductRatingStats(t *testing.T) {
 		productID   string
 		setupMock   func()
 		expectError bool
-		expected    map[string]interface{}
+		expected    map[string]any
 	}{
 		{
 			name:        "empty product ID should return error",
@@ -920,7 +920,7 @@ func TestGetProductRatingStats(t *testing.T) {
 				mockCollection.On("Aggregate", ctx, mock.AnythingOfType("[]bson.M"), mock.Anything).Return(mockCursor, nil)
 			},
 			expectError: false,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"averageRating": 0.0,
 				"totalReviews":  0,
 				"ratingCounts":  []int{},

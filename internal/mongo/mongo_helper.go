@@ -97,7 +97,7 @@ func (dm *DatabaseManager) Close(ctx context.Context) error {
 type PaginationOptions struct {
 	Page     int64
 	PageSize int64
-	Sort     map[string]interface{}
+	Sort     map[string]any
 }
 
 // NewPaginationOptions creates pagination options with defaults
@@ -115,7 +115,7 @@ func NewPaginationOptions(page, pageSize int64) *PaginationOptions {
 	return &PaginationOptions{
 		Page:     page,
 		PageSize: pageSize,
-		Sort:     map[string]interface{}{"created_at": -1}, // Default sort by creation date desc
+		Sort:     map[string]any{"created_at": -1}, // Default sort by creation date desc
 	}
 }
 
@@ -265,7 +265,7 @@ func CreateIndexes(db *mongo.Database) error {
 	// Cart indexes
 	cartCollection := db.Collection("carts")
 	_, err := cartCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{
+		Keys: map[string]any{
 			"user_id": 1,
 		},
 		Options: options.Index().SetUnique(true),
@@ -277,7 +277,7 @@ func CreateIndexes(db *mongo.Database) error {
 	// Review indexes
 	reviewCollection := db.Collection("reviews")
 	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{
+		Keys: map[string]any{
 			"product_id": 1,
 			"created_at": -1,
 		},
@@ -287,7 +287,7 @@ func CreateIndexes(db *mongo.Database) error {
 	}
 
 	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{
+		Keys: map[string]any{
 			"user_id": 1,
 		},
 	})
@@ -296,7 +296,7 @@ func CreateIndexes(db *mongo.Database) error {
 	}
 
 	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{
+		Keys: map[string]any{
 			"_id": 1,
 		},
 		Options: options.Index().SetUnique(true),

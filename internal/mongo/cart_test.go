@@ -878,7 +878,7 @@ func TestGetCartStats(t *testing.T) {
 		name        string
 		setupMock   func()
 		expectError bool
-		expected    map[string]interface{}
+		expected    map[string]any
 	}{
 		{
 			name: "valid stats should be returned",
@@ -889,7 +889,7 @@ func TestGetCartStats(t *testing.T) {
 				mockCollection.On("Aggregate", ctx, mock.AnythingOfType("[]bson.M"), mock.Anything).Return(mockCursor, nil).Once()
 			},
 			expectError: false,
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"totalCarts":      0,
 				"totalItems":      0,
 				"avgItemsPerCart": 0.0,
