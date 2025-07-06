@@ -11,52 +11,53 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-func (apicfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
+const (
+	GoogleProvider = "google"
+)
+
+// HandlerSignOut handles user logout requests
+// It validates the user's authentication, clears their session,
+// revokes tokens, clears cookies, and handles OAuth provider-specific logout
+func (cfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	userID, storedData, err := apicfg.Auth.ValidateCookieRefreshTokenData(w, r)
+	// Get user info from token
+	userID, storedData, err := cfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		apicfg.LogHandlerError(
+		cfg.LogHandlerError(
 			ctx,
 			"sign_out",
-			"validate cookie failed",
-			"Error validating cookie",
+			"invalid_token",
+			"Error validating authentication token",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	err = apicfg.RedisClient.Del(ctx, auth.RedisRefreshTokenPrefix+userID.String()).Err()
+	// Call business logic service
+	err = cfg.GetAuthService().SignOut(ctx, userID.String(), storedData.Provider)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"sign_out",
-			"delete token failed",
-			"Error deleting refresh token from Redis",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove refresh token from Redis")
+		cfg.handleAuthError(w, r, err, "sign_out", ip, userAgent)
 		return
 	}
 
+	// Clear cookies
 	timeNow := time.Now().UTC()
-	newKeyExpiredAt := timeNow.Add(-1 * time.Hour)
+	expiredTime := timeNow.Add(-1 * time.Hour)
+	auth.SetTokensAsCookies(w, "", "", expiredTime, expiredTime)
 
-	auth.SetTokensAsCookies(w, "", "", newKeyExpiredAt, newKeyExpiredAt)
-
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
-
-	if storedData.Provider == "google" {
-		apicfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
-
+	// Handle Google revoke if needed
+	if storedData.Provider == GoogleProvider {
 		googleRevokeURL := "https://accounts.google.com/o/oauth2/revoke?token=" + storedData.Token
 		http.Redirect(w, r, googleRevokeURL, http.StatusFound)
 		return
 	}
 
-	apicfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
+	// Log success and respond
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
+	cfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Sign out successful",
