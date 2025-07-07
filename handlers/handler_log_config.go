@@ -84,3 +84,6 @@ func GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
 	userAgent = r.UserAgent()
 	return
 }
+
+// Ensure HandlersConfig implements HandlerLogger
+var _ HandlerLogger = (*HandlersConfig)(nil)

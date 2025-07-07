@@ -82,3 +82,10 @@ type OAuthConfig struct {
 // Handler types for different middleware patterns
 type AuthHandler func(http.ResponseWriter, *http.Request, database.User)
 type OptionalHandler func(http.ResponseWriter, *http.Request, *database.User)
+
+// HandlerLogger defines logging methods for handlers
+// Allows for dependency injection and mocking in tests
+type HandlerLogger interface {
+	LogHandlerSuccess(ctx context.Context, action, details, ip, ua string)
+	LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error)
+}
