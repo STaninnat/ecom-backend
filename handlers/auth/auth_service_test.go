@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +59,7 @@ func TestAuthResult(t *testing.T) {
 
 // TestAuthError tests the AuthError struct
 func TestAuthError(t *testing.T) {
-	err := &AuthError{
+	err := &handlers.AppError{
 		Code:    "test_error",
 		Message: "Test error message",
 		Err:     nil,
@@ -73,7 +74,7 @@ func TestAuthError(t *testing.T) {
 // TestAuthError_WithInnerError tests AuthError with an inner error
 func TestAuthError_WithInnerError(t *testing.T) {
 	innerErr := assert.AnError
-	err := &AuthError{
+	err := &handlers.AppError{
 		Code:    "test_error",
 		Message: "Test error message",
 		Err:     innerErr,

@@ -25,7 +25,7 @@ func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Requ
 		Password string `json:"password"`
 	}](w, r)
 	if err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"signup-local",
 			"invalid_request",
@@ -56,7 +56,7 @@ func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Requ
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, result.UserID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "signup-local", "Local signup success", ip, userAgent)
 
 	// Respond
 	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{

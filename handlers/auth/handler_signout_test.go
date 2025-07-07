@@ -135,7 +135,7 @@ func TestHandlerSignOut_InvalidToken(t *testing.T) {
 	// Assertions
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "invalid token", response["error"])
@@ -180,7 +180,7 @@ func TestHandlerSignOut_SignOutFailure(t *testing.T) {
 	// Assertions
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])

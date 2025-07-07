@@ -147,7 +147,7 @@ func TestHandlerRefreshToken_ServiceError(t *testing.T) {
 		Return(userID.String(), refreshTokenData, nil)
 
 	// Mock service error
-	serviceError := &AuthError{Code: "redis_error", Message: "Error storing refresh token"}
+	serviceError := &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token"}
 	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
 		Return(nil, serviceError)
 
@@ -185,7 +185,7 @@ func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
 		Return(userID.String(), refreshTokenData, nil)
 
 	// Mock invalid token error
-	authError := &AuthError{Code: "invalid_token", Message: "Invalid refresh token"}
+	authError := &handlers.AppError{Code: "invalid_token", Message: "Invalid refresh token"}
 	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
 		Return(nil, authError)
 

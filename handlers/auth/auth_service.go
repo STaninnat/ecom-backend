@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
@@ -96,30 +97,34 @@ func NewAuthService(
 	}
 }
 
+// AuthError represents authentication-specific errors
+// Now aliases handlers.AppError for consistency
+type AuthError = handlers.AppError
+
 // SignUp handles user registration with local authentication
 func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*AuthResult, error) {
 	// Check if name exists
 	nameExists, err := s.db.CheckUserExistsByName(ctx, params.Name)
 	if err != nil {
-		return nil, &AuthError{Code: "database_error", Message: "Error checking name existence", Err: err}
+		return nil, &handlers.AppError{Code: "database_error", Message: "Error checking name existence", Err: err}
 	}
 	if nameExists {
-		return nil, &AuthError{Code: "name_exists", Message: "An account with this name already exists"}
+		return nil, &handlers.AppError{Code: "name_exists", Message: "An account with this name already exists"}
 	}
 
 	// Check if email exists
 	emailExists, err := s.db.CheckUserExistsByEmail(ctx, params.Email)
 	if err != nil {
-		return nil, &AuthError{Code: "database_error", Message: "Error checking email existence", Err: err}
+		return nil, &handlers.AppError{Code: "database_error", Message: "Error checking email existence", Err: err}
 	}
 	if emailExists {
-		return nil, &AuthError{Code: "email_exists", Message: "An account with this email already exists"}
+		return nil, &handlers.AppError{Code: "email_exists", Message: "An account with this email already exists"}
 	}
 
 	// Hash password
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		return nil, &AuthError{Code: "hash_error", Message: "Error hashing password", Err: err}
+		return nil, &handlers.AppError{Code: "hash_error", Message: "Error hashing password", Err: err}
 	}
 
 	// Create user
@@ -128,7 +133,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, &AuthError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
+		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
 	defer tx.Rollback()
 
@@ -146,7 +151,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 		UpdatedAt:  timeNow,
 	})
 	if err != nil {
-		return nil, &AuthError{Code: "create_user_error", Message: "Error creating user", Err: err}
+		return nil, &handlers.AppError{Code: "create_user_error", Message: "Error creating user", Err: err}
 	}
 
 	// Generate tokens and store refresh token
@@ -156,7 +161,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, &AuthError{Code: "commit_error", Message: "Error committing transaction", Err: err}
+		return nil, &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
 	}
 
 	return authResult, nil
@@ -167,19 +172,19 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	// Get user by email
 	user, err := s.db.GetUserByEmail(ctx, params.Email)
 	if err != nil {
-		return nil, &AuthError{Code: "user_not_found", Message: "Invalid credentials"}
+		return nil, &handlers.AppError{Code: "user_not_found", Message: "Invalid credentials"}
 	}
 
 	// Check password
 	err = auth.CheckPasswordHash(params.Password, user.Password.String)
 	if err != nil {
-		return nil, &AuthError{Code: "invalid_password", Message: "Invalid credentials"}
+		return nil, &handlers.AppError{Code: "invalid_password", Message: "Invalid credentials"}
 	}
 
 	// Parse user ID
 	userID, err := uuid.Parse(user.ID)
 	if err != nil {
-		return nil, &AuthError{Code: "uuid_error", Message: "Invalid user ID", Err: err}
+		return nil, &handlers.AppError{Code: "uuid_error", Message: "Invalid user ID", Err: err}
 	}
 
 	timeNow := time.Now().UTC()
@@ -187,7 +192,7 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	// Update user status and generate tokens
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, &AuthError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
+		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
 	defer tx.Rollback()
 
@@ -199,7 +204,7 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 		UpdatedAt: timeNow,
 	})
 	if err != nil {
-		return nil, &AuthError{Code: "update_user_error", Message: "Error updating user status", Err: err}
+		return nil, &handlers.AppError{Code: "update_user_error", Message: "Error updating user status", Err: err}
 	}
 
 	// Generate tokens and store refresh token
@@ -209,7 +214,7 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, &AuthError{Code: "commit_error", Message: "Error committing transaction", Err: err}
+		return nil, &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
 	}
 
 	return authResult, nil
@@ -220,7 +225,7 @@ func (s *authServiceImpl) SignOut(ctx context.Context, userID string, provider s
 	// Delete refresh token from Redis
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
 	if err != nil {
-		return &AuthError{Code: "redis_error", Message: "Error deleting refresh token", Err: err}
+		return &handlers.AppError{Code: "redis_error", Message: "Error deleting refresh token", Err: err}
 	}
 
 	return nil
@@ -242,7 +247,7 @@ func (s *authServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
 	// Store state in Redis
 	err := s.redisClient.Set(context.Background(), OAuthStateKeyPrefix+state, OAuthStateValid, OAuthStateTTL).Err()
 	if err != nil {
-		return "", &AuthError{Code: "redis_error", Message: "Error storing state", Err: err}
+		return "", &handlers.AppError{Code: "redis_error", Message: "Error storing state", Err: err}
 	}
 
 	authURL := s.oauth.AuthCodeURL(state, oauth2.AccessTypeOffline)
@@ -254,41 +259,23 @@ func (s *authServiceImpl) HandleGoogleAuth(ctx context.Context, code string, sta
 	// Validate state
 	redisState, err := s.redisClient.Get(ctx, OAuthStateKeyPrefix+state).Result()
 	if err != nil || redisState != OAuthStateValid {
-		return nil, &AuthError{Code: "invalid_state", Message: "Invalid state parameter"}
+		return nil, &handlers.AppError{Code: "invalid_state", Message: "Invalid state parameter"}
 	}
 
 	// Exchange code for token
 	token, err := s.oauth.Exchange(ctx, code)
 	if err != nil {
-		return nil, &AuthError{Code: "token_exchange_error", Message: "Failed to exchange token", Err: err}
+		return nil, &handlers.AppError{Code: "token_exchange_error", Message: "Failed to exchange token", Err: err}
 	}
 
 	// Get user info from Google
 	userInfo, err := s.getUserInfoFromGoogle(token)
 	if err != nil {
-		return nil, &AuthError{Code: "google_api_error", Message: "Failed to get user info", Err: err}
+		return nil, &handlers.AppError{Code: "google_api_error", Message: "Failed to get user info", Err: err}
 	}
 
 	// Handle user authentication
 	return s.handleGoogleUserAuth(ctx, userInfo, token)
-}
-
-// AuthError represents authentication-specific errors
-type AuthError struct {
-	Code    string
-	Message string
-	Err     error
-}
-
-func (e *AuthError) Error() string {
-	if e.Err != nil {
-		return e.Message + ": " + e.Err.Error()
-	}
-	return e.Message
-}
-
-func (e *AuthError) Unwrap() error {
-	return e.Err
 }
 
 // Helper methods
@@ -300,13 +287,13 @@ func (s *authServiceImpl) generateAndStoreTokens(userID, provider string, timeNo
 
 	accessToken, refreshToken, err := s.auth.GenerateTokens(userID, accessTokenExpiresAt)
 	if err != nil {
-		return nil, &AuthError{Code: "token_generation_error", Message: "Error generating tokens", Err: err}
+		return nil, &handlers.AppError{Code: "token_generation_error", Message: "Error generating tokens", Err: err}
 	}
 
 	// Store refresh token
 	err = s.auth.StoreRefreshTokenInRedis(nil, userID, refreshToken, provider, refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
-		return nil, &AuthError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
+		return nil, &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
 	}
 
 	return &AuthResult{
@@ -324,7 +311,7 @@ func (s *authServiceImpl) refreshGoogleToken(ctx context.Context, userID, refres
 	tokenSource := s.oauth.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		return nil, &AuthError{Code: "google_token_error", Message: "Failed to refresh Google token", Err: err}
+		return nil, &handlers.AppError{Code: "google_token_error", Message: "Failed to refresh Google token", Err: err}
 	}
 
 	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
@@ -344,7 +331,7 @@ func (s *authServiceImpl) refreshLocalToken(ctx context.Context, userID string, 
 	// Delete old refresh token
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
 	if err != nil {
-		return nil, &AuthError{Code: "redis_error", Message: "Error deleting old refresh token", Err: err}
+		return nil, &handlers.AppError{Code: "redis_error", Message: "Error deleting old refresh token", Err: err}
 	}
 
 	// Generate new tokens and store refresh token
@@ -371,7 +358,7 @@ func (s *authServiceImpl) getUserInfoFromGoogle(token *oauth2.Token) (*UserGoogl
 func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGoogleInfo, token *oauth2.Token) (*AuthResult, error) {
 	existingUser, err := s.db.CheckExistsAndGetIDByEmail(ctx, user.Email)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, &AuthError{Code: "database_error", Message: "Error checking user existence", Err: err}
+		return nil, &handlers.AppError{Code: "database_error", Message: "Error checking user existence", Err: err}
 	}
 
 	var userID string
@@ -380,7 +367,7 @@ func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGo
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, &AuthError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
+		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
 	defer tx.Rollback()
 
@@ -400,7 +387,7 @@ func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGo
 			UpdatedAt:  timeNow,
 		})
 		if err != nil {
-			return nil, &AuthError{Code: "create_user_error", Message: "Error creating user", Err: err}
+			return nil, &handlers.AppError{Code: "create_user_error", Message: "Error creating user", Err: err}
 		}
 	} else {
 		userID = existingUser.ID
@@ -409,19 +396,19 @@ func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGo
 	// Generate access token
 	accessToken, err := s.auth.GenerateAccessToken(userID, timeNow.Add(AccessTokenTTL))
 	if err != nil {
-		return nil, &AuthError{Code: "token_generation_error", Message: "Error generating access token", Err: err}
+		return nil, &handlers.AppError{Code: "token_generation_error", Message: "Error generating access token", Err: err}
 	}
 
 	// Handle refresh token
 	refreshToken := token.RefreshToken
 	if refreshToken == "" {
-		return nil, &AuthError{Code: "no_refresh_token", Message: "No refresh token provided by Google"}
+		return nil, &handlers.AppError{Code: "no_refresh_token", Message: "No refresh token provided by Google"}
 	}
 
 	// Store refresh token
 	err = s.auth.StoreRefreshTokenInRedis(nil, userID, refreshToken, "google", RefreshTokenTTL)
 	if err != nil {
-		return nil, &AuthError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
+		return nil, &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
 	}
 
 	// Update user signin status
@@ -432,11 +419,11 @@ func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGo
 		Email:      user.Email,
 	})
 	if err != nil {
-		return nil, &AuthError{Code: "update_user_error", Message: "Error updating user status", Err: err}
+		return nil, &handlers.AppError{Code: "update_user_error", Message: "Error updating user status", Err: err}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, &AuthError{Code: "commit_error", Message: "Error committing transaction", Err: err}
+		return nil, &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
 	}
 
 	return &AuthResult{

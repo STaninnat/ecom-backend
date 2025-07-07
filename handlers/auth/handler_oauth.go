@@ -26,7 +26,7 @@ func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *htt
 	state := auth.GenerateState()
 	authURL, err := cfg.GetAuthService().GenerateGoogleAuthURL(state)
 	if err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			r.Context(),
 			"signin-google",
 			"auth_url_generation_failed",
@@ -53,7 +53,7 @@ func (cfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *h
 	code := r.URL.Query().Get("code")
 
 	if state == "" || code == "" {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"callback-google",
 			"missing_parameters",
@@ -76,7 +76,7 @@ func (cfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *h
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, result.UserID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
 
 	// Respond
 	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{

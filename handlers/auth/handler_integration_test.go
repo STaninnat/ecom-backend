@@ -569,7 +569,7 @@ func TestAuthServiceMethods(t *testing.T) {
 
 	t.Run("AuthError_Error", func(t *testing.T) {
 		// Create auth error
-		err := &AuthError{
+		err := &handlers.AppError{
 			Code:    "test_error",
 			Message: "Test error message",
 		}
@@ -584,7 +584,7 @@ func TestAuthServiceMethods(t *testing.T) {
 	t.Run("AuthError_Unwrap", func(t *testing.T) {
 		// Create auth error with inner error
 		innerErr := assert.AnError
-		err := &AuthError{
+		err := &handlers.AppError{
 			Code:    "test_error",
 			Message: "Test error message",
 			Err:     innerErr,

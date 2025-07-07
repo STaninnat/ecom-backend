@@ -25,7 +25,7 @@ func (cfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Req
 	// Get user info from token
 	userID, storedData, err := cfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"sign_out",
 			"invalid_token",
@@ -57,7 +57,7 @@ func (cfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Req
 
 	// Log success and respond
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
-	cfg.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "sign_out", "Sign out success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Sign out successful",

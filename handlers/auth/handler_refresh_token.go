@@ -20,7 +20,7 @@ func (cfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *htt
 	// Get user info from token
 	userID, storedData, err := cfg.Auth.ValidateCookieRefreshTokenData(w, r)
 	if err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"refresh_token",
 			"invalid_token",
@@ -43,7 +43,7 @@ func (cfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *htt
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID.String())
-	cfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh token success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh token success", ip, userAgent)
 
 	// Respond
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{

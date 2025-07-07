@@ -16,83 +16,38 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type mockUserService struct {
+type mockUpdateUserService struct {
 	mock.Mock
 }
 
-func (m *mockUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
-	args := m.Called(ctx, user)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*UserResponse), args.Error(1)
+func (m *mockUpdateUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
+	return nil, nil // not used in update tests
 }
 
-func (m *mockUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
+func (m *mockUpdateUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
 	args := m.Called(ctx, user, params)
 	return args.Error(0)
 }
 
-type mockHandlerLogger struct {
+func (m *mockUpdateUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
+	return database.User{}, nil // not used in these tests
+}
+
+type mockUpdateHandlerLogger struct {
 	mock.Mock
 }
 
-func (m *mockHandlerLogger) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+func (m *mockUpdateHandlerLogger) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
 	m.Called(ctx, action, details, logMsg, ip, ua, err)
 }
 
-func (m *mockHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
+func (m *mockUpdateHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	m.Called(ctx, action, details, ip, ua)
 }
 
-func TestHandlerGetUser_Success(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
-	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
-	}
-	user := database.User{ID: "u1"}
-	resp := &UserResponse{ID: "u1", Name: "Test"}
-	mockService.On("GetUser", mock.Anything, user).Return(resp, nil)
-	mockLogger.On("LogHandlerSuccess", mock.Anything, "get_user", "Get user info success", mock.Anything, mock.Anything).Return()
-	r := httptest.NewRequest("GET", "/user", nil)
-	w := httptest.NewRecorder()
-
-	cfg.HandlerGetUser(w, r, user)
-	assert.Equal(t, http.StatusOK, w.Code)
-	var got UserResponse
-	json.NewDecoder(w.Body).Decode(&got)
-	assert.Equal(t, *resp, got)
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
-
-func TestHandlerGetUser_ServiceError(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
-	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
-	}
-	user := database.User{ID: "u1"}
-	mockService.On("GetUser", mock.Anything, user).Return(nil, errors.New("fail"))
-	mockLogger.On("LogHandlerError", mock.Anything, "get_user", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-
-	r := httptest.NewRequest("GET", "/user", nil)
-	w := httptest.NewRecorder()
-
-	cfg.HandlerGetUser(w, r, user)
-	assert.NotEqual(t, http.StatusOK, w.Code)
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
-
 func TestHandlerUpdateUser_Success(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
+	mockService := new(mockUpdateUserService)
+	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
 		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
 		Logger:         mockLogger,
@@ -107,34 +62,49 @@ func TestHandlerUpdateUser_Success(t *testing.T) {
 	r := httptest.NewRequest("PUT", "/user", bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 
-	cfg.HandlerUpdateUser(w, r, user)
-	assert.Equal(t, http.StatusNoContent, w.Code)
+	// Set user in context
+	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, user))
+
+	cfg.HandlerUpdateUser(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp handlers.HandlerResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	assert.Equal(t, "Updated user info successful", resp.Message)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }
 
 func TestHandlerUpdateUser_ValidationError(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
+	mockService := new(mockUpdateUserService)
+	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
 		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
 		Logger:         mockLogger,
 		userService:    mockService,
 	}
 	user := database.User{ID: "u1"}
-	params := map[string]string{"name": "", "email": ""}
-	body, _ := json.Marshal(params)
+	// Send invalid JSON that will fail auth.DecodeAndValidate
+	invalidJSON := `{"name": "A", "email": "a@b.com", "phone": 123}` // phone should be string, not number
+	body := []byte(invalidJSON)
 	r := httptest.NewRequest("PUT", "/user", bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 
-	cfg.HandlerUpdateUser(w, r, user)
+	// Set user in context
+	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, user))
+
+	// Expect error logging for invalid JSON
+	mockLogger.On("LogHandlerError", mock.Anything, "update_user", "invalid_request", "Invalid update payload", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	cfg.HandlerUpdateUser(w, r)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.NotEmpty(t, w.Body.String())
 	mockService.AssertNotCalled(t, "UpdateUser")
+	mockLogger.AssertExpectations(t)
 }
 
 func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
+	mockService := new(mockUpdateUserService)
+	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
 		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
 		Logger:         mockLogger,
@@ -149,7 +119,7 @@ func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 		mock.Anything, // ctx
 		"update_user",
 		"invalid_request",
-		"Failed to parse body",
+		"Invalid update payload",
 		mock.Anything, // ip
 		mock.Anything, // userAgent
 		mock.Anything, // error (should be an error like unexpected EOF)
@@ -158,15 +128,19 @@ func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 	r := httptest.NewRequest("PUT", "/user", bytes.NewBufferString(invalidJSON))
 	w := httptest.NewRecorder()
 
-	cfg.HandlerUpdateUser(w, r, user)
+	// Set user in context
+	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, user))
+
+	cfg.HandlerUpdateUser(w, r)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.NotEmpty(t, w.Body.String())
 	mockService.AssertNotCalled(t, "UpdateUser")
 	mockLogger.AssertExpectations(t)
 }
 
 func TestHandlerUpdateUser_ServiceError(t *testing.T) {
-	mockService := new(mockUserService)
-	mockLogger := new(mockHandlerLogger)
+	mockService := new(mockUpdateUserService)
+	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
 		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
 		Logger:         mockLogger,
@@ -181,8 +155,38 @@ func TestHandlerUpdateUser_ServiceError(t *testing.T) {
 	r := httptest.NewRequest("PUT", "/user", bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 
-	cfg.HandlerUpdateUser(w, r, user)
+	// Set user in context
+	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, user))
+
+	cfg.HandlerUpdateUser(w, r)
 	assert.NotEqual(t, http.StatusNoContent, w.Code)
 	mockService.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+}
+
+func TestHandlerUpdateUser_UserNotFoundInContext(t *testing.T) {
+	mockService := new(mockUpdateUserService)
+	mockLogger := new(mockUpdateHandlerLogger)
+	cfg := &HandlersUserConfig{
+		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
+		Logger:         mockLogger,
+		userService:    mockService,
+	}
+
+	// Mock error logging for user not found
+	mockLogger.On("LogHandlerError", mock.Anything, "update_user", "user_not_found", "User not found in context", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	params := UpdateUserParams{Name: "A", Email: "a@b.com", Phone: "123", Address: "Addr"}
+	body, _ := json.Marshal(params)
+	r := httptest.NewRequest("PUT", "/user", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	// Don't set user in context - this should trigger the error path
+
+	cfg.HandlerUpdateUser(w, r)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	var errorResp map[string]any
+	json.NewDecoder(w.Body).Decode(&errorResp)
+	assert.Contains(t, errorResp, "error")
 	mockLogger.AssertExpectations(t)
 }

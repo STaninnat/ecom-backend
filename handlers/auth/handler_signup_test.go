@@ -116,8 +116,8 @@ func TestHandlerSignUp_MissingFields(t *testing.T) {
 	}
 	requestBody := map[string]string{"name": "Test User", "email": "test@example.com"}
 	jsonBody, _ := json.Marshal(requestBody)
-	authError := &AuthError{Code: "hash_error", Message: "Error hashing password"}
-	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: ""}).Return(nil, authError)
+	appError := &handlers.AppError{Code: "hash_error", Message: "Error hashing password"}
+	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: ""}).Return(nil, appError)
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signup-local", "hash_error", "Error hashing password", mock.Anything, mock.Anything, nil).Return()
 	req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -143,8 +143,8 @@ func TestHandlerSignUp_DuplicateEmail(t *testing.T) {
 	}
 	requestBody := map[string]string{"name": "Test User", "email": "test@example.com", "password": "password123"}
 	jsonBody, _ := json.Marshal(requestBody)
-	authError := &AuthError{Code: "email_exists", Message: "An account with this email already exists"}
-	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, authError)
+	appError := &handlers.AppError{Code: "email_exists", Message: "An account with this email already exists"}
+	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, appError)
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signup-local", "email_exists", "An account with this email already exists", mock.Anything, mock.Anything, nil).Return()
 	req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -170,8 +170,8 @@ func TestHandlerSignUp_DuplicateName(t *testing.T) {
 	}
 	requestBody := map[string]string{"name": "Test User", "email": "test@example.com", "password": "password123"}
 	jsonBody, _ := json.Marshal(requestBody)
-	authError := &AuthError{Code: "name_exists", Message: "An account with this name already exists"}
-	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, authError)
+	appError := &handlers.AppError{Code: "name_exists", Message: "An account with this name already exists"}
+	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, appError)
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signup-local", "name_exists", "An account with this name already exists", mock.Anything, mock.Anything, nil).Return()
 	req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -198,8 +198,8 @@ func TestHandlerSignUp_DatabaseError(t *testing.T) {
 	requestBody := map[string]string{"name": "Test User", "email": "test@example.com", "password": "password123"}
 	jsonBody, _ := json.Marshal(requestBody)
 	dbError := errors.New("database connection failed")
-	authError := &AuthError{Code: "database_error", Message: "Database error", Err: dbError}
-	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, authError)
+	appError := &handlers.AppError{Code: "database_error", Message: "Database error", Err: dbError}
+	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(nil, appError)
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signup-local", "database_error", "Database error", mock.Anything, mock.Anything, dbError).Return()
 	req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")

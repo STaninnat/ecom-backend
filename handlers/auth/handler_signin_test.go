@@ -189,11 +189,11 @@ func TestHandlerSignIn_MissingFields(t *testing.T) {
 	jsonBody, _ := json.Marshal(requestBody)
 
 	// Setup expectations - the service will be called with empty password
-	authError := &AuthError{Code: "invalid_password", Message: "Invalid credentials"}
+	appError := &handlers.AppError{Code: "invalid_password", Message: "Invalid credentials"}
 	mockAuthService.On("SignIn", mock.Anything, SignInParams{
 		Email:    "test@example.com",
 		Password: "",
-	}).Return(nil, authError)
+	}).Return(nil, appError)
 
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-local", "invalid_password", "Invalid credentials", mock.Anything, mock.Anything, nil).Return()
 
@@ -238,11 +238,11 @@ func TestHandlerSignIn_UserNotFound(t *testing.T) {
 	jsonBody, _ := json.Marshal(requestBody)
 
 	// Setup expectations
-	authError := &AuthError{Code: "user_not_found", Message: "Invalid credentials"}
+	appError := &handlers.AppError{Code: "user_not_found", Message: "Invalid credentials"}
 	mockAuthService.On("SignIn", mock.Anything, SignInParams{
 		Email:    "nonexistent@example.com",
 		Password: "password123",
-	}).Return(nil, authError)
+	}).Return(nil, appError)
 
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-local", "user_not_found", "Invalid credentials", mock.Anything, mock.Anything, nil).Return()
 
@@ -288,11 +288,11 @@ func TestHandlerSignIn_InvalidPassword(t *testing.T) {
 	jsonBody, _ := json.Marshal(requestBody)
 
 	// Setup expectations
-	authError := &AuthError{Code: "invalid_password", Message: "Invalid credentials"}
+	appError := &handlers.AppError{Code: "invalid_password", Message: "Invalid credentials"}
 	mockAuthService.On("SignIn", mock.Anything, SignInParams{
 		Email:    "test@example.com",
 		Password: "wrongpassword",
-	}).Return(nil, authError)
+	}).Return(nil, appError)
 
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-local", "invalid_password", "Invalid credentials", mock.Anything, mock.Anything, nil).Return()
 
@@ -339,11 +339,11 @@ func TestHandlerSignIn_DatabaseError(t *testing.T) {
 
 	// Setup expectations
 	dbError := errors.New("database connection failed")
-	authError := &AuthError{Code: "database_error", Message: "Database error", Err: dbError}
+	appError := &handlers.AppError{Code: "database_error", Message: "Database error", Err: dbError}
 	mockAuthService.On("SignIn", mock.Anything, SignInParams{
 		Email:    "test@example.com",
 		Password: "password123",
-	}).Return(nil, authError)
+	}).Return(nil, appError)
 
 	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-local", "database_error", "Database error", mock.Anything, mock.Anything, dbError).Return()
 

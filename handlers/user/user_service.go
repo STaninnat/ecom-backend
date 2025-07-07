@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 )
@@ -16,6 +17,7 @@ import (
 type UserService interface {
 	GetUser(ctx context.Context, user database.User) (*UserResponse, error)
 	UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error
+	GetUserByID(ctx context.Context, id string) (database.User, error)
 }
 
 // UpdateUserParams represents parameters for updating user info
@@ -63,11 +65,11 @@ func (s *userServiceImpl) GetUser(ctx context.Context, user database.User) (*Use
 // UpdateUser updates the user's information in the database
 func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
 	if s.dbConn == nil {
-		return &UserError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
+		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
 	}
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return &UserError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
+		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
 	defer tx.Rollback()
 
@@ -82,29 +84,23 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, pa
 		UpdatedAt: time.Now().UTC(),
 	})
 	if err != nil {
-		return &UserError{Code: "update_failed", Message: "DB update error", Err: err}
+		return &handlers.AppError{Code: "update_failed", Message: "DB update error", Err: err}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return &UserError{Code: "commit_error", Message: "Error committing transaction", Err: err}
+		return &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
 	}
 
 	return nil
 }
 
-// UserError is a custom error type for user operations
-// It provides a code and message for error handling
-// Similar to AuthError in auth_service.go
-type UserError struct {
-	Code    string
-	Message string
-	Err     error
-}
+// Now aliases handlers.AppError for consistency
+type UserError = handlers.AppError
 
-func (e *UserError) Error() string {
-	return e.Message
-}
-
-func (e *UserError) Unwrap() error {
-	return e.Err
+// Add GetUserByID to userServiceImpl to satisfy handlers.UserService
+func (s *userServiceImpl) GetUserByID(ctx context.Context, id string) (database.User, error) {
+	if s.db == nil {
+		return database.User{}, errors.New("db is nil")
+	}
+	return s.db.GetUserByID(ctx, id)
 }

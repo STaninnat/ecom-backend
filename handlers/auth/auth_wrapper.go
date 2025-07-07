@@ -13,9 +13,11 @@ import (
 // HandlersAuthConfig contains the configuration for auth handlers
 // It embeds the base handlers config and cart config, and provides
 // access to the auth service for business logic operations
+// Now includes a Logger field for consistent logging
 type HandlersAuthConfig struct {
 	*handlers.HandlersConfig
 	*cart.HandlersCartConfig
+	Logger      handlers.HandlerLogger
 	authService AuthService
 	authMutex   sync.RWMutex
 }
@@ -51,6 +53,11 @@ func (cfg *HandlersAuthConfig) InitAuthService() error {
 		cfg.RedisClient,
 		cfg.OAuth.Google,
 	)
+
+	// Set Logger if not already set
+	if cfg.Logger == nil {
+		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+	}
 
 	return nil
 }
@@ -94,23 +101,23 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 func (cfg *HandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if authErr, ok := err.(*AuthError); ok {
-		switch authErr.Code {
+	if appErr, ok := err.(*handlers.AppError); ok {
+		switch appErr.Code {
 		case "name_exists", "email_exists", "user_not_found", "invalid_password":
-			cfg.LogHandlerError(ctx, operation, authErr.Code, authErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, authErr.Message)
+			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
+			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
 		case "database_error", "transaction_error", "create_user_error", "hash_error", "token_generation_error", "redis_error", "commit_error", "update_user_error", "uuid_error":
-			cfg.LogHandlerError(ctx, operation, authErr.Code, authErr.Message, ip, userAgent, authErr.Err)
+			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		case "invalid_state", "token_exchange_error", "google_api_error", "no_refresh_token", "google_token_error":
-			cfg.LogHandlerError(ctx, operation, authErr.Code, authErr.Message, ip, userAgent, authErr.Err)
-			middlewares.RespondWithError(w, http.StatusBadRequest, authErr.Message)
+			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
+			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
 		default:
-			cfg.LogHandlerError(ctx, operation, "internal_error", authErr.Message, ip, userAgent, authErr.Err)
+			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		}
 	} else {
-		cfg.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
+		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
