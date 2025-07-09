@@ -47,9 +47,9 @@ func (cfg *HandlersAuthConfig) InitAuthService() error {
 	defer cfg.authMutex.Unlock()
 
 	cfg.authService = NewAuthService(
-		cfg.DB,
-		cfg.DBConn,
-		cfg.Auth,
+		&DBQueriesAdapter{cfg.DB},
+		&DBConnAdapter{cfg.DBConn},
+		&AuthConfigAdapter{cfg.Auth},
 		cfg.RedisClient,
 		cfg.OAuth.Google,
 	)
@@ -84,9 +84,9 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 			cfg.authService = NewAuthService(nil, nil, nil, nil, nil)
 		} else {
 			cfg.authService = NewAuthService(
-				cfg.DB,
-				cfg.DBConn,
-				cfg.Auth,
+				&DBQueriesAdapter{cfg.DB},
+				&DBConnAdapter{cfg.DBConn},
+				&AuthConfigAdapter{cfg.Auth},
 				cfg.RedisClient,
 				cfg.OAuth.Google,
 			)

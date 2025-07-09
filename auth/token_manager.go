@@ -88,6 +88,12 @@ func (cfg *AuthConfig) GenerateTokens(userID string, accessTokenExpiresAt time.T
 }
 
 func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refreshToken, provider string, ttl time.Duration) error {
+	if cfg == nil {
+		return errors.New("AuthConfig is nil")
+	}
+	if cfg.APIConfig == nil {
+		return errors.New("APIConfig is nil")
+	}
 	if cfg.RedisClient == nil {
 		return errors.New("RedisClient is nil")
 	}

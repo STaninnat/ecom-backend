@@ -329,3 +329,57 @@ func TestHandlerGoogleCallback_Exists(t *testing.T) {
 	// Verify mock expectations
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
+
+func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
+	mockHandlersConfig := &MockHandlersConfig{}
+	mockAuthService := &MockAuthService{}
+	realAuthConfig := &auth.AuthConfig{}
+
+	cfg := &HandlersAuthConfig{
+		HandlersConfig: &handlers.HandlersConfig{
+			Auth: realAuthConfig,
+		},
+		Logger:      mockHandlersConfig,
+		authService: mockAuthService,
+	}
+
+	req := httptest.NewRequest("GET", "/auth/google/signin", nil)
+	w := httptest.NewRecorder()
+
+	// Set up mock expectations for the error path
+	mockAuthService.On("GenerateGoogleAuthURL", mock.Anything).Return("", errors.New("failed to generate URL"))
+	mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-google", "auth_url_generation_failed", "Error generating Google auth URL", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	cfg.HandlerGoogleSignIn(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Contains(t, w.Body.String(), "Failed to initiate Google signin")
+	mockAuthService.AssertExpectations(t)
+	mockHandlersConfig.AssertExpectations(t)
+}
+
+func TestRealHandlerGoogleCallback_MissingParameters(t *testing.T) {
+	mockHandlersConfig := &MockHandlersConfig{}
+	mockAuthService := &MockAuthService{}
+	realAuthConfig := &auth.AuthConfig{}
+
+	cfg := &HandlersAuthConfig{
+		HandlersConfig: &handlers.HandlersConfig{
+			Auth: realAuthConfig,
+		},
+		Logger:      mockHandlersConfig,
+		authService: mockAuthService,
+	}
+
+	req := httptest.NewRequest("GET", "/auth/google/callback", nil)
+	w := httptest.NewRecorder()
+
+	// Set up mock expectations for the missing parameters error path
+	mockHandlersConfig.On("LogHandlerError", mock.Anything, "callback-google", "missing_parameters", "Missing state or code parameter", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	cfg.HandlerGoogleCallback(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Missing required parameters")
+	mockHandlersConfig.AssertExpectations(t)
+}

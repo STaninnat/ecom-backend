@@ -12,7 +12,6 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 )
 
@@ -71,24 +70,61 @@ type AuthResult struct {
 	IsNewUser           bool
 }
 
-// authServiceImpl implements AuthService
-type authServiceImpl struct {
-	db          *database.Queries
-	dbConn      *sql.DB
-	auth        *auth.AuthConfig
-	redisClient redis.Cmdable
-	oauth       *oauth2.Config
+// Define interfaces for dependencies
+
+type DBQueries interface {
+	CheckUserExistsByName(ctx context.Context, name string) (bool, error)
+	CheckUserExistsByEmail(ctx context.Context, email string) (bool, error)
+	CreateUser(ctx context.Context, params database.CreateUserParams) error
+	GetUserByEmail(ctx context.Context, email string) (database.User, error)
+	UpdateUserStatusByID(ctx context.Context, params database.UpdateUserStatusByIDParams) error
+	WithTx(tx DBTx) DBQueries
+	CheckExistsAndGetIDByEmail(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error)
+	UpdateUserSigninStatusByEmail(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error
+}
+
+type DBConn interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (DBTx, error)
+}
+
+type DBTx interface {
+	Commit() error
+	Rollback() error
+}
+
+type AuthConfig interface {
+	HashPassword(password string) (string, error)
+	GenerateTokens(userID string, expiresAt time.Time) (string, string, error)
+	StoreRefreshTokenInRedis(ctx context.Context, userID, refreshToken, provider string, ttl time.Duration) error
+	GenerateAccessToken(userID string, expiresAt time.Time) (string, error)
+}
+
+// OAuth2Exchanger abstracts all OAuth2 operations needed by authServiceImpl
+type OAuth2Exchanger interface {
+	Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error)
+	AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string
+	TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource
+	Client(ctx context.Context, t *oauth2.Token) *http.Client
+}
+
+// AuthServiceImpl implements AuthService
+type AuthServiceImpl struct {
+	db          DBQueries
+	dbConn      DBConn
+	auth        AuthConfig
+	redisClient MinimalRedis
+	oauth       OAuth2Exchanger
 }
 
 // NewAuthService creates a new AuthService instance
 func NewAuthService(
-	db *database.Queries,
-	dbConn *sql.DB,
-	auth *auth.AuthConfig,
-	redisClient redis.Cmdable,
-	oauth *oauth2.Config,
+	db DBQueries,
+	dbConn DBConn,
+	auth AuthConfig,
+	redisClient MinimalRedis,
+	oauth OAuth2Exchanger,
 ) AuthService {
-	return &authServiceImpl{
+	return &AuthServiceImpl{
 		db:          db,
 		dbConn:      dbConn,
 		auth:        auth,
@@ -102,7 +138,7 @@ func NewAuthService(
 type AuthError = handlers.AppError
 
 // SignUp handles user registration with local authentication
-func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*AuthResult, error) {
+func (s *AuthServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*AuthResult, error) {
 	// Check if name exists
 	nameExists, err := s.db.CheckUserExistsByName(ctx, params.Name)
 	if err != nil {
@@ -122,7 +158,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	}
 
 	// Hash password
-	hashedPassword, err := auth.HashPassword(params.Password)
+	hashedPassword, err := s.auth.HashPassword(params.Password)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "hash_error", Message: "Error hashing password", Err: err}
 	}
@@ -155,7 +191,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	}
 
 	// Generate tokens and store refresh token
-	authResult, err := s.generateAndStoreTokens(userID.String(), LocalProvider, timeNow, true)
+	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), LocalProvider, timeNow, true)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +204,7 @@ func (s *authServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 }
 
 // SignIn handles user authentication with local credentials
-func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*AuthResult, error) {
+func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*AuthResult, error) {
 	// Get user by email
 	user, err := s.db.GetUserByEmail(ctx, params.Email)
 	if err != nil {
@@ -208,7 +244,7 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	}
 
 	// Generate tokens and store refresh token
-	authResult, err := s.generateAndStoreTokens(userID.String(), LocalProvider, timeNow, false)
+	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), LocalProvider, timeNow, false)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +257,7 @@ func (s *authServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 }
 
 // SignOut handles user logout by clearing refresh tokens
-func (s *authServiceImpl) SignOut(ctx context.Context, userID string, provider string) error {
+func (s *AuthServiceImpl) SignOut(ctx context.Context, userID string, provider string) error {
 	// Delete refresh token from Redis
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
 	if err != nil {
@@ -232,7 +268,7 @@ func (s *authServiceImpl) SignOut(ctx context.Context, userID string, provider s
 }
 
 // RefreshToken handles token refresh for both local and Google authentication
-func (s *authServiceImpl) RefreshToken(ctx context.Context, userID string, provider string, refreshToken string) (*AuthResult, error) {
+func (s *AuthServiceImpl) RefreshToken(ctx context.Context, userID string, provider string, refreshToken string) (*AuthResult, error) {
 	timeNow := time.Now().UTC()
 
 	if provider == "google" {
@@ -243,7 +279,7 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, userID string, provi
 }
 
 // GenerateGoogleAuthURL generates the Google OAuth authorization URL
-func (s *authServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
+func (s *AuthServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
 	// Store state in Redis
 	err := s.redisClient.Set(context.Background(), OAuthStateKeyPrefix+state, OAuthStateValid, OAuthStateTTL).Err()
 	if err != nil {
@@ -255,7 +291,7 @@ func (s *authServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
 }
 
 // HandleGoogleAuth handles the Google OAuth callback and user authentication
-func (s *authServiceImpl) HandleGoogleAuth(ctx context.Context, code string, state string) (*AuthResult, error) {
+func (s *AuthServiceImpl) HandleGoogleAuth(ctx context.Context, code string, state string) (*AuthResult, error) {
 	// Validate state
 	redisState, err := s.redisClient.Get(ctx, OAuthStateKeyPrefix+state).Result()
 	if err != nil || redisState != OAuthStateValid {
@@ -269,7 +305,7 @@ func (s *authServiceImpl) HandleGoogleAuth(ctx context.Context, code string, sta
 	}
 
 	// Get user info from Google
-	userInfo, err := s.getUserInfoFromGoogle(token)
+	userInfo, err := s.getUserInfoFromGoogle(token, "https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		return nil, &handlers.AppError{Code: "google_api_error", Message: "Failed to get user info", Err: err}
 	}
@@ -281,7 +317,7 @@ func (s *authServiceImpl) HandleGoogleAuth(ctx context.Context, code string, sta
 // Helper methods
 
 // generateAndStoreTokens generates access and refresh tokens and stores the refresh token
-func (s *authServiceImpl) generateAndStoreTokens(userID, provider string, timeNow time.Time, isNewUser bool) (*AuthResult, error) {
+func (s *AuthServiceImpl) generateAndStoreTokens(ctx context.Context, userID, provider string, timeNow time.Time, isNewUser bool) (*AuthResult, error) {
 	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
 	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
@@ -291,7 +327,7 @@ func (s *authServiceImpl) generateAndStoreTokens(userID, provider string, timeNo
 	}
 
 	// Store refresh token
-	err = s.auth.StoreRefreshTokenInRedis(nil, userID, refreshToken, provider, refreshTokenExpiresAt.Sub(timeNow))
+	err = s.auth.StoreRefreshTokenInRedis(ctx, userID, refreshToken, provider, refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		return nil, &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
 	}
@@ -307,7 +343,7 @@ func (s *authServiceImpl) generateAndStoreTokens(userID, provider string, timeNo
 }
 
 // refreshGoogleToken handles Google OAuth token refresh
-func (s *authServiceImpl) refreshGoogleToken(ctx context.Context, userID, refreshToken string, timeNow time.Time) (*AuthResult, error) {
+func (s *AuthServiceImpl) refreshGoogleToken(ctx context.Context, userID, refreshToken string, timeNow time.Time) (*AuthResult, error) {
 	tokenSource := s.oauth.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
 	newToken, err := tokenSource.Token()
 	if err != nil {
@@ -327,7 +363,7 @@ func (s *authServiceImpl) refreshGoogleToken(ctx context.Context, userID, refres
 }
 
 // refreshLocalToken handles local authentication token refresh
-func (s *authServiceImpl) refreshLocalToken(ctx context.Context, userID string, timeNow time.Time) (*AuthResult, error) {
+func (s *AuthServiceImpl) refreshLocalToken(ctx context.Context, userID string, timeNow time.Time) (*AuthResult, error) {
 	// Delete old refresh token
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
 	if err != nil {
@@ -335,13 +371,21 @@ func (s *authServiceImpl) refreshLocalToken(ctx context.Context, userID string, 
 	}
 
 	// Generate new tokens and store refresh token
-	return s.generateAndStoreTokens(userID, LocalProvider, timeNow, false)
+	return s.generateAndStoreTokens(ctx, userID, LocalProvider, timeNow, false)
 }
 
 // getUserInfoFromGoogle retrieves user information from Google API
-func (s *authServiceImpl) getUserInfoFromGoogle(token *oauth2.Token) (*UserGoogleInfo, error) {
-	client := s.oauth.Client(context.Background(), token)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+func (s *AuthServiceImpl) getUserInfoFromGoogle(token *oauth2.Token, userInfoURL string, clientOpt ...*http.Client) (*UserGoogleInfo, error) {
+	if userInfoURL == "" {
+		userInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
+	}
+	var client *http.Client
+	if len(clientOpt) > 0 && clientOpt[0] != nil {
+		client = clientOpt[0]
+	} else {
+		client = s.oauth.Client(context.Background(), token)
+	}
+	resp, err := client.Get(userInfoURL)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +399,7 @@ func (s *authServiceImpl) getUserInfoFromGoogle(token *oauth2.Token) (*UserGoogl
 }
 
 // handleGoogleUserAuth handles Google OAuth user authentication and account creation
-func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGoogleInfo, token *oauth2.Token) (*AuthResult, error) {
+func (s *AuthServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGoogleInfo, token *oauth2.Token) (*AuthResult, error) {
 	existingUser, err := s.db.CheckExistsAndGetIDByEmail(ctx, user.Email)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Error checking user existence", Err: err}
@@ -406,7 +450,7 @@ func (s *authServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGo
 	}
 
 	// Store refresh token
-	err = s.auth.StoreRefreshTokenInRedis(nil, userID, refreshToken, "google", RefreshTokenTTL)
+	err = s.auth.StoreRefreshTokenInRedis(ctx, userID, refreshToken, "google", RefreshTokenTTL)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
 	}
