@@ -10,30 +10,37 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/go-redis/redismock/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// func TestInitAuthService_Success(t *testing.T) {
-// 	apiCfg := &config.APIConfig{}
-// 	apiCfg.DB = (*database.Queries)(nil) // Correct type, non-nil
-// 	cfg := &HandlersAuthConfig{
-// 		HandlersConfig: &handlers.HandlersConfig{
-// 			APIConfig: apiCfg,
-// 			Auth:      &auth.AuthConfig{},
-// 			OAuth:     &config.OAuthConfig{},
-// 			Logger:    logrus.New(),
-// 		},
-// 		HandlersCartConfig: nil,
-// 	}
+// TestInitAuthService_Success verifies successful initialization of the AuthService with all dependencies present.
+func TestInitAuthService_Success(t *testing.T) {
+	apiCfg := &config.APIConfig{}
+	apiCfg.DB = &database.Queries{}
 
-// 	// Test successful initialization
-// 	err := cfg.InitAuthService()
-// 	assert.NoError(t, err)
-// 	assert.NotNil(t, cfg.authService)
-// }
+	mockRedis, _ := redismock.NewClientMock()
+	apiCfg.RedisClient = mockRedis
 
+	cfg := &HandlersAuthConfig{
+		HandlersConfig: &handlers.HandlersConfig{
+			APIConfig: apiCfg,
+			Auth:      &auth.AuthConfig{},
+			OAuth:     &config.OAuthConfig{},
+			Logger:    logrus.New(),
+		},
+		HandlersCartConfig: nil,
+	}
+
+	// Test successful initialization
+	err := cfg.InitAuthService()
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg.authService)
+}
+
+// TestInitAuthService_MissingDB checks that initialization fails gracefully when the database is missing.
 func TestInitAuthService_MissingDB(t *testing.T) {
 	cfg := &HandlersAuthConfig{
 		HandlersConfig: &handlers.HandlersConfig{
@@ -51,6 +58,7 @@ func TestInitAuthService_MissingDB(t *testing.T) {
 	assert.Contains(t, err.Error(), "not initialized")
 }
 
+// TestInitAuthService_MissingAuth checks that initialization fails gracefully when the Auth config is missing.
 func TestInitAuthService_MissingAuth(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
@@ -70,6 +78,7 @@ func TestInitAuthService_MissingAuth(t *testing.T) {
 	assert.Equal(t, "database not initialized", err.Error())
 }
 
+// TestInitAuthService_MissingRedis checks that initialization does not panic when Redis is missing.
 func TestInitAuthService_MissingRedis(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
@@ -90,6 +99,7 @@ func TestInitAuthService_MissingRedis(t *testing.T) {
 	})
 }
 
+// TestGetAuthService_Initialized verifies that GetAuthService returns the initialized service.
 func TestGetAuthService_Initialized(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
@@ -113,6 +123,7 @@ func TestGetAuthService_Initialized(t *testing.T) {
 	}
 }
 
+// TestGetAuthService_NotInitialized checks that GetAuthService auto-initializes the service if not already done.
 func TestGetAuthService_NotInitialized(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
@@ -132,6 +143,7 @@ func TestGetAuthService_NotInitialized(t *testing.T) {
 	assert.NotNil(t, cfg.authService)
 }
 
+// TestGetAuthService_ThreadSafety checks that GetAuthService is thread-safe under concurrent access.
 func TestGetAuthService_ThreadSafety(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
@@ -147,7 +159,7 @@ func TestGetAuthService_ThreadSafety(t *testing.T) {
 
 	// Test concurrent access to GetAuthService
 	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			service := cfg.GetAuthService()
 			assert.NotNil(t, service)
@@ -156,7 +168,7 @@ func TestGetAuthService_ThreadSafety(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 
@@ -164,6 +176,7 @@ func TestGetAuthService_ThreadSafety(t *testing.T) {
 	assert.NotNil(t, cfg.authService)
 }
 
+// TestHandleAuthError_AllErrorCodes verifies handleAuthError returns correct status codes and messages for all error codes.
 func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	cfg := &HandlersAuthConfig{
@@ -248,6 +261,7 @@ func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 	})
 }
 
+// TestInitAuthService_AllValidationBranches covers all validation branches in InitAuthService for missing dependencies.
 func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test missing HandlersConfig
 	t.Run("MissingHandlersConfig", func(t *testing.T) {

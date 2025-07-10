@@ -12,6 +12,7 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 )
 
@@ -24,7 +25,8 @@ const (
 	OAuthStateTTL = 10 * time.Minute
 
 	// Providers
-	LocalProvider = "local"
+	LocalProvider  = "local"
+	GoogleProvider = "google"
 
 	// User roles
 	UserRole = "user"
@@ -60,6 +62,13 @@ type SignInParams struct {
 	Password string
 }
 
+// UserGoogleInfo represents user information retrieved from Google OAuth
+type UserGoogleInfo struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 // AuthResult represents the result of authentication operations
 type AuthResult struct {
 	UserID              string
@@ -90,6 +99,12 @@ type DBConn interface {
 type DBTx interface {
 	Commit() error
 	Rollback() error
+}
+
+type MinimalRedis interface {
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
 }
 
 type AuthConfig interface {

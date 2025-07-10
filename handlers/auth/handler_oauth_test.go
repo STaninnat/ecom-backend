@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// HandlerGoogleSignIn is a test implementation that uses the mocked dependencies
+// HandlerGoogleSignIn is a test handler that simulates the Google sign-in flow using mocked dependencies.
 func (cfg *TestHandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
@@ -37,7 +37,7 @@ func (cfg *TestHandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r 
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-// HandlerGoogleCallback is a test implementation that uses the mocked dependencies
+// HandlerGoogleCallback is a test handler that simulates the Google OAuth callback using mocked dependencies.
 func (cfg *TestHandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -78,6 +78,7 @@ func (cfg *TestHandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, 
 	})
 }
 
+// TestHandlerGoogleSignIn_Success checks that a successful Google sign-in redirects to the correct auth URL.
 func TestHandlerGoogleSignIn_Success(t *testing.T) {
 	cfg := setupTestConfig()
 	expectedAuthURL := "https://accounts.google.com/oauth/authorize?state=test-state&client_id=test-client"
@@ -101,6 +102,7 @@ func TestHandlerGoogleSignIn_Success(t *testing.T) {
 	cfg.authService.(*MockAuthService).AssertExpectations(t)
 }
 
+// TestHandlerGoogleSignIn_AuthURLGenerationFailed checks that a failure to generate the Google auth URL returns a 500 error and logs appropriately.
 func TestHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -127,6 +129,7 @@ func TestHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_Success checks that a successful Google OAuth callback sets cookies and returns a success response.
 func TestHandlerGoogleCallback_Success(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := "test-user-id"
@@ -167,6 +170,7 @@ func TestHandlerGoogleCallback_Success(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_MissingState checks that a missing state parameter returns a bad request error and logs appropriately.
 func TestHandlerGoogleCallback_MissingState(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -188,6 +192,7 @@ func TestHandlerGoogleCallback_MissingState(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_MissingCode checks that a missing code parameter returns a bad request error and logs appropriately.
 func TestHandlerGoogleCallback_MissingCode(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -209,6 +214,7 @@ func TestHandlerGoogleCallback_MissingCode(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_MissingBothParameters checks that missing both state and code returns a bad request error and logs appropriately.
 func TestHandlerGoogleCallback_MissingBothParameters(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -230,6 +236,7 @@ func TestHandlerGoogleCallback_MissingBothParameters(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_ServiceError checks that a service error during Google callback returns a bad request and logs appropriately.
 func TestHandlerGoogleCallback_ServiceError(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -257,6 +264,7 @@ func TestHandlerGoogleCallback_ServiceError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_GenericError checks that a generic error during Google callback returns a 500 error and logs appropriately.
 func TestHandlerGoogleCallback_GenericError(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -285,6 +293,7 @@ func TestHandlerGoogleCallback_GenericError(t *testing.T) {
 }
 
 // Test that the handlers exist and can be called (basic smoke tests)
+// TestHandlerGoogleSignIn_Exists is a smoke test to ensure the Google sign-in handler exists and can be called without panicking.
 func TestHandlerGoogleSignIn_Exists(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -310,6 +319,7 @@ func TestHandlerGoogleSignIn_Exists(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerGoogleCallback_Exists is a smoke test to ensure the Google callback handler exists and can be called without panicking.
 func TestHandlerGoogleCallback_Exists(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -330,6 +340,7 @@ func TestHandlerGoogleCallback_Exists(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestRealHandlerGoogleSignIn_AuthURLGenerationFailed checks the real handler for auth URL generation failure and proper error handling.
 func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
@@ -358,6 +369,7 @@ func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	mockHandlersConfig.AssertExpectations(t)
 }
 
+// TestRealHandlerGoogleCallback_MissingParameters checks the real handler for missing parameters and proper error handling.
 func TestRealHandlerGoogleCallback_MissingParameters(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}

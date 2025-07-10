@@ -10,13 +10,6 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// UserGoogleInfo represents user information retrieved from Google OAuth
-type UserGoogleInfo struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-}
-
 // HandlerGoogleSignIn initiates the Google OAuth signin process
 // It generates a state parameter and redirects the user to Google's authorization URL
 func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {

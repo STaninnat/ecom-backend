@@ -10,60 +10,12 @@ import (
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/handlers/cart"
-	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func setupTestConfig() *TestHandlersAuthConfig {
-	return &TestHandlersAuthConfig{
-		MockHandlersConfig: &MockHandlersConfig{},
-		MockCartConfig:     &MockCartConfig{},
-		Auth:               &mockAuthConfig{},
-		authService:        &MockAuthService{},
-	}
-}
-
-// HandlerRefreshToken is a test implementation that uses the mocked dependencies
-func (cfg *TestHandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	// Get user info from token using mocked auth
-	userID, storedData, err := cfg.Auth.ValidateCookieRefreshTokenData(w, r)
-	if err != nil {
-		cfg.LogHandlerError(
-			ctx,
-			"refresh_token",
-			"invalid_token",
-			"Error validating authentication token",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-
-	// Call business logic service
-	result, err := cfg.GetAuthService().RefreshToken(ctx, userID, storedData.Provider, storedData.Token)
-	if err != nil {
-		cfg.handleAuthError(w, r, err, "refresh_token", ip, userAgent)
-		return
-	}
-
-	// Set new cookies
-	auth.SetTokensAsCookies(w, result.AccessToken, result.RefreshToken, result.AccessTokenExpires, result.RefreshTokenExpires)
-
-	// Log success
-	ctxWithUserID := ctx // We don't have utils.ContextKeyUserID in test context
-	cfg.LogHandlerSuccess(ctxWithUserID, "refresh_token", "Refresh token success", ip, userAgent)
-
-	// Respond
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Token refreshed successfully",
-	})
-}
-
+// TestHandlerRefreshToken_Success verifies successful token refresh and checks response and cookies.
 func TestHandlerRefreshToken_Success(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -108,6 +60,7 @@ func TestHandlerRefreshToken_Success(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_InvalidToken checks that an invalid refresh token returns unauthorized and logs appropriately.
 func TestHandlerRefreshToken_InvalidToken(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -135,6 +88,7 @@ func TestHandlerRefreshToken_InvalidToken(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_ServiceError ensures a service error during refresh is handled and logged correctly.
 func TestHandlerRefreshToken_ServiceError(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -173,6 +127,7 @@ func TestHandlerRefreshToken_ServiceError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_InvalidTokenError checks that an AppError for invalid token is handled as internal error.
 func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -211,6 +166,7 @@ func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_GenericError ensures a generic error during refresh is handled as internal server error.
 func TestHandlerRefreshToken_GenericError(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -249,7 +205,7 @@ func TestHandlerRefreshToken_GenericError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
-// Test that the handler exists and can be called (basic smoke test)
+// TestHandlerRefreshToken_Exists is a smoke test to ensure the handler exists and can be called without panicking.
 func TestHandlerRefreshToken_Exists(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -276,6 +232,7 @@ func TestHandlerRefreshToken_Exists(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_EmptyToken checks that refresh with an empty token still succeeds if service allows.
 func TestHandlerRefreshToken_EmptyToken(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -319,6 +276,7 @@ func TestHandlerRefreshToken_EmptyToken(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_DatabaseError ensures a database error during refresh is handled and logged correctly.
 func TestHandlerRefreshToken_DatabaseError(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -356,6 +314,7 @@ func TestHandlerRefreshToken_DatabaseError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_TokenExpiredError checks that an expired token returns a bad request and logs appropriately.
 func TestHandlerRefreshToken_TokenExpiredError(t *testing.T) {
 	cfg := setupTestConfig()
 	userID := uuid.New()
@@ -393,6 +352,7 @@ func TestHandlerRefreshToken_TokenExpiredError(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestHandlerRefreshToken_ValidationErrorWithNilData checks that a validation error with nil data returns unauthorized and logs appropriately.
 func TestHandlerRefreshToken_ValidationErrorWithNilData(t *testing.T) {
 	cfg := setupTestConfig()
 
@@ -419,6 +379,7 @@ func TestHandlerRefreshToken_ValidationErrorWithNilData(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
+// TestRealHandlerRefreshToken_InvalidToken checks that the handler returns 401 when the refresh token is invalid or missing.
 func TestRealHandlerRefreshToken_InvalidToken(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
@@ -444,6 +405,7 @@ func TestRealHandlerRefreshToken_InvalidToken(t *testing.T) {
 	mockHandlersConfig.AssertExpectations(t)
 }
 
+// TestRealHandlerRefreshToken_ServiceError checks the real HandlerRefreshToken for service error handling and unauthorized response.
 func TestRealHandlerRefreshToken_ServiceError(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
@@ -470,7 +432,7 @@ func TestRealHandlerRefreshToken_ServiceError(t *testing.T) {
 	mockHandlersConfig.AssertExpectations(t)
 }
 
-// TestRealHandlerRefreshToken_Direct tests the real HandlerRefreshToken method directly
+// TestRealHandlerRefreshToken_Direct tests the real HandlerRefreshToken method directly for various scenarios and expected responses.
 func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 	// Create real config with mocks
 	cfg := &HandlersAuthConfig{
@@ -550,7 +512,7 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 	}
 }
 
-// TestRealHandlerRefreshToken_ValidationError tests the real HandlerRefreshToken with validation errors
+// TestRealHandlerRefreshToken_ValidationError tests the real HandlerRefreshToken with validation errors and checks unauthorized response.
 func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
 		HandlersConfig: &handlers.HandlersConfig{
@@ -577,7 +539,7 @@ func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
-// TestRealHandlerRefreshToken_AppError tests the real HandlerRefreshToken with AppError
+// TestRealHandlerRefreshToken_AppError tests the real HandlerRefreshToken with AppError and checks unauthorized response.
 func TestRealHandlerRefreshToken_AppError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
 		HandlersConfig: &handlers.HandlersConfig{

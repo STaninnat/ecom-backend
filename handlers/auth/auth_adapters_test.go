@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// --- DBQueriesAdapter basic instantiation/interface test ---
+// TestDBQueriesAdapter_Instantiation verifies that a DBQueriesAdapter can be instantiated and is not nil.
 func TestDBQueriesAdapter_Instantiation(t *testing.T) {
 	adapter := &DBQueriesAdapter{Queries: nil}
 	assert.NotNil(t, adapter)
 }
 
-// --- AuthConfigAdapter meaningful tests ---
+// TestAuthConfigAdapter_HashPassword tests the HashPassword method for both short and valid passwords, checking for correct error handling and hash generation.
 func TestAuthConfigAdapter_HashPassword(t *testing.T) {
 	adapter := &AuthConfigAdapter{AuthConfig: &auth.AuthConfig{}}
 	hash, err := adapter.HashPassword("short")
@@ -30,6 +30,7 @@ func TestAuthConfigAdapter_HashPassword(t *testing.T) {
 	assert.NotEmpty(t, hash)
 }
 
+// TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases tests StoreRefreshTokenInRedis for various context and config error cases.
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 	// Create adapter with properly initialized AuthConfig
 	authConfig := &auth.AuthConfig{
@@ -60,73 +61,7 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 	assert.Contains(t, err.Error(), "AuthConfig is nil")
 }
 
-// --- DBQueriesAdapter method forwarding tests ---
-type fakeQueries struct {
-	CheckUserExistsByNameFunc         func(ctx context.Context, name string) (bool, error)
-	CheckUserExistsByEmailFunc        func(ctx context.Context, email string) (bool, error)
-	CreateUserFunc                    func(ctx context.Context, params database.CreateUserParams) error
-	GetUserByEmailFunc                func(ctx context.Context, email string) (database.User, error)
-	UpdateUserStatusByIDFunc          func(ctx context.Context, params database.UpdateUserStatusByIDParams) error
-	WithTxFunc                        func(tx interface{}) *fakeQueries
-	CheckExistsAndGetIDByEmailFunc    func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error)
-	UpdateUserSigninStatusByEmailFunc func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error
-}
-
-func (f *fakeQueries) CheckUserExistsByName(ctx context.Context, name string) (bool, error) {
-	return f.CheckUserExistsByNameFunc(ctx, name)
-}
-func (f *fakeQueries) CheckUserExistsByEmail(ctx context.Context, email string) (bool, error) {
-	return f.CheckUserExistsByEmailFunc(ctx, email)
-}
-func (f *fakeQueries) CreateUser(ctx context.Context, params database.CreateUserParams) error {
-	return f.CreateUserFunc(ctx, params)
-}
-func (f *fakeQueries) GetUserByEmail(ctx context.Context, email string) (database.User, error) {
-	return f.GetUserByEmailFunc(ctx, email)
-}
-func (f *fakeQueries) UpdateUserStatusByID(ctx context.Context, params database.UpdateUserStatusByIDParams) error {
-	return f.UpdateUserStatusByIDFunc(ctx, params)
-}
-func (f *fakeQueries) WithTx(tx interface{}) *fakeQueries {
-	return f.WithTxFunc(tx)
-}
-func (f *fakeQueries) CheckExistsAndGetIDByEmail(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
-	return f.CheckExistsAndGetIDByEmailFunc(ctx, email)
-}
-func (f *fakeQueries) UpdateUserSigninStatusByEmail(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
-	return f.UpdateUserSigninStatusByEmailFunc(ctx, params)
-}
-
-// For testing, define a minimal DBQueries interface and use composition instead of embedding
-type testDBQueriesAdapter struct {
-	*fakeQueries
-}
-
-func (a *testDBQueriesAdapter) CheckUserExistsByName(ctx context.Context, name string) (bool, error) {
-	return a.fakeQueries.CheckUserExistsByName(ctx, name)
-}
-func (a *testDBQueriesAdapter) CheckUserExistsByEmail(ctx context.Context, email string) (bool, error) {
-	return a.fakeQueries.CheckUserExistsByEmail(ctx, email)
-}
-func (a *testDBQueriesAdapter) CreateUser(ctx context.Context, params database.CreateUserParams) error {
-	return a.fakeQueries.CreateUser(ctx, params)
-}
-func (a *testDBQueriesAdapter) GetUserByEmail(ctx context.Context, email string) (database.User, error) {
-	return a.fakeQueries.GetUserByEmail(ctx, email)
-}
-func (a *testDBQueriesAdapter) UpdateUserStatusByID(ctx context.Context, params database.UpdateUserStatusByIDParams) error {
-	return a.fakeQueries.UpdateUserStatusByID(ctx, params)
-}
-func (a *testDBQueriesAdapter) WithTx(tx interface{}) *fakeQueries {
-	return a.fakeQueries.WithTx(tx)
-}
-func (a *testDBQueriesAdapter) CheckExistsAndGetIDByEmail(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
-	return a.fakeQueries.CheckExistsAndGetIDByEmail(ctx, email)
-}
-func (a *testDBQueriesAdapter) UpdateUserSigninStatusByEmail(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
-	return a.fakeQueries.UpdateUserSigninStatusByEmail(ctx, params)
-}
-
+// TestDBQueriesAdapter_Methods tests all DBQueriesAdapter methods using a fakeQueries implementation for correct forwarding and error handling.
 func TestDBQueriesAdapter_Methods(t *testing.T) {
 	ctx := context.Background()
 	fq := &fakeQueries{
@@ -227,7 +162,7 @@ func TestDBQueriesAdapter_Methods(t *testing.T) {
 // 	assert.Error(t, err)
 // }
 
-// --- AuthConfigAdapter GenerateTokens/GenerateAccessToken tests ---
+// TestAuthConfigAdapter_GenerateTokens tests the GenerateTokens method for correct access and refresh token generation.
 func TestAuthConfigAdapter_GenerateTokens(t *testing.T) {
 	authCfg := &auth.AuthConfig{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
@@ -238,6 +173,7 @@ func TestAuthConfigAdapter_GenerateTokens(t *testing.T) {
 	assert.NotEmpty(t, refresh)
 }
 
+// TestAuthConfigAdapter_GenerateAccessToken tests the GenerateAccessToken method for correct token generation.
 func TestAuthConfigAdapter_GenerateAccessToken(t *testing.T) {
 	authCfg := &auth.AuthConfig{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
