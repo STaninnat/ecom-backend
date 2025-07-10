@@ -16,35 +16,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type mockUpdateUserService struct {
-	mock.Mock
-}
-
-func (m *mockUpdateUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
-	return nil, nil // not used in update tests
-}
-
-func (m *mockUpdateUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
-	args := m.Called(ctx, user, params)
-	return args.Error(0)
-}
-
-func (m *mockUpdateUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
-	return database.User{}, nil // not used in these tests
-}
-
-type mockUpdateHandlerLogger struct {
-	mock.Mock
-}
-
-func (m *mockUpdateHandlerLogger) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
-	m.Called(ctx, action, details, logMsg, ip, ua, err)
-}
-
-func (m *mockUpdateHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
-	m.Called(ctx, action, details, ip, ua)
-}
-
+// TestHandlerUpdateUser_Success tests that HandlerUpdateUser successfully updates
+// user information when valid parameters are provided
 func TestHandlerUpdateUser_Success(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
@@ -74,6 +47,8 @@ func TestHandlerUpdateUser_Success(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerUpdateUser_ValidationError tests that HandlerUpdateUser returns a validation
+// error when the request payload contains invalid data types
 func TestHandlerUpdateUser_ValidationError(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
@@ -102,6 +77,8 @@ func TestHandlerUpdateUser_ValidationError(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerUpdateUser_InvalidJSON tests that HandlerUpdateUser returns an error
+// when the request body contains malformed JSON
 func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
@@ -138,6 +115,8 @@ func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerUpdateUser_ServiceError tests that HandlerUpdateUser properly handles
+// errors returned by the user service
 func TestHandlerUpdateUser_ServiceError(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
@@ -164,6 +143,8 @@ func TestHandlerUpdateUser_ServiceError(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerUpdateUser_UserNotFoundInContext tests that HandlerUpdateUser returns
+// an error when no user is found in the request context
 func TestHandlerUpdateUser_UserNotFoundInContext(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)

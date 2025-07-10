@@ -116,3 +116,19 @@ func (cfg *HandlersUserConfig) extractUserFromRequest(r *http.Request) (user dat
 
 	return user, nil
 }
+
+// AuthHandler wrappers for router
+func (cfg *HandlersUserConfig) AuthHandlerGetUser(w http.ResponseWriter, r *http.Request, user database.User) {
+	ctx := context.WithValue(r.Context(), contextKeyUser, user)
+	cfg.HandlerGetUser(w, r.WithContext(ctx))
+}
+
+func (cfg *HandlersUserConfig) AuthHandlerUpdateUser(w http.ResponseWriter, r *http.Request, user database.User) {
+	ctx := context.WithValue(r.Context(), contextKeyUser, user)
+	cfg.HandlerUpdateUser(w, r.WithContext(ctx))
+}
+
+func (cfg *HandlersUserConfig) AuthHandlerPromoteUserToAdmin(w http.ResponseWriter, r *http.Request, user database.User) {
+	ctx := context.WithValue(r.Context(), contextKeyUser, user)
+	cfg.HandlerPromoteUserToAdmin(w, r.WithContext(ctx))
+}

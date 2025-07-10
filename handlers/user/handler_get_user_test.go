@@ -15,38 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type mockGetUserService struct {
-	mock.Mock
-}
-
-func (m *mockGetUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
-	args := m.Called(ctx, user)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*UserResponse), args.Error(1)
-}
-
-func (m *mockGetUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
-	return database.User{}, nil // not used in these tests
-}
-
-func (m *mockGetUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
-	return nil // not used in these tests
-}
-
-type mockGetHandlerLogger struct {
-	mock.Mock
-}
-
-func (m *mockGetHandlerLogger) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
-	m.Called(ctx, action, details, logMsg, ip, ua, err)
-}
-
-func (m *mockGetHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
-	m.Called(ctx, action, details, ip, ua)
-}
-
+// TestHandlerGetUser_Success tests that HandlerGetUser successfully retrieves
+// and returns user information when a valid user is in the context
 func TestHandlerGetUser_Success(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
@@ -74,6 +44,8 @@ func TestHandlerGetUser_Success(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerGetUser_ServiceError tests that HandlerGetUser properly handles
+// errors returned by the user service
 func TestHandlerGetUser_ServiceError(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
@@ -103,6 +75,8 @@ func TestHandlerGetUser_ServiceError(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerGetUser_UserNotFoundInContext tests that HandlerGetUser returns
+// an unauthorized error when no user is found in the request context
 func TestHandlerGetUser_UserNotFoundInContext(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
@@ -128,6 +102,8 @@ func TestHandlerGetUser_UserNotFoundInContext(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+// TestHandlerGetUser_EmptyUserData tests that HandlerGetUser correctly handles
+// users with empty/null fields and returns them properly
 func TestHandlerGetUser_EmptyUserData(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)

@@ -18,6 +18,7 @@ type UserService interface {
 	GetUser(ctx context.Context, user database.User) (*UserResponse, error)
 	UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error
 	GetUserByID(ctx context.Context, id string) (database.User, error)
+	PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error
 }
 
 // UpdateUserParams represents parameters for updating user info
@@ -91,6 +92,43 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, pa
 		return &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
 	}
 
+	return nil
+}
+
+// PromoteUserToAdmin promotes a user to admin, only if the acting user is admin
+func (s *userServiceImpl) PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error {
+	if adminUser.Role != "admin" {
+		return &handlers.AppError{Code: "unauthorized_user", Message: "Admin privileges required"}
+	}
+	if s.dbConn == nil {
+		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
+	}
+	tx, err := s.dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
+	}
+	defer tx.Rollback()
+
+	queries := s.db.WithTx(tx)
+	targetUser, err := queries.GetUserByID(ctx, targetUserID)
+	if err != nil {
+		return &handlers.AppError{Code: "user_not_found", Message: "Target user not found", Err: err}
+	}
+	if targetUser.Role == "admin" {
+		return &handlers.AppError{Code: "already_admin", Message: "User is already admin"}
+	}
+
+	err = queries.UpdateUserRole(ctx, database.UpdateUserRoleParams{
+		Role: "admin",
+		ID:   targetUserID,
+	})
+	if err != nil {
+		return &handlers.AppError{Code: "update_error", Message: "Failed to update user role", Err: err}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return &handlers.AppError{Code: "commit_error", Message: "Error committing transaction", Err: err}
+	}
 	return nil
 }
 
