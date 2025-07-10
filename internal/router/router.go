@@ -10,7 +10,6 @@ import (
 	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product"
 	reviewhandlers "github.com/STaninnat/ecom-backend/handlers/review"
-	rolehandlers "github.com/STaninnat/ecom-backend/handlers/role"
 	uploadawshandlers "github.com/STaninnat/ecom-backend/handlers/upload_aws"
 	uploadhandlers "github.com/STaninnat/ecom-backend/handlers/upload_local"
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
@@ -51,7 +50,6 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	fs := http.FileServer(http.Dir("./uploads"))
 	router.Handle("/static/*", http.StripPrefix("/static/", fs))
 
-	roleHandlersConfig := &rolehandlers.HandlersRoleConfig{HandlersConfig: apicfg.HandlersConfig}
 	authHandlersConfig := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
 	userHandlersConfig := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
 	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
@@ -97,8 +95,8 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
 	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllCategories))
 
-	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerGetUser))
-	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlersConfig.HandlerUpdateUser))
+	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlersConfig.AuthHandlerGetUser))
+	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlersConfig.AuthHandlerUpdateUser))
 
 	v1Router.Get("/products/{id}", apicfg.HandlerMiddleware(productHandlersConfig.HandlerGetProductByID))
 
@@ -131,7 +129,7 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	v1Router.Delete("/reviews/{id}", apicfg.HandlerMiddleware(reviewHandlersConfig.HandlerDeleteReviewByID))
 
 	// admin endpoint
-	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(roleHandlersConfig.PromoteUserToAdmin))
+	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(userHandlersConfig.AuthHandlerPromoteUserToAdmin))
 
 	v1Router.Post("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateCategory))
 	v1Router.Put("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateCategory))
