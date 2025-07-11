@@ -11,30 +11,22 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
+// HandlerGetAllProducts handles HTTP GET requests to retrieve all products.
+// It checks if the user is an admin, fetches products accordingly, logs the event, and responds with the product list.
+// On error, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: *database.User representing the authenticated user (may be nil)
+func (cfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	var (
-		products []database.Product
-		err      error
-	)
-
-	if user.Role == "admin" {
-		products, err = apicfg.DB.GetAllProducts(ctx)
-	} else {
-		products, err = apicfg.DB.GetAllActiveProducts(ctx)
-	}
-
+	isAdmin := user != nil && user.Role == "admin"
+	products, err := cfg.GetProductService().GetAllProducts(ctx, isAdmin)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_products",
-			"query failed",
-			"Failed to fetch products",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Couldn't fetch products")
+		cfg.handleProductError(w, r, err, "get_products", ip, userAgent)
 		return
 	}
 
@@ -44,53 +36,45 @@ func (apicfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get_products", "Get all products success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_products", "Get all products success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, products)
 }
 
-func (apicfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerGetProductByID handles HTTP GET requests to retrieve a product by its ID.
+// It extracts the product ID from the URL, checks admin status, fetches the product, logs the event, and responds with the product data.
+// On error or missing ID, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
 	productID := chi.URLParam(r, "id")
 	if productID == "" {
-		apicfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_product_by_id",
-			"missing product id",
-			"ID of product is empty",
+			"invalid_request",
+			"Missing product ID",
 			ip, userAgent, nil,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing product ID")
 		return
 	}
 
-	var (
-		product database.Product
-		err     error
-	)
-
-	if user.Role == "admin" {
-		product, err = apicfg.DB.GetProductByID(ctx, productID)
-	} else {
-		product, err = apicfg.DB.GetActiveProductByID(ctx, productID)
-	}
-
+	isAdmin := user.Role == "admin"
+	product, err := cfg.GetProductService().GetProductByID(ctx, productID, isAdmin)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_product_by_id",
-			"query failed",
-			"Product not found or error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusNotFound, "Product not found")
+		cfg.handleProductError(w, r, err, "get_product_by_id", ip, userAgent)
 		return
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get_product_by_id", "Get products success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_product_by_id", "Get products success", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, product)
 }
