@@ -6,6 +6,7 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
+	categoryhandlers "github.com/STaninnat/ecom-backend/handlers/category"
 	orderhandlers "github.com/STaninnat/ecom-backend/handlers/order"
 	paymenthandlers "github.com/STaninnat/ecom-backend/handlers/payment"
 	producthandlers "github.com/STaninnat/ecom-backend/handlers/product"
@@ -52,7 +53,12 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	authHandlersConfig := &authhandlers.HandlersAuthConfig{HandlersConfig: apicfg.HandlersConfig}
 	userHandlersConfig := &userhandlers.HandlersUserConfig{HandlersConfig: apicfg.HandlersConfig}
-	productHandlersConfig := &producthandlers.HandlersProductConfig{HandlersConfig: apicfg.HandlersConfig}
+	productHandlersConfig := &producthandlers.HandlersProductConfig{
+		DB:     apicfg.DB,
+		DBConn: apicfg.DBConn,
+		Logger: apicfg.HandlersConfig,
+	}
+	categoryHandlersConfig := &categoryhandlers.HandlersCategoryConfig{HandlersConfig: apicfg.HandlersConfig}
 	uploadHandlersConfig := &uploadhandlers.HandlersUploadConfig{HandlersConfig: apicfg.HandlersConfig}
 	uploadAWSHandlers := &uploadawshandlers.HandlersUploadAWSConfig{HandlersConfig: apicfg.HandlersConfig}
 	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{HandlersConfig: apicfg.HandlersConfig}
@@ -93,7 +99,7 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 
 	v1Router.Get("/products", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllProducts))
 	v1Router.Get("/products/filter", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerFilterProducts))
-	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(productHandlersConfig.HandlerGetAllCategories))
+	v1Router.Get("/categories", apicfg.HandlerOptionalMiddleware(categoryHandlersConfig.HandlerGetAllCategories))
 
 	v1Router.Get("/users", apicfg.HandlerMiddleware(userHandlersConfig.AuthHandlerGetUser))
 	v1Router.Put("/users", apicfg.HandlerMiddleware(userHandlersConfig.AuthHandlerUpdateUser))
@@ -131,9 +137,9 @@ func (apicfg *RouterConfig) SetupRouter(logger *logrus.Logger) *chi.Mux {
 	// admin endpoint
 	v1Router.Post("/admin/user/promote", apicfg.HandlerAdminOnlyMiddleware(userHandlersConfig.AuthHandlerPromoteUserToAdmin))
 
-	v1Router.Post("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateCategory))
-	v1Router.Put("/categories", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateCategory))
-	v1Router.Delete("/categories/{id}", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerDeleteCategory))
+	v1Router.Post("/categories", apicfg.HandlerAdminOnlyMiddleware(categoryHandlersConfig.HandlerCreateCategory))
+	v1Router.Put("/categories", apicfg.HandlerAdminOnlyMiddleware(categoryHandlersConfig.HandlerUpdateCategory))
+	v1Router.Delete("/categories/{id}", apicfg.HandlerAdminOnlyMiddleware(categoryHandlersConfig.HandlerDeleteCategory))
 
 	v1Router.Post("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerCreateProduct))
 	v1Router.Put("/products", apicfg.HandlerAdminOnlyMiddleware(productHandlersConfig.HandlerUpdateProduct))
