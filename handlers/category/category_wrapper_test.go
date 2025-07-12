@@ -14,9 +14,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Remove MockHandlersConfig definition and methods here
-// They are now defined in category_test_helper.go
-
+// TestHandlersCategoryConfig_InitCategoryService tests the InitCategoryService method of the HandlersCategoryConfig.
+// It covers various initialization scenarios including successful initialization with valid configuration,
+// and error cases when required dependencies (handlers config, API config) are missing.
+// This test ensures that the category service is properly initialized and validates all required dependencies.
 func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -74,6 +75,9 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 	}
 }
 
+// TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig tests the InitCategoryService method
+// when the HandlersConfig is nil. This edge case test ensures that the initialization properly
+// validates the presence of the handlers configuration and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: nil,
@@ -84,6 +88,9 @@ func TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig(t *testing
 	assert.Contains(t, err.Error(), "handlers config not initialized")
 }
 
+// TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig tests the InitCategoryService method
+// when the APIConfig is nil. This edge case test ensures that the initialization properly
+// validates the presence of the API configuration and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
@@ -94,6 +101,9 @@ func TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), "API config not initialized")
 }
 
+// TestHandlersCategoryConfig_InitCategoryService_NilDB tests the InitCategoryService method
+// when the database is nil. This edge case test ensures that the initialization properly
+// validates the presence of the database and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilDB(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: &handlers.HandlersConfig{
@@ -106,6 +116,9 @@ func TestHandlersCategoryConfig_InitCategoryService_NilDB(t *testing.T) {
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
+// TestHandlersCategoryConfig_InitCategoryService_NilDBConn tests the InitCategoryService method
+// when the database connection is nil. This edge case test ensures that the initialization properly
+// validates the presence of the database connection and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilDBConn(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: &handlers.HandlersConfig{
@@ -120,6 +133,10 @@ func TestHandlersCategoryConfig_InitCategoryService_NilDBConn(t *testing.T) {
 	assert.Contains(t, err.Error(), "database connection not initialized")
 }
 
+// TestHandlersCategoryConfig_GetCategoryService tests the GetCategoryService method of the HandlersCategoryConfig.
+// It covers scenarios where the service is already initialized, not initialized with valid config,
+// and not initialized with invalid config. The test verifies that the method properly handles
+// lazy initialization and returns a service instance even when configuration is incomplete.
 func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -175,6 +192,10 @@ func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 	}
 }
 
+// TestHandlersCategoryConfig_GetCategoryService_NilConfigs tests the GetCategoryService method
+// when all configurations are nil. This edge case test verifies that the method still returns
+// a service instance but that the service fails gracefully when used with proper error handling.
+// It ensures that the service doesn't panic and returns appropriate errors for nil dependencies.
 func TestHandlersCategoryConfig_GetCategoryService_NilConfigs(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: nil,
@@ -195,6 +216,11 @@ func TestHandlersCategoryConfig_GetCategoryService_NilConfigs(t *testing.T) {
 	}
 }
 
+// TestHandlersCategoryConfig_handleCategoryError tests the handleCategoryError method of the HandlersCategoryConfig.
+// It covers various error types including invalid request errors, database errors, transaction errors,
+// category-specific errors (create, update, delete), commit errors, unknown errors, and non-AppError types.
+// The test verifies that each error type is properly categorized and returns the appropriate HTTP status code
+// and error message. It also ensures that error logging is called with the correct parameters.
 func TestHandlersCategoryConfig_handleCategoryError(t *testing.T) {
 	tests := []struct {
 		name           string

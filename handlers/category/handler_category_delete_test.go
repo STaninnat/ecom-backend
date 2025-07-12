@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Remove duplicate handler method definitions here
-// They are now defined in category_test_helper.go
-
+// TestHandlerDeleteCategory tests the delete category handler with mock service and logger.
+// Covers successful deletion, missing parameters, and service errors.
 func TestHandlerDeleteCategory(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -88,6 +87,8 @@ func TestHandlerDeleteCategory(t *testing.T) {
 	}
 }
 
+// TestHandlerDeleteCategory_EdgeCases tests edge cases for the delete category handler.
+// Covers invalid formats, empty users, missing parameters, and special characters.
 func TestHandlerDeleteCategory_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string

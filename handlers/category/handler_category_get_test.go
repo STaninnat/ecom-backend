@@ -13,9 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Remove duplicate handler method definitions here
-// They are now defined in category_test_helper.go
-
+// TestHandlerGetAllCategories tests the get all categories handler with mock service and logger.
+// Covers successful retrieval with and without user, and service errors.
 func TestHandlerGetAllCategories(t *testing.T) {
 	tests := []struct {
 		name           string

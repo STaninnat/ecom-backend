@@ -15,6 +15,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestNewCategoryService tests the NewCategoryService constructor function.
+// It verifies that the service can be created with both nil and valid parameters
+// without causing panics or errors. This ensures the constructor is robust
+// and handles edge cases gracefully.
 func TestNewCategoryService(t *testing.T) {
 	// Test with nil parameters
 	service := NewCategoryService(nil, nil)
@@ -27,6 +31,10 @@ func TestNewCategoryService(t *testing.T) {
 	assert.NotNil(t, service)
 }
 
+// TestCategoryServiceImpl_CreateCategory tests the CreateCategory method of the category service implementation.
+// It covers various scenarios including successful creation, validation errors (empty name, name too long,
+// description too long), and database errors. Each test case uses mocked database interactions
+// to isolate the service logic from actual database operations.
 func TestCategoryServiceImpl_CreateCategory(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -136,6 +144,10 @@ func TestCategoryServiceImpl_CreateCategory(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_UpdateCategory tests the UpdateCategory method of the category service implementation.
+// It covers successful updates, validation errors (missing ID, missing name), and database errors.
+// The test uses mocked database transactions to verify that the service properly handles
+// transaction lifecycle and error conditions.
 func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -232,6 +244,10 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_DeleteCategory tests the DeleteCategory method of the category service implementation.
+// It covers successful deletion, validation errors (empty category ID), and database errors.
+// The test verifies that the service properly handles transaction management and error conditions
+// when deleting categories from the database.
 func TestCategoryServiceImpl_DeleteCategory(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -306,6 +322,10 @@ func TestCategoryServiceImpl_DeleteCategory(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_GetAllCategories tests the GetAllCategories method of the category service implementation.
+// It covers successful retrieval of all categories and database errors. Unlike other operations,
+// this method doesn't require transactions since it's a read-only operation. The test verifies
+// that the service properly handles the retrieval of category data and error conditions.
 func TestCategoryServiceImpl_GetAllCategories(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -393,6 +413,9 @@ func TestCategoryServiceImpl_GetAllCategories(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_CreateCategory_NilDBConn tests the CreateCategory method when the database connection is nil.
+// This edge case test ensures that the service properly handles the scenario where the database connection
+// hasn't been initialized, returning an appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_CreateCategory_NilDBConn(t *testing.T) {
 	service := &categoryServiceImpl{
 		db:     &CategoryDBQueriesAdapter{},
@@ -411,6 +434,9 @@ func TestCategoryServiceImpl_CreateCategory_NilDBConn(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_UpdateCategory_NilDBConn tests the UpdateCategory method when the database connection is nil.
+// This edge case test ensures that the service properly handles the scenario where the database connection
+// hasn't been initialized, returning an appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_UpdateCategory_NilDBConn(t *testing.T) {
 	service := &categoryServiceImpl{
 		db:     &CategoryDBQueriesAdapter{},
@@ -430,6 +456,9 @@ func TestCategoryServiceImpl_UpdateCategory_NilDBConn(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_DeleteCategory_NilDBConn tests the DeleteCategory method when the database connection is nil.
+// This edge case test ensures that the service properly handles the scenario where the database connection
+// hasn't been initialized, returning an appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_DeleteCategory_NilDBConn(t *testing.T) {
 	service := &categoryServiceImpl{
 		db:     &CategoryDBQueriesAdapter{},
@@ -445,6 +474,9 @@ func TestCategoryServiceImpl_DeleteCategory_NilDBConn(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_GetAllCategories_NilDB tests the GetAllCategories method when the database is nil.
+// This edge case test ensures that the service properly handles the scenario where the database
+// hasn't been initialized, returning an appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_GetAllCategories_NilDB(t *testing.T) {
 	service := &categoryServiceImpl{
 		db:     nil,
@@ -460,6 +492,9 @@ func TestCategoryServiceImpl_GetAllCategories_NilDB(t *testing.T) {
 	}
 }
 
+// TestCategoryServiceImpl_CreateCategory_TransactionError tests the CreateCategory method when the database transaction
+// fails to start. This test verifies that the service properly handles transaction initialization errors
+// and returns the appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_CreateCategory_TransactionError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}
@@ -485,6 +520,9 @@ func TestCategoryServiceImpl_CreateCategory_TransactionError(t *testing.T) {
 	mockDBConn.AssertExpectations(t)
 }
 
+// TestCategoryServiceImpl_CreateCategory_CommitError tests the CreateCategory method when the database transaction
+// commit operation fails. This test verifies that the service properly handles commit errors and ensures
+// that rollback is called when commit fails. It also checks that the appropriate error is returned.
 func TestCategoryServiceImpl_CreateCategory_CommitError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}
@@ -519,6 +557,9 @@ func TestCategoryServiceImpl_CreateCategory_CommitError(t *testing.T) {
 	mockTx.AssertExpectations(t)
 }
 
+// TestCategoryServiceImpl_UpdateCategory_TransactionError tests the UpdateCategory method when the database transaction
+// fails to start. This test verifies that the service properly handles transaction initialization errors
+// and returns the appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_UpdateCategory_TransactionError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}
@@ -545,6 +586,9 @@ func TestCategoryServiceImpl_UpdateCategory_TransactionError(t *testing.T) {
 	mockDBConn.AssertExpectations(t)
 }
 
+// TestCategoryServiceImpl_UpdateCategory_CommitError tests the UpdateCategory method when the database transaction
+// commit operation fails. This test verifies that the service properly handles commit errors and ensures
+// that rollback is called when commit fails. It also checks that the appropriate error is returned.
 func TestCategoryServiceImpl_UpdateCategory_CommitError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}
@@ -580,6 +624,9 @@ func TestCategoryServiceImpl_UpdateCategory_CommitError(t *testing.T) {
 	mockTx.AssertExpectations(t)
 }
 
+// TestCategoryServiceImpl_DeleteCategory_TransactionError tests the DeleteCategory method when the database transaction
+// fails to start. This test verifies that the service properly handles transaction initialization errors
+// and returns the appropriate error with the correct error code and message.
 func TestCategoryServiceImpl_DeleteCategory_TransactionError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}
@@ -602,6 +649,9 @@ func TestCategoryServiceImpl_DeleteCategory_TransactionError(t *testing.T) {
 	mockDBConn.AssertExpectations(t)
 }
 
+// TestCategoryServiceImpl_DeleteCategory_CommitError tests the DeleteCategory method when the database transaction
+// commit operation fails. This test verifies that the service properly handles commit errors and ensures
+// that rollback is called when commit fails. It also checks that the appropriate error is returned.
 func TestCategoryServiceImpl_DeleteCategory_CommitError(t *testing.T) {
 	mockDB := &MockCategoryDBQueries{}
 	mockDBConn := &MockCategoryDBConn{}

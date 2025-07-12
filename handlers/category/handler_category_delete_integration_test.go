@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestIntegration_HandlerDeleteCategory tests the delete category handler with real logger and mock service.
+// Covers successful deletion, service errors, missing parameters, and edge cases.
 func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 	tests := []struct {
 		name           string

@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestIntegration_HandlerCreateCategory tests the category creation handler with various scenarios including
+// successful creation, service errors, invalid JSON, missing content type, and different user states.
 func TestIntegration_HandlerCreateCategory(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -219,6 +221,8 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 	}
 }
 
+// TestIntegration_HandlerCreateCategory_EdgeCases tests validation edge cases for category creation
+// including name too long and empty name scenarios with proper error responses.
 func TestIntegration_HandlerCreateCategory_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string

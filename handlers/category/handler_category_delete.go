@@ -11,6 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// HandlerDeleteCategory handles HTTP DELETE requests to delete a category.
+// It extracts the category ID from the URL parameters, validates it, and delegates deletion to the category service.
+// On success, it logs the event and responds with a confirmation message; on error, it logs and returns the appropriate error response.
 func (cfg *HandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

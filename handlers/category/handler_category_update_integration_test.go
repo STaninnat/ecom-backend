@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestIntegration_HandlerUpdateCategory tests the update category handler with real logger and mock service.
+// Covers successful updates, validation errors, service errors, and various edge cases.
 func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 	tests := []struct {
 		name           string

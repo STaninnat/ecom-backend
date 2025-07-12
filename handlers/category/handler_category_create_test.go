@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestHandlerCreateCategory tests the category creation handler with basic scenarios including
+// successful creation, invalid request body, and service errors using mocked dependencies.
 func TestHandlerCreateCategory(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -113,6 +115,8 @@ func TestHandlerCreateCategory(t *testing.T) {
 	}
 }
 
+// TestHandlerCreateCategory_InvalidJSON tests the handler's response when invalid JSON is provided
+// in the request body, ensuring proper error handling and response formatting.
 func TestHandlerCreateCategory_InvalidJSON(t *testing.T) {
 	// Create test config that embeds the mock
 	testConfig := &TestHandlersCategoryConfig{
@@ -142,6 +146,8 @@ func TestHandlerCreateCategory_InvalidJSON(t *testing.T) {
 	assert.JSONEq(t, `{"error":"Invalid request payload"}`, w.Body.String())
 }
 
+// TestHandlerCreateCategory_EdgeCases tests various edge cases for category creation including
+// validation errors, service errors, content-type handling, and different user states.
 func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string

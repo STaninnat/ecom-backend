@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestIntegration_HandlerGetAllCategories tests the get all categories handler with real logger and mock service.
+// Covers successful retrieval and service errors with proper response validation.
 func TestIntegration_HandlerGetAllCategories(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
 		HandlersConfig: &handlers.HandlersConfig{

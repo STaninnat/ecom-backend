@@ -14,9 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Remove duplicate handler method definitions here
-// They are now defined in category_test_helper.go
-
+// TestHandlerUpdateCategory tests the update category handler with mock service and logger.
+// Covers successful updates, invalid requests, and service errors.
 func TestHandlerUpdateCategory(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -109,6 +108,8 @@ func TestHandlerUpdateCategory(t *testing.T) {
 	}
 }
 
+// TestHandlerUpdateCategory_InvalidJSON tests the update category handler with malformed JSON.
+// Verifies proper error handling for invalid request payloads.
 func TestHandlerUpdateCategory_InvalidJSON(t *testing.T) {
 	mockService := &MockCategoryService{}
 	testConfig := &TestHandlersCategoryConfig{
@@ -131,6 +132,8 @@ func TestHandlerUpdateCategory_InvalidJSON(t *testing.T) {
 	assert.JSONEq(t, `{"error":"Invalid request payload"}`, w.Body.String())
 }
 
+// TestHandlerUpdateCategory_EdgeCases tests edge cases for the update category handler.
+// Covers validation errors, content types, empty users, and various input scenarios.
 func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string

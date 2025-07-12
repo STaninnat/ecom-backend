@@ -11,6 +11,9 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
+// HandlerUpdateCategory handles HTTP PUT requests to update a category.
+// It parses the request body for category parameters, validates them, and delegates update to the category service.
+// On success, it logs the event and responds with a confirmation message; on error, it logs and returns the appropriate error response.
 func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
