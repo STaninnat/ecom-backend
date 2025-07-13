@@ -11,16 +11,29 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersOrderConfig) HandlerDeleteOrder(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerDeleteOrder handles HTTP DELETE requests to delete an order by its ID.
+// It extracts the order ID from the URL parameters, validates the request,
+// calls the business logic service to delete the order, logs the event,
+// and responds with a success message. On error or missing order ID,
+// it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersOrderConfig) HandlerDeleteOrder(w http.ResponseWriter, r *http.Request, user database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
+	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
 	if orderID == "" {
-		apicfg.LogHandlerError(
+		// Log error for missing order ID
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"delete_order",
-			"missing order id",
+			"missing_order_id",
 			"Order ID not found in URL",
 			ip, userAgent, nil,
 		)
@@ -28,51 +41,19 @@ func (apicfg *HandlersOrderConfig) HandlerDeleteOrder(w http.ResponseWriter, r *
 		return
 	}
 
-	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	// Call business logic service to delete the order
+	err := cfg.GetOrderService().DeleteOrder(ctx, orderID)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"delete_order",
-			"start tx failed",
-			"Error starting transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
-		return
-	}
-	defer tx.Rollback()
-
-	queries := apicfg.DB.WithTx(tx)
-
-	err = queries.DeleteOrderByID(ctx, orderID)
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"delete_order",
-			"delete failed",
-			"Failed to delete order",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to delete order")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "delete_order", ip, userAgent)
 		return
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"delete_order",
-			"commit tx failed",
-			"Error committing transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
-		return
-	}
-
+	// Log successful deletion with user context
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "delete_order", "Deleted order successful", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "delete_order", "Deleted order successful", ip, userAgent)
 
+	// Respond with success message
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Order deleted successfully",
 	})

@@ -3,137 +3,56 @@ package orderhandlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"math"
 	"net/http"
-	"time"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
 )
 
-func (apicfg *HandlersOrderConfig) HandlerCreateOrder(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerCreateOrder handles HTTP POST requests to create a new order.
+// It validates the request payload, parses the order creation parameters,
+// calls the business logic service to create the order, logs the event,
+// and responds with the created order details. On error or invalid payload,
+// it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersOrderConfig) HandlerCreateOrder(w http.ResponseWriter, r *http.Request, user database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
+	// Parse and validate request payload
 	var params CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		apicfg.LogHandlerError(
+		// Log error for invalid request payload
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"create_order",
-			"invalid request body",
-			"Failed to parse body",
+			"invalid_request",
+			"Failed to parse request body",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	orderID := uuid.New().String()
-	timeNow := time.Now().UTC()
-
-	var totalAmount float64
-	for _, item := range params.Items {
-		totalAmount += float64(item.Quantity) * item.Price
-	}
-
-	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	// Call business logic service to create the order
+	result, err := cfg.GetOrderService().CreateOrder(ctx, user, params)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"create_order",
-			"start tx failed",
-			"Error starting transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
-		return
-	}
-	defer tx.Rollback()
-
-	queries := apicfg.DB.WithTx(tx)
-
-	_, err = queries.CreateOrder(ctx, database.CreateOrderParams{
-		ID:                orderID,
-		UserID:            user.ID,
-		TotalAmount:       fmt.Sprintf("%.2f", totalAmount),
-		Status:            "pending",
-		PaymentMethod:     utils.ToNullString(params.PaymentMethod),
-		ExternalPaymentID: utils.ToNullString(params.ExternalPaymentID),
-		TrackingNumber:    utils.ToNullString(params.TrackingNumber),
-		ShippingAddress:   utils.ToNullString(params.ShippingAddress),
-		ContactPhone:      utils.ToNullString(params.ContactPhone),
-		CreatedAt:         timeNow,
-		UpdatedAt:         timeNow,
-	})
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"create_order",
-			"create order failed",
-			"Error creating order",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to create order")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "create_order", ip, userAgent)
 		return
 	}
 
-	for _, item := range params.Items {
-		if item.Quantity > math.MaxInt32 || item.Quantity < math.MinInt32 {
-			apicfg.LogHandlerError(
-				ctx,
-				"create_order",
-				"quantity overflow",
-				fmt.Sprintf("Quantity %d exceeds the max limit for int32", item.Quantity),
-				ip, userAgent, nil,
-			)
-			middlewares.RespondWithError(w, http.StatusBadRequest, "Quantity exceeds max limit")
-			return
-		}
-
-		err := queries.CreateOrderItem(ctx, database.CreateOrderItemParams{
-			ID:        uuid.New().String(),
-			OrderID:   orderID,
-			ProductID: item.ProductID,
-			Quantity:  int32(item.Quantity),
-			Price:     fmt.Sprintf("%.2f", item.Price),
-			CreatedAt: timeNow,
-			UpdatedAt: timeNow,
-		})
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"create_order",
-				"create order item failed",
-				"Error creating order item",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to create order item")
-			return
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"create_order",
-			"commit tx failed",
-			"Error committing transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
-		return
-	}
-
+	// Log successful order creation with user context
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "create_order", "Created order successful", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "create_order", "Created order successful", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusCreated, OrderResponse{
-		Message: "Created order successful",
-		OrderID: orderID,
-	})
+	// Respond with created order details
+	middlewares.RespondWithJSON(w, http.StatusCreated, result)
 }

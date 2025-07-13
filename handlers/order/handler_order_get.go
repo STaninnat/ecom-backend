@@ -11,96 +11,87 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersOrderConfig) HandlerGetAllOrders(w http.ResponseWriter, r *http.Request, _ database.User) {
+// HandlerGetAllOrders handles HTTP GET requests to retrieve all orders (admin only).
+// It calls the business logic service to fetch all orders, logs the event,
+// and responds with the complete order list. On error, it logs and returns
+// the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user (admin only)
+func (cfg *HandlersOrderConfig) HandlerGetAllOrders(w http.ResponseWriter, r *http.Request, _ database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	orders, err := apicfg.DB.ListAllOrders(ctx)
+	// Call business logic service to retrieve all orders
+	orders, err := cfg.GetOrderService().GetAllOrders(ctx)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"list_all_orders",
-			"db_error",
-			"Failed to list orders",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Could not fetch orders")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "list_all_orders", ip, userAgent)
 		return
 	}
 
-	apicfg.LogHandlerSuccess(ctx, "list_all_orders", "Listed all orders", ip, userAgent)
+	// Log successful retrieval of all orders
+	cfg.Logger.LogHandlerSuccess(ctx, "list_all_orders", "Listed all orders", ip, userAgent)
 
+	// Respond with complete order list
 	middlewares.RespondWithJSON(w, http.StatusOK, orders)
 }
 
-func (apicfg *HandlersOrderConfig) HandlerGetUserOrders(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerGetUserOrders handles HTTP GET requests to retrieve orders for a specific user.
+// It calls the business logic service to fetch user-specific orders, logs the event,
+// and responds with the user's order list. On error, it logs and returns
+// the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersOrderConfig) HandlerGetUserOrders(w http.ResponseWriter, r *http.Request, user database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	orders, err := apicfg.DB.GetOrderByUserID(ctx, user.ID)
+	// Call business logic service to retrieve user orders
+	orders, err := cfg.GetOrderService().GetUserOrders(ctx, user)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_user_orders",
-			"get order failed",
-			"Failed to get orders",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch orders")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "get_user_orders", ip, userAgent)
 		return
 	}
 
-	var response []UserOrderResponse
-	for _, order := range orders {
-		items, err := apicfg.DB.GetOrderItemsByOrderID(ctx, order.ID)
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"get_user_orders",
-				"fetch items failed",
-				"Failed to get order items",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch order items")
-			return
-		}
+	// Log successful retrieval of user orders
+	cfg.Logger.LogHandlerSuccess(ctx, "get_user_orders", "Retrieved user orders", ip, userAgent)
 
-		var itemResponses []OrderItemResponse
-		for _, item := range items {
-			itemResponses = append(itemResponses, OrderItemResponse{
-				ID:        item.ID,
-				ProductID: item.ProductID,
-				Quantity:  int(item.Quantity),
-				Price:     item.Price,
-			})
-		}
-
-		response = append(response, UserOrderResponse{
-			OrderID:         order.ID,
-			TotalAmount:     order.TotalAmount,
-			Status:          order.Status,
-			PaymentMethod:   order.PaymentMethod.String,
-			TrackingNumber:  order.TrackingNumber.String,
-			ShippingAddress: order.ShippingAddress.String,
-			ContactPhone:    order.ContactPhone.String,
-			CreatedAt:       order.CreatedAt,
-			Items:           itemResponses,
-		})
-	}
-
-	middlewares.RespondWithJSON(w, http.StatusOK, response)
+	// Respond with user's order list
+	middlewares.RespondWithJSON(w, http.StatusOK, orders)
 }
 
-func (apicfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerGetOrderByID handles HTTP GET requests to retrieve a specific order by its ID.
+// It extracts the order ID from URL parameters, validates the request,
+// calls the business logic service to fetch the order details, logs the event,
+// and responds with the order information. On error or missing order ID,
+// it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *http.Request, user database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
+	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "orderID")
 	if orderID == "" {
-		apicfg.LogHandlerError(
+		// Log error for missing order ID
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_order_by_id",
-			"missing order id",
+			"missing_order_id",
 			"Order ID not found in URL",
 			ip, userAgent, nil,
 		)
@@ -108,63 +99,45 @@ func (apicfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r 
 		return
 	}
 
-	order, err := apicfg.DB.GetOrderByID(ctx, orderID)
+	// Call business logic service to retrieve specific order
+	order, err := cfg.GetOrderService().GetOrderByID(ctx, orderID, user)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_order_by_id",
-			"order not found",
-			"Order not found or DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusNotFound, "Order not found")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "get_order_by_id", ip, userAgent)
 		return
 	}
 
-	if order.UserID != user.ID && user.Role != "admin" {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_order_by_id",
-			"unauthorized",
-			"User is not authorized to view this order",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusForbidden, "Access Denied")
-		return
-	}
-
-	items, err := apicfg.DB.GetOrderItemsByOrderID(ctx, orderID)
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_order_by_id",
-			"failed to fetch items",
-			"Error getting order items",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch order items")
-		return
-	}
-
+	// Log successful retrieval with user context
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get_order_by_id", "Fetched order details", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_order_by_id", "Fetched order details", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, OrderDetailResponse{
-		Order: order,
-		Items: items,
-	})
+	// Respond with order details
+	middlewares.RespondWithJSON(w, http.StatusOK, order)
 }
 
-func (apicfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerGetOrderItemsByOrderID handles HTTP GET requests to retrieve items for a specific order.
+// It extracts the order ID from URL parameters, validates the request,
+// calls the business logic service to fetch the order items, logs the event,
+// and responds with the order items list. On error or missing order ID,
+// it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request, user database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
+	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
 	if orderID == "" {
-		apicfg.LogHandlerError(
+		// Log error for missing order ID
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_order_items",
-			"missing order id",
+			"missing_order_id",
 			"Order ID not found in URL",
 			ip, userAgent, nil,
 		)
@@ -172,28 +145,17 @@ func (apicfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.Response
 		return
 	}
 
-	items, err := apicfg.DB.GetOrderItemsByOrderID(ctx, orderID)
+	// Call business logic service to retrieve order items
+	items, err := cfg.GetOrderService().GetOrderItemsByOrderID(ctx, orderID)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_order_items",
-			"fetch items failed",
-			"Failed to fetch order items",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch order items")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "get_order_items", ip, userAgent)
 		return
 	}
 
-	var response []OrderItemResponse
-	for _, item := range items {
-		response = append(response, OrderItemResponse{
-			ID:        item.ID,
-			ProductID: item.ProductID,
-			Quantity:  int(item.Quantity),
-			Price:     item.Price,
-		})
-	}
+	// Log successful retrieval of order items
+	cfg.Logger.LogHandlerSuccess(ctx, "get_order_items", "Retrieved order items", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, response)
+	// Respond with order items list
+	middlewares.RespondWithJSON(w, http.StatusOK, items)
 }
