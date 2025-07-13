@@ -3,7 +3,6 @@ package paymenthandlers
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
@@ -12,18 +11,24 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *http.Request, user database.User) {
-	apicfg.SetupStripeAPI()
-
+// HandlerGetPayment handles HTTP GET requests to retrieve payment information for a specific order.
+// It extracts the order ID from the URL parameters, validates it, and delegates retrieval to the payment service.
+// On success, it logs the event and responds with the payment details; on error, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
 	orderID := chi.URLParam(r, "order_id")
 	if orderID == "" {
-		apicfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_payment",
-			"missing order id",
+			"missing_order_id",
 			"Order ID not found in URL",
 			ip, userAgent, nil,
 		)
@@ -31,141 +36,75 @@ func (apicfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r 
 		return
 	}
 
-	payment, err := apicfg.DB.GetPaymentByOrderID(ctx, orderID)
+	// Get payment service
+	paymentService := cfg.GetPaymentService()
+
+	// Get payment using service
+	result, err := paymentService.GetPayment(ctx, orderID, user.ID)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_payment",
-			"payment not found",
-			"Payment not found for the order",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusNotFound, "Payment not found")
+		cfg.handlePaymentError(w, r, err, "get_payment", ip, userAgent)
 		return
-	}
-
-	if payment.UserID != user.ID {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_payment",
-			"unauthorized",
-			"User does not own this payment",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusForbidden, "Unauthorized")
-		return
-	}
-
-	amount, err := strconv.ParseFloat(payment.Amount, 64)
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_payment",
-			"invalid_amount",
-			"Failed to parse payment amount",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Invalid payment amount")
-		return
-	}
-
-	getPaymentResp := GetPaymentResponse{
-		ID:                payment.ID,
-		OrderID:           payment.OrderID,
-		UserID:            payment.UserID,
-		Amount:            amount,
-		Currency:          payment.Currency,
-		Status:            payment.Status,
-		Provider:          payment.Provider,
-		ProviderPaymentID: payment.ProviderPaymentID.String,
-		CreatedAt:         payment.CreatedAt,
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get_payment", "Get Payment success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_payment", "Get Payment success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, getPaymentResp)
+	middlewares.RespondWithJSON(w, http.StatusOK, *result)
 }
 
-func (apicfg *HandlersPaymentConfig) HandlerGetPaymentHistory(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerGetPaymentHistory handles HTTP GET requests to retrieve payment history for the authenticated user.
+// It delegates retrieval to the payment service and returns the user's payment history.
+// On success, it logs the event and responds with the payment history; on error, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
+func (cfg *HandlersPaymentConfig) HandlerGetPaymentHistory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	payments, err := apicfg.DB.GetPaymentsByUserID(ctx, user.ID)
+	// Get payment service
+	paymentService := cfg.GetPaymentService()
+
+	// Get payment history using service
+	payments, err := paymentService.GetPaymentHistory(ctx, user.ID)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"get_history_payment",
-			"payment not found",
-			"Payment not found for the user",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch payment history")
+		cfg.handlePaymentError(w, r, err, "get_history_payment", ip, userAgent)
 		return
 	}
 
-	resp := make([]PaymentHistoryItem, 0, len(payments))
-	for _, p := range payments {
-		resp = append(resp, PaymentHistoryItem{
-			ID:                p.ID,
-			OrderID:           p.OrderID,
-			Amount:            p.Amount,
-			Currency:          p.Currency,
-			Status:            p.Status,
-			Provider:          p.Provider,
-			ProviderPaymentID: p.ProviderPaymentID.String,
-			CreatedAt:         p.CreatedAt,
-		})
-	}
-
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "get_history_payment", "Get Payment success", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_history_payment", "Get Payment history success", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, resp)
+	middlewares.RespondWithJSON(w, http.StatusOK, payments)
 }
 
-func (apicfg *HandlersPaymentConfig) HandlerAdminGetPayments(w http.ResponseWriter, r *http.Request, _ database.User) {
+// HandlerAdminGetPayments handles HTTP GET requests to retrieve all payments for admin users.
+// It extracts optional status filter from URL parameters and delegates retrieval to the payment service.
+// On success, it logs the event and responds with the payment list; on error, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated admin user
+func (cfg *HandlersPaymentConfig) HandlerAdminGetPayments(w http.ResponseWriter, r *http.Request, _ database.User) {
 	ctx := r.Context()
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
 	status := chi.URLParam(r, "status")
 
-	var payments []database.Payment
-	var err error
+	// Get payment service
+	paymentService := cfg.GetPaymentService()
 
-	if status == "all" {
-		payments, err = apicfg.DB.GetAllPayments(ctx)
-	} else {
-		payments, err = apicfg.DB.GetPaymentsByStatus(ctx, status)
-	}
-
+	// Get all payments using service
+	payments, err := paymentService.GetAllPayments(ctx, status)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"admin_get_payments",
-			"db query failed",
-			"DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch payments")
+		cfg.handlePaymentError(w, r, err, "admin_get_payments", ip, userAgent)
 		return
 	}
 
-	resp := make([]PaymentHistoryItem, 0, len(payments))
-	for _, p := range payments {
-		resp = append(resp, PaymentHistoryItem{
-			ID:                p.ID,
-			OrderID:           p.OrderID,
-			Amount:            p.Amount,
-			Currency:          p.Currency,
-			Status:            p.Status,
-			Provider:          p.Provider,
-			ProviderPaymentID: p.ProviderPaymentID.String,
-			CreatedAt:         p.CreatedAt,
-		})
-	}
+	cfg.Logger.LogHandlerSuccess(ctx, "admin_get_payments", "Get all payments success", ip, userAgent)
 
-	apicfg.LogHandlerSuccess(ctx, "get_history_payment", "Get Payment success", ip, userAgent)
-
-	middlewares.RespondWithJSON(w, http.StatusOK, resp)
+	middlewares.RespondWithJSON(w, http.StatusOK, payments)
 }

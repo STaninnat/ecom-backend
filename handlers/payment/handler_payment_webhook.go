@@ -1,19 +1,21 @@
 package paymenthandlers
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/webhook"
 )
 
-func (apicfg *HandlersPaymentConfig) HandlerStripeWebhook(w http.ResponseWriter, r *http.Request) {
+// HandlerStripeWebhook handles HTTP POST requests from Stripe webhooks.
+// It validates the webhook signature, processes the payload, and delegates handling to the payment service.
+// On success, it logs the event and responds with a confirmation; on error, it logs and returns the appropriate error response.
+//
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the webhook payload
+func (cfg *HandlersPaymentConfig) HandlerStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	const MaxBodyBytes = int64(65536)
 	r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
 
@@ -22,119 +24,55 @@ func (apicfg *HandlersPaymentConfig) HandlerStripeWebhook(w http.ResponseWriter,
 
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		apicfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"payment_webhook",
-			"read fialed",
-			"Error reading req body",
+			"read_failed",
+			"Error reading request body",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusServiceUnavailable, "Read error")
 		return
 	}
 
-	endpointSecret := apicfg.StripeWebhookSecret
-	event, err := webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), endpointSecret)
-	if err != nil {
-		apicfg.LogHandlerError(
+	// Validate content type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"payment_webhook",
-			"signature verification failed",
-			"Error verificating signature",
-			ip, userAgent, err,
+			"invalid_content_type",
+			"Expected application/json",
+			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Signature verification failed")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid content type")
 		return
 	}
 
-	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
-	if err != nil {
-		apicfg.LogHandlerError(
+	signature := r.Header.Get("Stripe-Signature")
+	if signature == "" {
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"payment_webhook",
-			"start tx failed",
-			"Error starting transaction",
-			ip, userAgent, err,
+			"missing_signature",
+			"Missing Stripe signature header",
+			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing signature")
 		return
 	}
-	defer tx.Rollback()
 
-	queries := apicfg.DB.WithTx(tx)
+	// Get payment service
+	paymentService := cfg.GetPaymentService()
 
-	if event.Type == "payment_intent.succeeded" {
-		var pi stripe.PaymentIntent
-		if err := json.Unmarshal(event.Data.Raw, &pi); err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"payment_webhook",
-				"bad payment intent",
-				"Bad payment intent",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusBadRequest, "Bad payment intent")
-			return
-		}
-		err = queries.UpdatePaymentStatusByProviderPaymentID(ctx, database.UpdatePaymentStatusByProviderPaymentIDParams{
-			Status:            "succeeded",
-			ProviderPaymentID: utils.ToNullString(pi.ID),
-		})
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"payment_webhook",
-				"update payment failed",
-				"Error updating payment",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update payment")
-			return
-		}
-	}
-
-	if event.Type == "payment_intent.refunded" {
-		var pi stripe.PaymentIntent
-		if err := json.Unmarshal(event.Data.Raw, &pi); err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"payment_webhook",
-				"bad payment intent",
-				"Bad payment intent",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusBadRequest, "Bad payment intent")
-			return
-		}
-		err = queries.UpdatePaymentStatusByProviderPaymentID(ctx, database.UpdatePaymentStatusByProviderPaymentIDParams{
-			Status:            "refunded",
-			ProviderPaymentID: utils.ToNullString(pi.ID),
-		})
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"payment_webhook",
-				"update payment failed",
-				"Error updating payment",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update payment")
-			return
-		}
-	}
-
-	err = tx.Commit()
+	// Handle webhook using service
+	err = paymentService.HandleWebhook(ctx, payload, signature, cfg.StripeWebhookSecret)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"payment_webhook",
-			"commit tx failed",
-			"Error committing transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		cfg.handlePaymentError(w, r, err, "payment_webhook", ip, userAgent)
 		return
 	}
+
+	cfg.Logger.LogHandlerSuccess(ctx, "payment_webhook", "Webhook processed successfully", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
 		Message: "Updated payment successfully",
