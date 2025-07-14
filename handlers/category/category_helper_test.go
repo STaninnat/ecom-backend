@@ -33,6 +33,7 @@ func (m *MockHandlersConfig) LogHandlerSuccess(ctx context.Context, action, deta
 // and provides the GetCategoryService method for handler tests.
 type TestHandlersCategoryConfig struct {
 	*MockHandlersConfig
+	Logger          handlers.HandlerLogger
 	categoryService CategoryService
 }
 
@@ -47,7 +48,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerCreateCategory(w http.ResponseWrit
 
 	var params CategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"create_category",
 			"invalid_request_body",
@@ -70,7 +71,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerCreateCategory(w http.ResponseWrit
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "create_category", "Category created successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "create_category", "Category created successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
@@ -85,7 +86,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWrit
 
 	var params CategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_category",
 			"invalid_request_body",
@@ -108,7 +109,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWrit
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
@@ -123,7 +124,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWrit
 
 	categoryID := chi.URLParam(r, "id")
 	if categoryID == "" {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"delete_category",
 			"missing_category_id",
@@ -146,7 +147,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWrit
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
@@ -162,7 +163,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWr
 	categoryService := cfg.GetCategoryService()
 	categories, err := categoryService.GetAllCategories(ctx)
 	if err != nil {
-		cfg.LogHandlerError(ctx, "get_all_categories", "database_error", err.Error(), ip, userAgent, err)
+		cfg.Logger.LogHandlerError(ctx, "get_all_categories", "database_error", err.Error(), ip, userAgent, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":"Something went wrong, please try again later"}`))
 		return
@@ -199,17 +200,17 @@ func (cfg *TestHandlersCategoryConfig) handleCategoryError(w http.ResponseWriter
 	if appErr, ok := err.(*handlers.AppError); ok {
 		switch appErr.Code {
 		case "invalid_request":
-			cfg.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
+			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
 			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
 		case "database_error", "transaction_error", "create_category_error", "update_category_error", "delete_category_error", "commit_error":
-			cfg.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
+			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		default:
-			cfg.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
+			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		}
 	} else {
-		cfg.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
+		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }

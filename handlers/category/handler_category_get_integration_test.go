@@ -41,6 +41,15 @@ func TestIntegration_HandlerGetAllCategories(t *testing.T) {
 		}
 		mockService.On("GetAllCategories", mock.Anything).Return(expectedCategories, nil)
 
+		mockLogger.On(
+			"LogHandlerSuccess",
+			mock.Anything, // context
+			"get_all_categories",
+			"Categories fetched successfully",
+			mock.Anything, // ip
+			mock.Anything, // user agent
+		).Return()
+
 		req := httptest.NewRequest("GET", "/categories", nil)
 		w := httptest.NewRecorder()
 		user := &database.User{ID: "test-user-id", Name: "Test User"}

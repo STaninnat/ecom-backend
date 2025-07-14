@@ -83,8 +83,10 @@ func TestHandlerCreateCategory(t *testing.T) {
 			// Create test config that embeds the mock
 			testConfig := &TestHandlersCategoryConfig{
 				MockHandlersConfig: &MockHandlersConfig{},
+				Logger:             nil, // will set below
 				categoryService:    mockService,
 			}
+			testConfig.Logger = testConfig.MockHandlersConfig
 			testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -121,8 +123,10 @@ func TestHandlerCreateCategory_InvalidJSON(t *testing.T) {
 	// Create test config that embeds the mock
 	testConfig := &TestHandlersCategoryConfig{
 		MockHandlersConfig: &MockHandlersConfig{},
+		Logger:             nil, // will set below
 		categoryService:    &MockCategoryService{},
 	}
+	testConfig.Logger = testConfig.MockHandlersConfig
 	testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
 	// Create request with invalid JSON
@@ -259,8 +263,10 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 
 			testConfig := &TestHandlersCategoryConfig{
 				MockHandlersConfig: &MockHandlersConfig{},
+				Logger:             nil, // will set below
 				categoryService:    mockService,
 			}
+			testConfig.Logger = testConfig.MockHandlersConfig
 			testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 

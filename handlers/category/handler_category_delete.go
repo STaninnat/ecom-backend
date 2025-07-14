@@ -20,7 +20,7 @@ func (cfg *HandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, 
 
 	categoryID := chi.URLParam(r, "id")
 	if categoryID == "" {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"delete_category",
 			"missing_category_id",
@@ -43,7 +43,7 @@ func (cfg *HandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, 
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{

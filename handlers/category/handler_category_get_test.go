@@ -95,8 +95,10 @@ func TestHandlerGetAllCategories(t *testing.T) {
 
 			testConfig := &TestHandlersCategoryConfig{
 				MockHandlersConfig: &MockHandlersConfig{},
+				Logger:             nil, // will set below
 				categoryService:    mockService,
 			}
+			testConfig.Logger = testConfig.MockHandlersConfig
 			testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 

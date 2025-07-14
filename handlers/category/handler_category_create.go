@@ -20,7 +20,7 @@ func (cfg *HandlersCategoryConfig) HandlerCreateCategory(w http.ResponseWriter, 
 
 	var params CategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"create_category",
 			"invalid_request_body",
@@ -43,7 +43,7 @@ func (cfg *HandlersCategoryConfig) HandlerCreateCategory(w http.ResponseWriter, 
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "create_category", "Category created successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "create_category", "Category created successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{

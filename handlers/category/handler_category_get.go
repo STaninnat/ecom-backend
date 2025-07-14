@@ -33,7 +33,7 @@ func (cfg *HandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWriter
 		userID = user.ID
 	}
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, userID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "get_all_categories", "Categories fetched successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_all_categories", "Categories fetched successfully", ip, userAgent)
 
 	// Return categories
 	middlewares.RespondWithJSON(w, http.StatusOK, categories)

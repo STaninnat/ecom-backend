@@ -20,7 +20,7 @@ func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, 
 
 	var params CategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_category",
 			"invalid_request_body",
@@ -43,7 +43,7 @@ func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, 
 
 	// Log success
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
 
 	// Return success response
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
