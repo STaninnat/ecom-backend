@@ -23,7 +23,7 @@ func TestHandlerCreateReview_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := ReviewCreateRequest{
@@ -65,7 +65,7 @@ func TestHandlerCreateReview_InvalidPayload(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	badBody := []byte(`{"bad":}`)
@@ -87,7 +87,7 @@ func TestHandlerCreateReview_ValidationError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Missing ProductID
@@ -115,7 +115,7 @@ func TestHandlerCreateReview_ServiceError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := ReviewCreateRequest{

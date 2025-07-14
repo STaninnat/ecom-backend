@@ -56,7 +56,7 @@ func TestHandlerGetReviewsByProductID_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	productID := "p1"
 	expectedResult := PaginatedReviewsResponse{
@@ -93,7 +93,7 @@ func TestHandlerGetReviewsByProductID_MissingProductID(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "invalid_request", "Product ID is required", mock.Anything, mock.Anything, nil).Return()
 
@@ -113,7 +113,7 @@ func TestHandlerGetReviewsByProductID_ServiceError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	productID := "p1"
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
@@ -138,7 +138,7 @@ func TestHandlerGetReviewsByUserID_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	expectedResult := PaginatedReviewsResponse{
@@ -175,7 +175,7 @@ func TestHandlerGetReviewsByUserID_ServiceError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
@@ -200,7 +200,7 @@ func TestHandlerGetReviewByID_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	reviewID := "r1"
 	review := &models.Review{ID: reviewID, ProductID: "p1", Rating: 5, Comment: "Great!"}
@@ -229,7 +229,7 @@ func TestHandlerGetReviewByID_MissingID(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "get_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
 
@@ -249,7 +249,7 @@ func TestHandlerGetReviewByID_ReviewNotFound(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	reviewID := "r1"
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
@@ -273,7 +273,7 @@ func TestHandlerGetReviewsByProductID_TypeAssertionFailure(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	productID := "p1"
 	// Return wrong type
@@ -297,7 +297,7 @@ func TestHandlerGetReviewsByUserID_TypeAssertionFailure(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Return wrong type

@@ -43,7 +43,7 @@ func TestHandlerUpdateReviewByID_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"
@@ -77,7 +77,7 @@ func TestHandlerUpdateReviewByID_MissingID(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
@@ -98,7 +98,7 @@ func TestHandlerUpdateReviewByID_ReviewNotFound(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"
@@ -123,7 +123,7 @@ func TestHandlerUpdateReviewByID_Unauthorized(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"
@@ -147,7 +147,7 @@ func TestHandlerUpdateReviewByID_InvalidPayload(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"
@@ -171,7 +171,7 @@ func TestHandlerUpdateReviewByID_ValidationError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"
@@ -198,7 +198,7 @@ func TestHandlerUpdateReviewByID_ServiceError(t *testing.T) {
 	cfg := &HandlersReviewConfig{
 		HandlersConfig: &handlers.HandlersConfig{},
 		Logger:         mockLogger,
-		reviewService:  mockService,
+		ReviewService:  mockService,
 	}
 	user := database.User{ID: "u1"}
 	reviewID := "r1"

@@ -31,8 +31,8 @@ type ReviewService interface {
 type HandlersReviewConfig struct {
 	*handlers.HandlersConfig
 	Logger        handlers.HandlerLogger
-	reviewService ReviewService
-	reviewMutex   sync.RWMutex
+	ReviewService ReviewService
+	ReviewMutex   sync.RWMutex
 }
 
 // InitReviewService initializes the review service with the current configuration
@@ -40,9 +40,9 @@ func (cfg *HandlersReviewConfig) InitReviewService(service ReviewService) error 
 	if cfg.HandlersConfig == nil {
 		return errors.New("handlers config not initialized")
 	}
-	cfg.reviewMutex.Lock()
-	defer cfg.reviewMutex.Unlock()
-	cfg.reviewService = service
+	cfg.ReviewMutex.Lock()
+	defer cfg.ReviewMutex.Unlock()
+	cfg.ReviewService = service
 	if cfg.Logger == nil {
 		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
 	}
@@ -51,9 +51,9 @@ func (cfg *HandlersReviewConfig) InitReviewService(service ReviewService) error 
 
 // GetReviewService returns the review service instance (thread-safe)
 func (cfg *HandlersReviewConfig) GetReviewService() ReviewService {
-	cfg.reviewMutex.RLock()
-	service := cfg.reviewService
-	cfg.reviewMutex.RUnlock()
+	cfg.ReviewMutex.RLock()
+	service := cfg.ReviewService
+	cfg.ReviewMutex.RUnlock()
 	return service
 }
 
