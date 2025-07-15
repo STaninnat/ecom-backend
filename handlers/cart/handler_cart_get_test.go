@@ -22,7 +22,7 @@ func TestHandlerGetUserCart(t *testing.T) {
 		user           database.User
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name: "success",
@@ -51,7 +51,7 @@ func TestHandlerGetUserCart(t *testing.T) {
 				mockService.On("GetUserCart", mock.Anything, "user1").Return(nil, &handlers.AppError{Code: "cart_not_found", Message: "Cart not found"})
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody: map[string]interface{}{
+			expectedBody: map[string]any{
 				"error": "Cart not found",
 				"code":  "cart_not_found",
 			},
@@ -63,7 +63,7 @@ func TestHandlerGetUserCart(t *testing.T) {
 				mockService.On("GetUserCart", mock.Anything, "user1").Return(nil, &handlers.AppError{Code: "database_error", Message: "Database error"})
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody: map[string]interface{}{
+			expectedBody: map[string]any{
 				"error": "Database error",
 				"code":  "database_error",
 			},
@@ -104,11 +104,11 @@ func TestHandlerGetUserCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(*models.Cart).ID, response.ID)
 			} else {
-				var response map[string]interface{}
+				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(map[string]interface{})["error"], response["error"])
-				assert.Equal(t, tt.expectedBody.(map[string]interface{})["code"], response["code"])
+				assert.Equal(t, tt.expectedBody.(map[string]any)["error"], response["error"])
+				assert.Equal(t, tt.expectedBody.(map[string]any)["code"], response["code"])
 			}
 
 			mockService.AssertExpectations(t)
@@ -126,7 +126,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 		sessionID      string
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name:      "success",
@@ -155,7 +155,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 				// No mock setup needed for this case
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody: map[string]interface{}{
+			expectedBody: map[string]any{
 				"error": "Missing session ID",
 			},
 		},
@@ -166,7 +166,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 				mockService.On("GetGuestCart", mock.Anything, "sess1").Return(nil, &handlers.AppError{Code: "cart_not_found", Message: "Cart not found"})
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody: map[string]interface{}{
+			expectedBody: map[string]any{
 				"error": "Cart not found",
 				"code":  "cart_not_found",
 			},
@@ -178,7 +178,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 				mockService.On("GetGuestCart", mock.Anything, "sess1").Return(nil, &handlers.AppError{Code: "database_error", Message: "Database error"})
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody: map[string]interface{}{
+			expectedBody: map[string]any{
 				"error": "Database error",
 				"code":  "database_error",
 			},
@@ -226,12 +226,12 @@ func TestHandlerGetGuestCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(*models.Cart).ID, response.ID)
 			} else {
-				var response map[string]interface{}
+				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(map[string]interface{})["error"], response["error"])
-				if tt.expectedBody.(map[string]interface{})["code"] != nil {
-					assert.Equal(t, tt.expectedBody.(map[string]interface{})["code"], response["code"])
+				assert.Equal(t, tt.expectedBody.(map[string]any)["error"], response["error"])
+				if tt.expectedBody.(map[string]any)["code"] != nil {
+					assert.Equal(t, tt.expectedBody.(map[string]any)["code"], response["code"])
 				}
 			}
 

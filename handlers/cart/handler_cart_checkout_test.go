@@ -21,7 +21,7 @@ func TestHandlerCheckoutUserCart(t *testing.T) {
 		user           database.User
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name: "success",
@@ -47,7 +47,7 @@ func TestHandlerCheckoutUserCart(t *testing.T) {
 				mockService.On("CheckoutUserCart", mock.Anything, "user1").Return(nil, err)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Cart is empty", "code": "cart_empty"},
+			expectedBody:   map[string]any{"error": "Cart is empty", "code": "cart_empty"},
 		},
 	}
 
@@ -78,10 +78,10 @@ func TestHandlerCheckoutUserCart(t *testing.T) {
 				assert.Equal(t, tt.expectedBody.(CartResponse).Message, resp.Message)
 				assert.Equal(t, tt.expectedBody.(CartResponse).OrderID, resp.OrderID)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
@@ -98,10 +98,10 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 	tests := []struct {
 		name           string
 		sessionID      string
-		body           interface{}
+		body           any
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name:      "success",
@@ -126,7 +126,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			body:           map[string]string{"user_id": "user1"},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Missing session ID"},
+			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
 		{
 			name:           "invalid json",
@@ -134,7 +134,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			body:           "not json",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Invalid request payload"},
+			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
 		{
 			name:           "missing user ID",
@@ -142,7 +142,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			body:           map[string]string{"user_id": ""},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "User ID is required for guest checkout"},
+			expectedBody:   map[string]any{"error": "User ID is required for guest checkout"},
 		},
 		{
 			name:      "service error",
@@ -153,7 +153,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 				mockService.On("CheckoutGuestCart", mock.Anything, "sess1", "user1").Return(nil, err)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Cart is empty", "code": "cart_empty"},
+			expectedBody:   map[string]any{"error": "Cart is empty", "code": "cart_empty"},
 		},
 	}
 
@@ -199,10 +199,10 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 				assert.Equal(t, tt.expectedBody.(CartResponse).Message, resp.Message)
 				assert.Equal(t, tt.expectedBody.(CartResponse).OrderID, resp.OrderID)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}

@@ -22,10 +22,10 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 	tests := []struct {
 		name           string
 		user           database.User
-		body           interface{}
+		body           any
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name: "success",
@@ -43,7 +43,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			body:           "not json",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Invalid request payload"},
+			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
 		{
 			name:           "missing fields",
@@ -51,7 +51,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			body:           CartUpdateRequest{ProductID: "", Quantity: 0},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Product ID and quantity are required"},
+			expectedBody:   map[string]any{"error": "Product ID and quantity are required"},
 		},
 		{
 			name: "service error",
@@ -62,7 +62,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 				mockService.On("UpdateItemQuantity", mock.Anything, "user1", "prod1", 2).Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Product not found", "code": "product_not_found"},
+			expectedBody:   map[string]any{"error": "Product not found", "code": "product_not_found"},
 		},
 	}
 
@@ -109,10 +109,10 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
@@ -129,10 +129,10 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 	tests := []struct {
 		name           string
 		sessionID      string
-		body           interface{}
+		body           any
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name:      "success",
@@ -150,7 +150,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			body:           CartUpdateRequest{ProductID: "prod1", Quantity: 2},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Missing session ID"},
+			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
 		{
 			name:           "invalid json",
@@ -158,7 +158,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			body:           "not json",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Invalid request payload"},
+			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
 		{
 			name:           "missing fields",
@@ -166,7 +166,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			body:           CartUpdateRequest{ProductID: "", Quantity: 0},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Product ID and quantity are required"},
+			expectedBody:   map[string]any{"error": "Product ID and quantity are required"},
 		},
 		{
 			name:      "service error",
@@ -177,7 +177,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 				mockService.On("UpdateGuestItemQuantity", mock.Anything, "sess1", "prod1", 2).Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Cart not found", "code": "cart_not_found"},
+			expectedBody:   map[string]any{"error": "Cart not found", "code": "cart_not_found"},
 		},
 	}
 
@@ -225,10 +225,10 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}

@@ -20,10 +20,10 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 	tests := []struct {
 		name           string
 		user           database.User
-		body           interface{}
+		body           any
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name: "success",
@@ -41,7 +41,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 			body:           "not json",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Invalid request payload"},
+			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
 		{
 			name:           "missing product ID",
@@ -49,7 +49,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 			body:           DeleteItemRequest{ProductID: ""},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Product ID is required"},
+			expectedBody:   map[string]any{"error": "Product ID is required"},
 		},
 		{
 			name: "service error",
@@ -60,7 +60,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 				mockService.On("RemoveItem", mock.Anything, "user1", "prod1").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Item not found", "code": "item_not_found"},
+			expectedBody:   map[string]any{"error": "Item not found", "code": "item_not_found"},
 		},
 	}
 
@@ -100,10 +100,10 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
@@ -122,7 +122,7 @@ func TestHandlerClearUserCart(t *testing.T) {
 		user           database.User
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name: "success",
@@ -141,7 +141,7 @@ func TestHandlerClearUserCart(t *testing.T) {
 				mockService.On("DeleteUserCart", mock.Anything, "user1").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Cart not found", "code": "cart_not_found"},
+			expectedBody:   map[string]any{"error": "Cart not found", "code": "cart_not_found"},
 		},
 	}
 
@@ -171,10 +171,10 @@ func TestHandlerClearUserCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
@@ -191,10 +191,10 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 	tests := []struct {
 		name           string
 		sessionID      string
-		body           interface{}
+		body           any
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name:      "success",
@@ -212,7 +212,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			body:           DeleteItemRequest{ProductID: "prod1"},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Missing session ID"},
+			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
 		{
 			name:           "invalid json",
@@ -220,7 +220,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			body:           "not json",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Invalid request payload"},
+			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
 		{
 			name:           "missing product ID",
@@ -228,7 +228,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			body:           DeleteItemRequest{ProductID: ""},
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Product ID is required"},
+			expectedBody:   map[string]any{"error": "Product ID is required"},
 		},
 		{
 			name:      "service error",
@@ -239,7 +239,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 				mockService.On("RemoveGuestItem", mock.Anything, "sess1", "prod1").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Item not found", "code": "item_not_found"},
+			expectedBody:   map[string]any{"error": "Item not found", "code": "item_not_found"},
 		},
 	}
 
@@ -284,10 +284,10 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
@@ -306,7 +306,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 		sessionID      string
 		setupMock      func(*MockCartService)
 		expectedStatus int
-		expectedBody   interface{}
+		expectedBody   any
 	}{
 		{
 			name:      "success",
@@ -322,7 +322,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 			sessionID:      "",
 			setupMock:      func(mockService *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]interface{}{"error": "Missing session ID"},
+			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
 		{
 			name:      "service error",
@@ -332,7 +332,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 				mockService.On("DeleteGuestCart", mock.Anything, "sess1").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedBody:   map[string]interface{}{"error": "Cart not found", "code": "cart_not_found"},
+			expectedBody:   map[string]any{"error": "Cart not found", "code": "cart_not_found"},
 		},
 	}
 
@@ -367,10 +367,10 @@ func TestHandlerClearGuestCart(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
 			} else {
-				var resp map[string]interface{}
+				var resp map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]interface{}) {
+				for k, v := range tt.expectedBody.(map[string]any) {
 					assert.Equal(t, v, resp[k])
 				}
 			}
