@@ -1,4 +1,4 @@
-package cart
+package carthandlers
 
 import (
 	"context"
@@ -11,71 +11,66 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-type UpdateItemReq struct {
-	ProductID string `json:"product_id"`
-	Quantity  int    `json:"quantity"`
-}
-
-func (apicfg *HandlersCartConfig) HandlerUpdateItemInUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerUpdateItemQuantity handles HTTP requests to update the quantity of an item in a user's cart.
+// It parses and validates the request body, calls the service layer to update the item quantity,
+// logs the operation, and returns an appropriate JSON response or error.
+// Expects a valid user and CartUpdateRequest in the request body.
+func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	var req UpdateItemReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ProductID == "" || req.Quantity <= 0 {
-		apicfg.HandlersConfig.LogHandlerError(
+	var req CartUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		cfg.Logger.LogHandlerError(
 			ctx,
-			"update_item_in_cart",
-			"invalid request",
-			"Invalid payload",
+			"update_item_quantity",
+			"invalid request body",
+			"Failed to parse body",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if req.Quantity <= 0 {
-		err := apicfg.CartMG.RemoveItemFromCart(ctx, user.ID, req.ProductID)
-		if err != nil {
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove item")
-			return
-		}
-
-		middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-			Message: "Item removed from cart",
-		})
+	if req.ProductID == "" || req.Quantity <= 0 {
+		cfg.Logger.LogHandlerError(
+			ctx,
+			"update_item_quantity",
+			"missing fields",
+			"Required fields are missing",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID and quantity are required")
 		return
 	}
 
-	err := apicfg.CartMG.UpdateItemQuantity(ctx, user.ID, req.ProductID, req.Quantity)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"update_item_in_cart",
-			"failed to update",
-			"DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update item")
+	cartService := cfg.GetCartService()
+	if err := cartService.UpdateItemQuantity(ctx, user.ID, req.ProductID, req.Quantity); err != nil {
+		cfg.handleCartError(w, r, err, "update_item_quantity", ip, userAgent)
 		return
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.HandlersConfig.LogHandlerSuccess(ctxWithUserID, "update_item_in_cart", "Updated item quantity", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_item_quantity", "Updated item quantity", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Item updated",
+		Message: "Item quantity updated",
 	})
 }
 
-func (apicfg *HandlersCartConfig) HandlerUpdateGuestCartItem(w http.ResponseWriter, r *http.Request) {
+// HandlerUpdateGuestItemQuantity handles HTTP requests to update the quantity of an item in a guest cart (session-based).
+// It extracts the session ID, parses and validates the request body, calls the service layer to update the item quantity,
+// logs the operation, and returns an appropriate JSON response or error.
+// Expects a valid session ID and CartUpdateRequest in the request body.
+func (cfg *HandlersCartConfig) HandlerUpdateGuestItemQuantity(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	sessionID := utils.GetSessionIDFromRequest(r)
+	sessionID := getSessionIDFromRequest(r)
 	if sessionID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
-			"update_item_guest_cart",
+			"update_guest_item_quantity",
 			"missing session ID",
 			"Session ID not found in request",
 			ip, userAgent, nil,
@@ -84,48 +79,40 @@ func (apicfg *HandlersCartConfig) HandlerUpdateGuestCartItem(w http.ResponseWrit
 		return
 	}
 
-	var req UpdateItemReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ProductID == "" || req.Quantity <= 0 {
-		apicfg.HandlersConfig.LogHandlerError(
+	var req CartUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		cfg.Logger.LogHandlerError(
 			ctx,
-			"update_item_guest_cart",
-			"invalid request",
-			"Invalid payload",
+			"update_guest_item_quantity",
+			"invalid request body",
+			"Failed to parse body",
 			ip, userAgent, err,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if req.Quantity <= 0 {
-		err := apicfg.RemoveGuestItem(ctx, sessionID, req.ProductID)
-		if err != nil {
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove item")
-			return
-		}
-
-		middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-			Message: "Item removed from cart",
-		})
-		return
-	}
-
-	err := apicfg.UpdateGuestItemQuantity(ctx, sessionID, req.ProductID, req.Quantity)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
+	if req.ProductID == "" || req.Quantity <= 0 {
+		cfg.Logger.LogHandlerError(
 			ctx,
-			"update_item_guest_cart",
-			"failed to update",
-			"DB error",
-			ip, userAgent, err,
+			"update_guest_item_quantity",
+			"missing fields",
+			"Required fields are missing",
+			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update item")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID and quantity are required")
 		return
 	}
 
-	apicfg.HandlersConfig.LogHandlerSuccess(ctx, "update_item_guest_cart", "Updated guest item quantity", ip, userAgent)
+	cartService := cfg.GetCartService()
+	if err := cartService.UpdateGuestItemQuantity(ctx, sessionID, req.ProductID, req.Quantity); err != nil {
+		cfg.handleCartError(w, r, err, "update_guest_item_quantity", ip, userAgent)
+		return
+	}
+
+	cfg.Logger.LogHandlerSuccess(ctx, "update_guest_item_quantity", "Updated guest item quantity", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Item updated",
+		Message: "Item quantity updated",
 	})
 }
