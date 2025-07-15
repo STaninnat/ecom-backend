@@ -504,7 +504,14 @@ func (apicfg *HandlersAuthConfig) MergeCart(ctx context.Context, r *http.Request
 		return
 	}
 
-	guestCart, err := apicfg.GetGuestCart(ctx, sessionID)
+	// Get cart service from the embedded HandlersCartConfig
+	cartService := apicfg.GetCartService()
+	if cartService == nil {
+		apicfg.LogHandlerError(ctx, "merge_cart", "cart_service_not_available", "Cart service not available", "", "", nil)
+		return
+	}
+
+	guestCart, err := cartService.GetGuestCart(ctx, sessionID)
 	if err != nil {
 		// Log error but don't fail the authentication process
 		apicfg.LogHandlerError(ctx, "merge_cart", "get_guest_cart_failed", "Failed to get guest cart", "", "", err)
@@ -513,20 +520,22 @@ func (apicfg *HandlersAuthConfig) MergeCart(ctx context.Context, r *http.Request
 
 	if len(guestCart.Items) == 0 {
 		// No items to merge, just clean up the guest cart
-		if err := apicfg.DeleteGuestCart(ctx, sessionID); err != nil {
+		if err := cartService.DeleteGuestCart(ctx, sessionID); err != nil {
 			apicfg.LogHandlerError(ctx, "merge_cart", "delete_guest_cart_failed", "Failed to delete empty guest cart", "", "", err)
 		}
 		return
 	}
 
-	// Merge guest cart items to user cart
-	if err := apicfg.CartMG.MergeGuestCartToUser(ctx, userID, guestCart.Items); err != nil {
-		apicfg.LogHandlerError(ctx, "merge_cart", "merge_cart_failed", "Failed to merge guest cart to user", "", "", err)
-		return
+	// For each item in the guest cart, add it to the user's cart
+	for _, item := range guestCart.Items {
+		if err := cartService.AddItemToUserCart(ctx, userID, item.ProductID, item.Quantity); err != nil {
+			apicfg.LogHandlerError(ctx, "merge_cart", "add_item_to_user_cart_failed", "Failed to add item to user cart", "", "", err)
+			return
+		}
 	}
 
 	// Clean up guest cart after successful merge
-	if err := apicfg.DeleteGuestCart(ctx, sessionID); err != nil {
+	if err := cartService.DeleteGuestCart(ctx, sessionID); err != nil {
 		apicfg.LogHandlerError(ctx, "merge_cart", "delete_guest_cart_failed", "Failed to delete guest cart after merge", "", "", err)
 	}
 }

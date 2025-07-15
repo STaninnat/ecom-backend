@@ -10,7 +10,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/handlers/cart"
+	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	redismock "github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func TestHandlerIntegration(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{Auth: &auth.AuthConfig{}},
-			HandlersCartConfig: &cart.HandlersCartConfig{}, // Use real struct
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{}, // Use real struct
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -90,7 +90,7 @@ func TestHandlerIntegration(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{Auth: &auth.AuthConfig{}},
-			HandlersCartConfig: &cart.HandlersCartConfig{}, // Use real struct
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{}, // Use real struct
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -172,7 +172,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -250,7 +250,7 @@ func TestHandlerIntegration(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -283,7 +283,7 @@ func TestHandlerIntegration(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -336,7 +336,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -376,7 +376,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -416,7 +416,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -449,7 +449,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
 			HandlersConfig:     &handlers.HandlersConfig{},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
 		}
@@ -602,7 +602,7 @@ func TestRealHandlerIntegration(t *testing.T) {
 			HandlersConfig: &handlers.HandlersConfig{
 				Auth: &auth.AuthConfig{},
 			},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             &MockHandlersConfig{},
 			authService:        &MockAuthService{},
 		}
@@ -629,7 +629,7 @@ func TestRealHandlerIntegration(t *testing.T) {
 			HandlersConfig: &handlers.HandlersConfig{
 				Auth: &auth.AuthConfig{},
 			},
-			HandlersCartConfig: &cart.HandlersCartConfig{},
+			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             &MockHandlersConfig{},
 			authService:        &MockAuthService{},
 		}

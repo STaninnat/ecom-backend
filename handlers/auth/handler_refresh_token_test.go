@@ -9,7 +9,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/handlers/cart"
+	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -439,7 +439,7 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{}, // Real auth config
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}
@@ -518,7 +518,7 @@ func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{},
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}
@@ -545,7 +545,7 @@ func TestRealHandlerRefreshToken_AppError(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{},
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}

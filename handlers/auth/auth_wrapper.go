@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/handlers/cart"
+	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
@@ -16,7 +16,7 @@ import (
 // Now includes a Logger field for consistent logging
 type HandlersAuthConfig struct {
 	*handlers.HandlersConfig
-	*cart.HandlersCartConfig
+	*carthandlers.HandlersCartConfig
 	Logger      handlers.HandlerLogger
 	authService AuthService
 	authMutex   sync.RWMutex

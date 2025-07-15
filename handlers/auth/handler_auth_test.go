@@ -11,7 +11,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/handlers/cart"
+	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -26,7 +26,7 @@ func TestHandlerSignUp_Success(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -67,7 +67,7 @@ func TestHandlerSignUp_InvalidRequest(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -99,7 +99,7 @@ func TestHandlerSignUp_MissingFields(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -134,7 +134,7 @@ func TestHandlerSignUp_DuplicateEmail(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -169,7 +169,7 @@ func TestHandlerSignUp_DuplicateName(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -204,7 +204,7 @@ func TestHandlerSignUp_DatabaseError(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -240,7 +240,7 @@ func TestHandlerSignUp_UnknownError(t *testing.T) {
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -276,7 +276,7 @@ func TestHandlerSignIn_Success(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -326,7 +326,7 @@ func TestHandlerSignIn_InvalidRequest(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -356,7 +356,7 @@ func TestHandlerSignIn_MissingFields(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -396,7 +396,7 @@ func TestHandlerSignIn_UserNotFound(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -438,7 +438,7 @@ func TestHandlerSignIn_InvalidPassword(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -480,7 +480,7 @@ func TestHandlerSignIn_DatabaseError(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -523,7 +523,7 @@ func TestHandlerSignIn_UnknownError(t *testing.T) {
 
 	cfg := &HandlersAuthConfig{
 		HandlersConfig:     &handlers.HandlersConfig{},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
 	}
@@ -1095,7 +1095,7 @@ func TestRealHandlerSignOut_Direct(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{}, // Real auth config
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}
@@ -1174,7 +1174,7 @@ func TestRealHandlerSignOut_ValidationError(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{},
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}
@@ -1201,7 +1201,7 @@ func TestRealHandlerSignOut_AppError(t *testing.T) {
 		HandlersConfig: &handlers.HandlersConfig{
 			Auth: &auth.AuthConfig{},
 		},
-		HandlersCartConfig: &cart.HandlersCartConfig{},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
 		authService:        &MockAuthService{},
 	}
