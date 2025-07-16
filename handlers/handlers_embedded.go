@@ -7,6 +7,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -18,6 +19,7 @@ type HandlersConfig struct {
 	OAuth             *config.OAuthConfig
 	Logger            *logrus.Logger
 	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
+	CacheService      *utils.CacheService
 }
 
 // HandlerResponse represents a standard handler response
@@ -49,11 +51,15 @@ func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 		APIConfig: apicfg,
 	}
 
+	// Create cache service
+	cacheService := utils.NewCacheService(apicfg.RedisClient)
+
 	return &HandlersConfig{
-		APIConfig: apicfg,
-		Auth:      authCfg,
-		OAuth:     oauthConfig,
-		Logger:    logger,
+		APIConfig:    apicfg,
+		Auth:         authCfg,
+		OAuth:        oauthConfig,
+		Logger:       logger,
+		CacheService: cacheService,
 	}
 }
 
