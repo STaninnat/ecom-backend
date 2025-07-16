@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 type mockWriter struct {
@@ -101,4 +103,32 @@ func TestInitLoggerBasic(t *testing.T) {
 		t.Errorf("expected DebugLevel, got %v", logger.Level)
 	}
 	// We can't easily test file outputs or hooks without more advanced patching/mocking
+}
+
+func TestInitLoggerWithCreators_PanicOnInfoWriterError(t *testing.T) {
+	mockErr := errors.New("info rotator fail")
+	panicMsg := "failed to create info log rotator: info rotator fail"
+	infoFail := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
+		return nil, mockErr
+	}
+	errorOK := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
+		return &rotatelogs.RotateLogs{}, nil
+	}
+	require.PanicsWithValue(t, panicMsg, func() {
+		InitLoggerWithCreators(infoFail, errorOK)
+	})
+}
+
+func TestInitLoggerWithCreators_PanicOnErrorWriterError(t *testing.T) {
+	mockErr := errors.New("error rotator fail")
+	panicMsg := "failed to create error log rotator: error rotator fail"
+	infoOK := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
+		return &rotatelogs.RotateLogs{}, nil
+	}
+	errorFail := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
+		return nil, mockErr
+	}
+	require.PanicsWithValue(t, panicMsg, func() {
+		InitLoggerWithCreators(infoOK, errorFail)
+	})
 }

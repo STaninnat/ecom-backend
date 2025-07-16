@@ -43,7 +43,16 @@ func (hook *WriterHook) Levels() []logrus.Level {
 	return levels
 }
 
-func InitLogger() *logrus.Logger {
+// Define a type for the rotatelogs.New function signature
+// This allows us to inject a mock in tests
+
+type RotatelogsNewFunc func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error)
+
+// Refactor InitLogger to accept optional creator functions for info and error writers
+func InitLoggerWithCreators(
+	infoLogCreator RotatelogsNewFunc,
+	errorLogCreator RotatelogsNewFunc,
+) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{
 		PrettyPrint:     true,
@@ -55,7 +64,7 @@ func InitLogger() *logrus.Logger {
 	appModeEnv := os.Getenv("APP_MODE")
 	isDev := appModeEnv == "" || strings.ToLower(appModeEnv) == "dev"
 
-	infoWriter, err := rotatelogs.New(
+	infoWriter, err := infoLogCreator(
 		"./logs/app-info.%Y-%m-%d.log",
 		rotatelogs.WithLinkName("./logs/app-info.log"),
 		rotatelogs.WithRotationTime(24*time.Hour),
@@ -65,7 +74,7 @@ func InitLogger() *logrus.Logger {
 		panic("failed to create info log rotator: " + err.Error())
 	}
 
-	errorWriter, err := rotatelogs.New(
+	errorWriter, err := errorLogCreator(
 		"./logs/app-error.%Y-%m-%d.log",
 		rotatelogs.WithLinkName("./logs/app-error.log"),
 		rotatelogs.WithRotationTime(24*time.Hour),
@@ -97,6 +106,11 @@ func InitLogger() *logrus.Logger {
 
 	logger.SetLevel(logrus.DebugLevel)
 	return logger
+}
+
+// Keep the original InitLogger for production use
+func InitLogger() *logrus.Logger {
+	return InitLoggerWithCreators(rotatelogs.New, rotatelogs.New)
 }
 
 // Lumberjack
