@@ -6,18 +6,23 @@ import (
 	"net/http"
 )
 
-func RespondWithError(w http.ResponseWriter, status int, msg string) {
+// RespondWithError writes an error response with optional code
+func RespondWithError(w http.ResponseWriter, status int, msg string, code ...string) {
 	if status > 499 {
 		log.Printf("Responding with 5XX error: %s", msg)
 	}
 
 	type errorResponse struct {
 		Error string `json:"error"`
+		Code  string `json:"code,omitempty"`
 	}
 
-	RespondWithJSON(w, status, errorResponse{
-		Error: msg,
-	})
+	errResp := errorResponse{Error: msg}
+	if len(code) > 0 && code[0] != "" {
+		errResp.Code = code[0]
+	}
+
+	RespondWithJSON(w, status, errResp)
 }
 
 func RespondWithJSON(w http.ResponseWriter, status int, payload any) {
