@@ -9,19 +9,23 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// testHook is a logrus hook for capturing log entries in tests.
 type testHook struct {
 	entries []*logrus.Entry
 }
 
+// Levels returns all logrus levels for the testHook.
 func (h *testHook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
+// Fire appends a log entry to the testHook's entries.
 func (h *testHook) Fire(e *logrus.Entry) error {
 	h.entries = append(h.entries, e)
 	return nil
 }
 
+// newTestLogger creates a new logrus.Logger, testHook, and output buffer for testing.
 func newTestLogger() (*logrus.Logger, *testHook, *bytes.Buffer) {
 	logger := logrus.New()
 	buf := &bytes.Buffer{}
@@ -32,6 +36,7 @@ func newTestLogger() (*logrus.Logger, *testHook, *bytes.Buffer) {
 	return logger, hook, buf
 }
 
+// TestLogUserAction tests the LogUserAction function for various statuses and error message handling.
 func TestLogUserAction(t *testing.T) {
 	statuses := []struct {
 		status  string

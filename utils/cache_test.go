@@ -11,44 +11,59 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockRedisCmdable is a testify mock for redis.Cmdable
-// Only methods used by CacheService are mocked
-// You can expand this as needed for more methods
-
+// MockRedisCmdable is a testify mock for redis.Cmdable, used to simulate Redis operations in CacheService tests.
 type MockRedisCmdable struct {
 	mock.Mock
 	redis.Cmdable
 }
 
+// Get mocks the Redis GET command for testing.
 func (m *MockRedisCmdable) Get(ctx context.Context, key string) *redis.StringCmd {
 	args := m.Called(ctx, key)
 	return args.Get(0).(*redis.StringCmd)
 }
-func (m *MockRedisCmdable) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+
+// Set mocks the Redis SET command for testing.
+func (m *MockRedisCmdable) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
 	args := m.Called(ctx, key, value, expiration)
 	return args.Get(0).(*redis.StatusCmd)
 }
+
+// Del mocks the Redis DEL command for testing.
 func (m *MockRedisCmdable) Del(ctx context.Context, keys ...string) *redis.IntCmd {
 	args := m.Called(ctx, keys)
 	return args.Get(0).(*redis.IntCmd)
 }
+
+// Keys mocks the Redis KEYS command for testing.
 func (m *MockRedisCmdable) Keys(ctx context.Context, pattern string) *redis.StringSliceCmd {
 	args := m.Called(ctx, pattern)
 	return args.Get(0).(*redis.StringSliceCmd)
 }
+
+// Exists mocks the Redis EXISTS command for testing.
 func (m *MockRedisCmdable) Exists(ctx context.Context, keys ...string) *redis.IntCmd {
 	args := m.Called(ctx, keys)
 	return args.Get(0).(*redis.IntCmd)
 }
+
+// TTL mocks the Redis TTL command for testing.
 func (m *MockRedisCmdable) TTL(ctx context.Context, key string) *redis.DurationCmd {
 	args := m.Called(ctx, key)
 	return args.Get(0).(*redis.DurationCmd)
 }
+
+// FlushAll mocks the Redis FLUSHALL command for testing.
 func (m *MockRedisCmdable) FlushAll(ctx context.Context) *redis.StatusCmd {
 	args := m.Called(ctx)
 	return args.Get(0).(*redis.StatusCmd)
 }
 
+// TestCacheService_Get tests the Get method of CacheService for:
+// - Key does not exist
+// - Redis error
+// - Unmarshal error
+// - Success
 func TestCacheService_Get(t *testing.T) {
 	t.Run("key does not exist", func(t *testing.T) {
 		ctx := context.Background()
@@ -120,6 +135,10 @@ func TestCacheService_Get(t *testing.T) {
 	})
 }
 
+// TestCacheService_Set tests the Set method of CacheService for:
+// - Marshal error
+// - Redis error
+// - Success
 func TestCacheService_Set(t *testing.T) {
 	t.Run("marshal error", func(t *testing.T) {
 		ctx := context.Background()
@@ -167,6 +186,9 @@ func TestCacheService_Set(t *testing.T) {
 	})
 }
 
+// TestCacheService_Delete tests the Delete method of CacheService for:
+// - Redis error
+// - Success
 func TestCacheService_Delete(t *testing.T) {
 	t.Run("redis error", func(t *testing.T) {
 		ctx := context.Background()
@@ -198,6 +220,11 @@ func TestCacheService_Delete(t *testing.T) {
 	})
 }
 
+// TestCacheService_DeletePattern tests the DeletePattern method of CacheService for:
+// - Keys error
+// - Del error
+// - No keys match
+// - Success
 func TestCacheService_DeletePattern(t *testing.T) {
 	t.Run("keys error", func(t *testing.T) {
 		ctx := context.Background()
@@ -264,6 +291,10 @@ func TestCacheService_DeletePattern(t *testing.T) {
 	})
 }
 
+// TestCacheService_Exists tests the Exists method of CacheService for:
+// - Redis error
+// - Exists
+// - Does not exist
 func TestCacheService_Exists(t *testing.T) {
 	t.Run("redis error", func(t *testing.T) {
 		ctx := context.Background()
@@ -312,6 +343,9 @@ func TestCacheService_Exists(t *testing.T) {
 	})
 }
 
+// TestCacheService_TTL tests the TTL method of CacheService for:
+// - Redis error
+// - Success
 func TestCacheService_TTL(t *testing.T) {
 	t.Run("redis error", func(t *testing.T) {
 		ctx := context.Background()
@@ -345,6 +379,9 @@ func TestCacheService_TTL(t *testing.T) {
 	})
 }
 
+// TestCacheService_FlushAll tests the FlushAll method of CacheService for:
+// - Redis error
+// - Success
 func TestCacheService_FlushAll(t *testing.T) {
 	t.Run("redis error", func(t *testing.T) {
 		ctx := context.Background()

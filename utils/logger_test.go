@@ -13,11 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mockWriter is a mock implementation of io.Writer for testing error scenarios in WriterHook.
 type mockWriter struct {
 	buf        *bytes.Buffer
 	errOnWrite bool
 }
 
+// Write writes to the buffer or returns an error if errOnWrite is true.
 func (m *mockWriter) Write(p []byte) (int, error) {
 	if m.errOnWrite {
 		return 0, errors.New("write error")
@@ -25,6 +27,7 @@ func (m *mockWriter) Write(p []byte) (int, error) {
 	return m.buf.Write(p)
 }
 
+// TestNewWriterHookAndLevels tests NewWriterHook and its Levels method for correct level mapping.
 func TestNewWriterHookAndLevels(t *testing.T) {
 	levels := []logrus.Level{logrus.InfoLevel, logrus.ErrorLevel}
 	hook := NewWriterHook(io.Discard, levels)
@@ -45,6 +48,11 @@ func TestNewWriterHookAndLevels(t *testing.T) {
 	}
 }
 
+// TestWriterHookFire tests the Fire method of WriterHook for:
+// - Writing log entries for matching levels
+// - Skipping non-matching levels
+// - Handling entry.String() errors
+// - Handling writer errors
 func TestWriterHookFire(t *testing.T) {
 	buf := &bytes.Buffer{}
 	hook := NewWriterHook(buf, []logrus.Level{logrus.InfoLevel})
@@ -86,12 +94,15 @@ func TestWriterHookFire(t *testing.T) {
 	}
 }
 
+// badFormatter is a logrus formatter that always returns an error, used to test error handling in WriterHook.
 type badFormatter struct{}
 
+// Format always returns an error for testing.
 func (b *badFormatter) Format(*logrus.Entry) ([]byte, error) {
 	return nil, errors.New("format error")
 }
 
+// TestInitLoggerBasic tests InitLogger for basic logger setup and configuration in dev mode.
 func TestInitLoggerBasic(t *testing.T) {
 	// Patch environment to force dev mode
 	os.Setenv("APP_MODE", "dev")
@@ -105,6 +116,7 @@ func TestInitLoggerBasic(t *testing.T) {
 	// We can't easily test file outputs or hooks without more advanced patching/mocking
 }
 
+// TestInitLoggerWithCreators_PanicOnInfoWriterError tests that InitLoggerWithCreators panics if info writer creation fails.
 func TestInitLoggerWithCreators_PanicOnInfoWriterError(t *testing.T) {
 	mockErr := errors.New("info rotator fail")
 	panicMsg := "failed to create info log rotator: info rotator fail"
@@ -119,6 +131,7 @@ func TestInitLoggerWithCreators_PanicOnInfoWriterError(t *testing.T) {
 	})
 }
 
+// TestInitLoggerWithCreators_PanicOnErrorWriterError tests that InitLoggerWithCreators panics if error writer creation fails.
 func TestInitLoggerWithCreators_PanicOnErrorWriterError(t *testing.T) {
 	mockErr := errors.New("error rotator fail")
 	panicMsg := "failed to create error log rotator: error rotator fail"

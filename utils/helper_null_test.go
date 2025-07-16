@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TestToNullString tests the ToNullString function for converting strings to sql.NullString.
 func TestToNullString(t *testing.T) {
 	t.Helper()
 	cases := []struct {
@@ -23,6 +24,7 @@ func TestToNullString(t *testing.T) {
 	}
 }
 
+// TestToNullStringIfNotEmpty tests the ToNullStringIfNotEmpty function for handling empty and non-empty sql.NullString values.
 func TestToNullStringIfNotEmpty(t *testing.T) {
 	t.Helper()
 	cases := []struct {
@@ -42,6 +44,7 @@ func TestToNullStringIfNotEmpty(t *testing.T) {
 	}
 }
 
+// TestToNullBoolFromSQL tests the ToNullBoolFromSQL function for correct passthrough of sql.NullBool values.
 func TestToNullBoolFromSQL(t *testing.T) {
 	t.Helper()
 	b := sql.NullBool{Bool: true, Valid: true}
@@ -50,6 +53,7 @@ func TestToNullBoolFromSQL(t *testing.T) {
 	}
 }
 
+// TestNullStringJSON tests the NullString type's JSON marshaling and unmarshaling behavior.
 func TestNullStringJSON(t *testing.T) {
 	t.Helper()
 	cases := []struct {
@@ -93,6 +97,7 @@ func TestNullStringJSON(t *testing.T) {
 	}
 }
 
+// TestNullBoolJSON tests the NullBool type's JSON marshaling and unmarshaling behavior.
 func TestNullBoolJSON(t *testing.T) {
 	t.Helper()
 	cases := []struct {
@@ -131,6 +136,7 @@ func TestNullBoolJSON(t *testing.T) {
 	}
 }
 
+// TestNullFloat64JSON tests the NullFloat64 type's JSON marshaling and unmarshaling behavior.
 func TestNullFloat64JSON(t *testing.T) {
 	t.Helper()
 	cases := []struct {

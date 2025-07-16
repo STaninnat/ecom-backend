@@ -6,6 +6,9 @@ import (
 	"testing"
 )
 
+// TestGetSessionIDFromRequest tests the GetSessionIDFromRequest function for:
+// - When the session cookie is present
+// - When the session cookie is absent
 func TestGetSessionIDFromRequest(t *testing.T) {
 	t.Run("cookie present", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)

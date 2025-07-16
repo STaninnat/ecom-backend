@@ -10,26 +10,31 @@ import (
 	"time"
 )
 
+// mockServer is a mock implementation of a server for testing graceful shutdown.
 type mockServer struct {
 	shutdownCalled bool
 	shutdownErr    error
 }
 
+// Shutdown simulates shutting down the server and records if it was called.
 func (m *mockServer) Shutdown(ctx context.Context) error {
 	m.shutdownCalled = true
 	return m.shutdownErr
 }
 
+// mockConfig is a mock implementation for MongoDB disconnect logic in shutdown tests.
 type mockConfig struct {
 	disconnectCalled bool
 	disconnectErr    error
 }
 
+// DisconnectMongoDB simulates disconnecting MongoDB and records if it was called.
 func (m *mockConfig) DisconnectMongoDB(ctx context.Context) error {
 	m.disconnectCalled = true
 	return m.disconnectErr
 }
 
+// TestGracefulShutdown_Success tests GracefulShutdown for a successful shutdown sequence.
 func TestGracefulShutdown_Success(t *testing.T) {
 	// Redirect log output
 	var buf bytes.Buffer
@@ -63,6 +68,7 @@ func TestGracefulShutdown_Success(t *testing.T) {
 	}
 }
 
+// TestGracefulShutdown_Errors tests GracefulShutdown for error scenarios during shutdown and disconnect.
 func TestGracefulShutdown_Errors(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
@@ -88,6 +94,7 @@ func TestGracefulShutdown_Errors(t *testing.T) {
 	}
 }
 
+// containsAll checks if all substrings are present in the given string.
 func containsAll(s string, subs ...string) bool {
 	for _, sub := range subs {
 		if !bytes.Contains([]byte(s), []byte(sub)) {

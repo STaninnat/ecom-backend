@@ -10,11 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// WriterHook is a logrus hook that writes logs of specified levels to a given io.Writer.
 type WriterHook struct {
 	Writer    io.Writer
 	LogLevels map[logrus.Level]struct{}
 }
 
+// NewWriterHook creates a new WriterHook for the specified writer and log levels.
 func NewWriterHook(writer io.Writer, levels []logrus.Level) *WriterHook {
 	levelMap := make(map[logrus.Level]struct{}, len(levels))
 	for _, lvl := range levels {
@@ -23,6 +25,7 @@ func NewWriterHook(writer io.Writer, levels []logrus.Level) *WriterHook {
 	return &WriterHook{Writer: writer, LogLevels: levelMap}
 }
 
+// Fire writes the log entry to the Writer if its level is enabled in the hook.
 func (hook *WriterHook) Fire(entry *logrus.Entry) error {
 	if _, ok := hook.LogLevels[entry.Level]; ok {
 		line, err := entry.String()
@@ -35,6 +38,7 @@ func (hook *WriterHook) Fire(entry *logrus.Entry) error {
 	return nil // do nothing if level not in LogLevels
 }
 
+// Levels returns the log levels enabled for this WriterHook.
 func (hook *WriterHook) Levels() []logrus.Level {
 	levels := make([]logrus.Level, 0, len(hook.LogLevels))
 	for lvl := range hook.LogLevels {
@@ -43,12 +47,10 @@ func (hook *WriterHook) Levels() []logrus.Level {
 	return levels
 }
 
-// Define a type for the rotatelogs.New function signature
-// This allows us to inject a mock in tests
-
+// RotatelogsNewFunc defines the function signature for rotatelogs.New, allowing injection for testing.
 type RotatelogsNewFunc func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error)
 
-// Refactor InitLogger to accept optional creator functions for info and error writers
+// InitLoggerWithCreators creates a logrus.Logger with hooks for info and error logs, allowing injection of log writer creators for testing.
 func InitLoggerWithCreators(
 	infoLogCreator RotatelogsNewFunc,
 	errorLogCreator RotatelogsNewFunc,
@@ -108,7 +110,7 @@ func InitLoggerWithCreators(
 	return logger
 }
 
-// Keep the original InitLogger for production use
+// InitLogger creates a logrus.Logger for production use, writing to rotating log files.
 func InitLogger() *logrus.Logger {
 	return InitLoggerWithCreators(rotatelogs.New, rotatelogs.New)
 }
