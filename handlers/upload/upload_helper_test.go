@@ -76,6 +76,18 @@ func (m *mockS3Client) DeleteObject(ctx context.Context, params *s3.DeleteObject
 	return &s3.DeleteObjectOutput{}, m.deleteErr
 }
 
+// PutObjectS3 satisfies the S3Client interface for PutObject using s3 types.
+func (m *mockS3Client) PutObjectS3(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	m.putCalled = true
+	return &s3.PutObjectOutput{}, m.putErr
+}
+
+// DeleteObjectS3 satisfies the S3Client interface for DeleteObject using s3 types.
+func (m *mockS3Client) DeleteObjectS3(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	m.deleteCalled = true
+	return &s3.DeleteObjectOutput{}, m.deleteErr
+}
+
 type s3FakeFile struct {
 	data    []byte
 	readPos int
