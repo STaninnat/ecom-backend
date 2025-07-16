@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"database/sql"
-
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // UploadService defines the business logic interface for uploads (local or S3).
@@ -61,7 +60,7 @@ func (a *ProductDBAdapter) GetProductByID(ctx context.Context, id string) (Produ
 func (a *ProductDBAdapter) UpdateProductImageURL(ctx context.Context, params UpdateProductImageURLParams) error {
 	return a.Queries.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
 		ID:        params.ID,
-		ImageUrl:  sql.NullString{String: params.ImageUrl, Valid: true},
+		ImageUrl:  utils.ToNullString(params.ImageUrl),
 		UpdatedAt: time.Unix(params.UpdatedAt, 0),
 	})
 }
