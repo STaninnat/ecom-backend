@@ -10,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TestShouldLog tests the path filtering logic for logging middleware
+// It verifies that include/exclude path rules work correctly for different scenarios
 func TestShouldLog(t *testing.T) {
 	include := map[string]struct{}{"/api": {}}
 	exclude := map[string]struct{}{"/api/private": {}}
@@ -32,6 +34,8 @@ func TestShouldLog(t *testing.T) {
 	}
 }
 
+// TestGetIPAddress tests IP address extraction from various request headers
+// It verifies that the function correctly handles X-Real-IP, X-Forwarded-For, and RemoteAddr
 func TestGetIPAddress(t *testing.T) {
 	tests := []struct {
 		headers map[string]string
@@ -60,6 +64,8 @@ func TestGetIPAddress(t *testing.T) {
 	}
 }
 
+// TestIsValidIP tests IP address validation functionality
+// It verifies that both valid IPv4/IPv6 addresses and invalid formats are handled correctly
 func TestIsValidIP(t *testing.T) {
 	tests := []struct {
 		ip   string
@@ -78,6 +84,8 @@ func TestIsValidIP(t *testing.T) {
 	}
 }
 
+// TestRequestIDMiddleware tests that request IDs are properly generated and stored in context
+// It verifies that each request gets a unique UUID and it's accessible in the request context
 func TestRequestIDMiddleware(t *testing.T) {
 	var gotID string
 	h := RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +103,8 @@ func TestRequestIDMiddleware(t *testing.T) {
 	}
 }
 
+// TestLoggingMiddleware_CallsNextAndLogs tests the main logging middleware functionality
+// It verifies that the middleware calls the next handler and logs request information correctly
 func TestLoggingMiddleware_CallsNextAndLogs(t *testing.T) {
 	var called bool
 	logger := logrus.New()

@@ -4,7 +4,8 @@ import (
 	"net/http"
 )
 
-// SecurityHeaders adds security headers to all responses
+// SecurityHeaders adds security headers to all HTTP responses to protect against common web vulnerabilities.
+// Sets HSTS, X-Content-Type-Options, X-Frame-Options, XSS Protection, CSP, Referrer Policy, and Permissions Policy headers.
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// HTTP Strict Transport Security (HSTS)
@@ -32,7 +33,8 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// NoCacheHeaders adds headers to prevent caching for sensitive endpoints
+// NoCacheHeaders adds headers to prevent caching for sensitive endpoints.
+// Sets Cache-Control, Pragma, and Expires headers to prevent browser and proxy caching.
 func NoCacheHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")

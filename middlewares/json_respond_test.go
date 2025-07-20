@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+// TestRespondWithError tests error response generation with various scenarios
+// It verifies that error responses have correct status codes, JSON structure, and optional error codes
 func TestRespondWithError(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -47,6 +49,8 @@ func TestRespondWithError(t *testing.T) {
 	}
 }
 
+// TestRespondWithJSON tests JSON response generation with valid payloads
+// It verifies that JSON responses have correct status codes, content type, and marshaled data
 func TestRespondWithJSON(t *testing.T) {
 	type payload struct {
 		Msg string `json:"msg"`
@@ -69,6 +73,8 @@ func TestRespondWithJSON(t *testing.T) {
 	}
 }
 
+// TestRespondWithJSON_MarshalError tests JSON response generation when marshaling fails
+// It verifies that the function handles marshaling errors gracefully and returns 500 status
 func TestRespondWithJSON_MarshalError(t *testing.T) {
 	rr := httptest.NewRecorder()
 	// channels cannot be marshaled to JSON

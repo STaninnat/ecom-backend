@@ -10,6 +10,8 @@ import (
 	redismock "github.com/go-redis/redismock/v9"
 )
 
+// TestRedisRateLimiter_UnderLimit tests rate limiting when requests are within the limit
+// It verifies that requests are allowed through and proper rate limit headers are set
 func TestRedisRateLimiter_UnderLimit(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	defer db.Close()
@@ -46,6 +48,8 @@ func TestRedisRateLimiter_UnderLimit(t *testing.T) {
 	}
 }
 
+// TestRedisRateLimiter_OverLimit tests rate limiting when requests exceed the limit
+// It verifies that requests are blocked with 429 status and rate limit headers are set
 func TestRedisRateLimiter_OverLimit(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	defer db.Close()
@@ -76,6 +80,8 @@ func TestRedisRateLimiter_OverLimit(t *testing.T) {
 	}
 }
 
+// TestRedisRateLimiter_ExecError tests rate limiting when Redis operations fail
+// It verifies that the middleware handles Redis errors gracefully and returns 500 status
 func TestRedisRateLimiter_ExecError(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	defer db.Close()
@@ -105,6 +111,8 @@ func TestRedisRateLimiter_ExecError(t *testing.T) {
 	}
 }
 
+// TestGetClientIP tests client IP extraction from various request headers
+// It verifies that the function correctly prioritizes X-Forwarded-For, X-Real-IP, and RemoteAddr
 func TestGetClientIP(t *testing.T) {
 	tests := []struct {
 		headers map[string]string

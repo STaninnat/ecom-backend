@@ -16,6 +16,7 @@ type MockCacheService struct {
 	mock.Mock
 }
 
+// Get mocks the cache Get method for testing purposes
 func (m *MockCacheService) Get(ctx context.Context, key string, dest any) (bool, error) {
 	args := m.Called(ctx, key, dest)
 	if args.Get(2) != nil {
@@ -32,6 +33,8 @@ func (m *MockCacheService) DeletePattern(ctx context.Context, pattern string) er
 	return args.Error(0)
 }
 
+// TestCacheMiddleware_CacheHit tests the cache middleware when a cached response is found
+// It verifies that cached responses are returned immediately without calling the handler
 func TestCacheMiddleware_CacheHit(t *testing.T) {
 	cached := CachedResponse{
 		StatusCode: 200,
@@ -58,6 +61,8 @@ func TestCacheMiddleware_CacheHit(t *testing.T) {
 	mockCache.AssertExpectations(t)
 }
 
+// TestCacheMiddleware_CacheMiss tests the cache middleware when no cached response exists
+// It verifies that the handler is called and the response is cached for future requests
 func TestCacheMiddleware_CacheMiss(t *testing.T) {
 	mockCache := new(MockCacheService)
 	mockCache.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(false, nil, nil)
@@ -82,6 +87,8 @@ func TestCacheMiddleware_CacheMiss(t *testing.T) {
 	mockCache.AssertExpectations(t)
 }
 
+// TestCacheMiddleware_NonGET tests the cache middleware with non-GET requests
+// It verifies that caching is bypassed for non-GET requests and the handler is called normally
 func TestCacheMiddleware_NonGET(t *testing.T) {
 	mockCache := new(MockCacheService)
 	config := CacheConfig{TTL: time.Minute, KeyPrefix: "test", CacheService: mockCache}
@@ -99,6 +106,8 @@ func TestCacheMiddleware_NonGET(t *testing.T) {
 	mockCache.AssertNotCalled(t, "Set", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
+// TestCacheMiddleware_GetError tests the cache middleware when cache retrieval fails
+// It verifies that the middleware gracefully handles cache errors and falls back to the handler
 func TestCacheMiddleware_GetError(t *testing.T) {
 	mockCache := new(MockCacheService)
 	mockCache.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(false, errors.New("fail"), nil)
@@ -117,6 +126,8 @@ func TestCacheMiddleware_GetError(t *testing.T) {
 	mockCache.AssertExpectations(t)
 }
 
+// TestInvalidateCache tests the cache invalidation middleware functionality
+// It verifies that cache entries are deleted after the handler executes successfully
 func TestInvalidateCache(t *testing.T) {
 	mockCache := new(MockCacheService)
 	mockCache.On("DeletePattern", mock.Anything, "test*").Return(nil)

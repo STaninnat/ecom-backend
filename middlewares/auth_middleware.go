@@ -7,40 +7,40 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
-// AuthHandler type for authenticated handlers
+// AuthHandler is a handler type for authenticated endpoints, receiving a database.User.
 type AuthHandler func(http.ResponseWriter, *http.Request, database.User)
 
-// OptionalHandler type for optionally authenticated handlers
+// OptionalHandler is a handler type for optionally authenticated endpoints, receiving a pointer to database.User (or nil).
 type OptionalHandler func(http.ResponseWriter, *http.Request, *database.User)
 
-// LoggerService interface for logging operations
+// LoggerService is an interface for logging operations, supporting structured error logging.
 type LoggerService interface {
 	WithError(err error) interface{ Error(args ...any) }
 	Error(args ...any)
 }
 
-// AuthService interface for authentication operations
+// AuthService is an interface for authentication operations, such as validating access tokens.
 type AuthService interface {
 	ValidateAccessToken(tokenString, secret string) (*Claims, error)
 }
 
-// UserService interface for user operations
+// UserService is an interface for user operations, such as fetching a user by ID.
 type UserService interface {
 	GetUserByID(ctx context.Context, id string) (database.User, error)
 }
 
-// RequestMetadataService interface for request metadata
+// RequestMetadataService is an interface for extracting request metadata such as IP and user agent.
 type RequestMetadataService interface {
 	GetIPAddress(r *http.Request) string
 	GetUserAgent(r *http.Request) string
 }
 
-// Claims represents JWT claims
+// Claims represents JWT claims for authentication.
 type Claims struct {
 	UserID string `json:"user_id"`
 }
 
-// LogHandlerError logs an error with structured logging
+// LogHandlerError logs an error with structured logging, using the logger service and additional context information.
 func LogHandlerError(logger LoggerService, ctx context.Context, action, details, logMsg, ip, ua string, err error) {
 	if err != nil {
 		logger.WithError(err).Error(logMsg)
@@ -49,14 +49,15 @@ func LogHandlerError(logger LoggerService, ctx context.Context, action, details,
 	}
 }
 
-// GetRequestMetadata extracts IP address and user agent from the request
+// GetRequestMetadata extracts IP address and user agent from the request using the metadata service.
 func GetRequestMetadata(metadataService RequestMetadataService, r *http.Request) (ip string, userAgent string) {
 	ip = metadataService.GetIPAddress(r)
 	userAgent = metadataService.GetUserAgent(r)
 	return
 }
 
-// CreateAuthMiddleware creates authentication middleware that validates JWT tokens
+// CreateAuthMiddleware creates authentication middleware that validates JWT tokens and fetches the user from the database.
+// Logs authentication failures and returns appropriate HTTP error responses.
 func CreateAuthMiddleware(
 	authService AuthService,
 	userService UserService,
@@ -118,7 +119,7 @@ func CreateAuthMiddleware(
 	}
 }
 
-// CreateAdminOnlyMiddleware creates middleware that only allows admin users
+// CreateAdminOnlyMiddleware creates middleware that only allows admin users, wrapping the standard auth middleware.
 func CreateAdminOnlyMiddleware(
 	authService AuthService,
 	userService UserService,
@@ -151,7 +152,7 @@ func CreateAdminOnlyMiddleware(
 	}
 }
 
-// CreateOptionalAuthMiddleware creates middleware that optionally authenticates users
+// CreateOptionalAuthMiddleware creates middleware that optionally authenticates users, passing nil for unauthenticated requests.
 func CreateOptionalAuthMiddleware(
 	authService AuthService,
 	userService UserService,

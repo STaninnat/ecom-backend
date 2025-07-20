@@ -8,7 +8,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RedisRateLimiter creates a distributed rate limiter using Redis
+// RedisRateLimiter creates a distributed rate limiter middleware using Redis.
+// Tracks requests per client IP, sets rate limit headers, and returns HTTP 429 if the limit is exceeded.
+// Uses Redis pipeline for atomic operations and supports custom limits and windows.
 func RedisRateLimiter(redisClient redis.Cmdable, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +62,8 @@ func RedisRateLimiter(redisClient redis.Cmdable, limit int, window time.Duration
 }
 
 // getClientIP extracts the real client IP from request headers
+// It checks X-Forwarded-For and X-Real-IP headers first, then falls back to RemoteAddr
+// This ensures proper IP detection when behind proxies or load balancers
 func getClientIP(r *http.Request) string {
 	// Check for forwarded headers first
 	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {

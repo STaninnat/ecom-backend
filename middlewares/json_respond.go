@@ -6,7 +6,8 @@ import (
 	"net/http"
 )
 
-// RespondWithError writes an error response with optional code
+// RespondWithError writes an error response with the given status code and message, and an optional error code.
+// Logs 5XX errors and uses RespondWithJSON for consistent formatting.
 func RespondWithError(w http.ResponseWriter, status int, msg string, code ...string) {
 	if status > 499 {
 		log.Printf("Responding with 5XX error: %s", msg)
@@ -25,6 +26,8 @@ func RespondWithError(w http.ResponseWriter, status int, msg string, code ...str
 	RespondWithJSON(w, status, errResp)
 }
 
+// RespondWithJSON writes a JSON response with the given status code and payload.
+// Sets Content-Type to application/json and handles marshaling and write errors.
 func RespondWithJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 

@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,8 +10,8 @@ import (
 	"context"
 )
 
-// CacheServiceIface defines the interface for cache operations used by middleware
-// This allows for easier testing and mocking
+// CacheServiceIface defines the interface for cache operations used by middleware.
+// This allows for easier testing and mocking.
 // (You can use testify/mock or mockery to generate mocks)
 //
 //go:generate mockery --name=CacheServiceIface --output=../utils/mocks --outpkg=mocks
@@ -21,17 +21,15 @@ type CacheServiceIface interface {
 	DeletePattern(ctx context.Context, pattern string) error
 }
 
-// CacheConfig holds configuration for caching
-// Use the interface for CacheService
-// This makes the middleware more testable
-// and allows for easier mocking in tests
+// CacheConfig holds configuration for caching, including TTL, key prefix, and the cache service implementation.
 type CacheConfig struct {
 	TTL          time.Duration
 	KeyPrefix    string
 	CacheService CacheServiceIface
 }
 
-// CacheMiddleware creates a middleware that caches HTTP responses
+// CacheMiddleware creates a middleware that caches HTTP responses for GET requests.
+// It checks for cached responses before processing and caches successful responses for future requests.
 func CacheMiddleware(config CacheConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +59,9 @@ func CacheMiddleware(config CacheConfig) func(http.Handler) http.Handler {
 					}
 				}
 				w.WriteHeader(cachedResponse.StatusCode)
-				w.Write(cachedResponse.Body)
+				if _, err := w.Write(cachedResponse.Body); err != nil {
+					// Optionally log the error
+				}
 				return
 			}
 
@@ -93,7 +93,7 @@ func CacheMiddleware(config CacheConfig) func(http.Handler) http.Handler {
 	}
 }
 
-// CachedResponse represents a cached HTTP response
+// CachedResponse represents a cached HTTP response, including status code, headers, and body.
 type CachedResponse struct {
 	StatusCode int                 `json:"status_code"`
 	Headers    map[string][]string `json:"headers"`
@@ -108,6 +108,8 @@ type responseCapture struct {
 	body       *bytes.Buffer
 }
 
+// WriteHeader captures the status code and propagates headers to the real ResponseWriter
+// It ensures all headers are properly set before writing the status code
 func (rc *responseCapture) WriteHeader(statusCode int) {
 	rc.statusCode = statusCode
 	// Propagate all headers set on rc.headers to the real ResponseWriter
@@ -119,6 +121,8 @@ func (rc *responseCapture) WriteHeader(statusCode int) {
 	rc.ResponseWriter.WriteHeader(statusCode)
 }
 
+// Write captures the response body and writes it to both the buffer and real ResponseWriter
+// It also ensures headers are propagated if WriteHeader hasn't been called yet
 func (rc *responseCapture) Write(data []byte) (int, error) {
 	// Copy headers from rc.headers to the real ResponseWriter if not already done
 	for k, vv := range rc.headers {
@@ -130,11 +134,15 @@ func (rc *responseCapture) Write(data []byte) (int, error) {
 	return rc.ResponseWriter.Write(data)
 }
 
+// Header returns the captured headers for the response
 func (rc *responseCapture) Header() http.Header {
 	return rc.headers
 }
 
 // generateCacheKey creates a unique cache key based on the request
+// It combines method, path, query parameters, and user ID (if available) into a hash
+// The resulting key is prefixed with the configured key prefix for organization
+// SHA-256 hashing ensures consistent key length regardless of input size
 func generateCacheKey(prefix string, r *http.Request) string {
 	// Create a unique identifier for this request
 	keyData := fmt.Sprintf("%s:%s:%s", r.Method, r.URL.Path, r.URL.RawQuery)
@@ -144,12 +152,13 @@ func generateCacheKey(prefix string, r *http.Request) string {
 		keyData += fmt.Sprintf(":user:%v", userID)
 	}
 
-	// Create MD5 hash for consistent key length
-	hash := md5.Sum([]byte(keyData))
+	// Create SHA-256 hash for consistent key length
+	hash := sha256.Sum256([]byte(keyData))
 	return fmt.Sprintf("%s:%x", prefix, hash)
 }
 
-// InvalidateCache removes cached entries matching a pattern
+// InvalidateCache removes cached entries matching a pattern after the handler executes.
+// Useful for cache invalidation after data modifications.
 func InvalidateCache(cacheService CacheServiceIface, pattern string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
