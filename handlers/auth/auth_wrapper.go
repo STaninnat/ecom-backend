@@ -10,10 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
-// HandlersAuthConfig contains the configuration for auth handlers
-// It embeds the base handlers config and cart config, and provides
-// access to the auth service for business logic operations
-// Now includes a Logger field for consistent logging
+// HandlersAuthConfig contains the configuration for auth handlers.
+// Embeds the base handlers config and cart config, provides access to the auth service, and includes a Logger for consistent logging.
 type HandlersAuthConfig struct {
 	*handlers.HandlersConfig
 	*carthandlers.HandlersCartConfig
@@ -22,8 +20,8 @@ type HandlersAuthConfig struct {
 	authMutex   sync.RWMutex
 }
 
-// InitAuthService initializes the auth service with the current configuration
-// This method should be called during application startup
+// InitAuthService initializes the auth service with the current configuration.
+// Should be called during application startup.
 func (cfg *HandlersAuthConfig) InitAuthService() error {
 	// Validate that the embedded config is not nil
 	if cfg.HandlersConfig == nil {
@@ -62,8 +60,8 @@ func (cfg *HandlersAuthConfig) InitAuthService() error {
 	return nil
 }
 
-// GetAuthService returns the auth service instance, initializing it if necessary
-// This method is thread-safe and will initialize the service on first access
+// GetAuthService returns the auth service instance, initializing it if necessary.
+// Thread-safe and will initialize the service on first access.
 func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 	cfg.authMutex.RLock()
 	if cfg.authService != nil {
@@ -96,8 +94,8 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 	return cfg.authService
 }
 
-// handleAuthError handles authentication-specific errors with proper logging and responses
-// It categorizes errors and provides appropriate HTTP status codes and messages
+// handleAuthError handles authentication-specific errors with proper logging and responses.
+// Categorizes errors and provides appropriate HTTP status codes and messages.
 func (cfg *HandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 

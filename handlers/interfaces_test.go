@@ -13,6 +13,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// TestNewHandlerConfig_Interfaces tests NewHandlerConfig with interface mocks.
+// It checks that all fields are set as expected and not nil.
 func TestNewHandlerConfig_Interfaces(t *testing.T) {
 	mockAuthService := &MockAuthService{}
 	mockUserService := &MockUserService{}
@@ -59,6 +61,8 @@ func TestNewHandlerConfig_Interfaces(t *testing.T) {
 	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
+// TestHandlerConfig_Complete tests creation of HandlerConfig with all fields set.
+// It checks that all fields are not nil or empty as appropriate.
 func TestHandlerConfig_Complete(t *testing.T) {
 	// Test that HandlerConfig can be created with all fields
 	cfg := &HandlerConfig{
@@ -95,6 +99,8 @@ func TestHandlerConfig_Complete(t *testing.T) {
 	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
+// TestOAuthConfig_Complete tests creation of OAuthConfig with a Google config.
+// It checks that all fields are set as expected and not nil.
 func TestOAuthConfig_Complete(t *testing.T) {
 	// Test that OAuthConfig can be created with Google config
 	oauthConfig := &OAuthConfig{
@@ -118,6 +124,8 @@ func TestOAuthConfig_Complete(t *testing.T) {
 	assert.Len(t, oauthConfig.Google.Scopes, 3)
 }
 
+// TestClaims_Complete tests creation and field access of Claims.
+// It checks that the UserID field is set as expected.
 func TestClaims_Complete(t *testing.T) {
 	// Test that Claims can be created and marshaled
 	claims := &Claims{
@@ -128,6 +136,8 @@ func TestClaims_Complete(t *testing.T) {
 	assert.Equal(t, "user123", claims.UserID)
 }
 
+// TestRefreshTokenData_Complete tests creation and field access of RefreshTokenData.
+// It checks that the Token and Provider fields are set as expected.
 func TestRefreshTokenData_Complete(t *testing.T) {
 	// Test that RefreshTokenData can be created
 	refreshData := &RefreshTokenData{
@@ -140,6 +150,8 @@ func TestRefreshTokenData_Complete(t *testing.T) {
 	assert.Equal(t, "google", refreshData.Provider)
 }
 
+// TestAuthHandler_Type tests that AuthHandler is a valid function type.
+// It checks that a function can be assigned to AuthHandler and is not nil.
 func TestAuthHandler_Type(t *testing.T) {
 	// Test that AuthHandler is a valid function type
 	handler := func(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -149,6 +161,8 @@ func TestAuthHandler_Type(t *testing.T) {
 	assert.NotNil(t, handler)
 }
 
+// TestOptionalHandler_Type tests that OptionalHandler is a valid function type.
+// It checks that a function can be assigned to OptionalHandler and is not nil.
 func TestOptionalHandler_Type(t *testing.T) {
 	// Test that OptionalHandler is a valid function type
 	handler := func(w http.ResponseWriter, r *http.Request, user *database.User) {
@@ -158,6 +172,8 @@ func TestOptionalHandler_Type(t *testing.T) {
 	assert.NotNil(t, handler)
 }
 
+// TestHandlersConfig_ValidateConfig_Success tests successful validation of HandlersConfig.
+// It checks that no error is returned for a valid config.
 func TestHandlersConfig_ValidateConfig_Success(t *testing.T) {
 	// Test successful validation
 	logger := logrus.New()
@@ -173,6 +189,8 @@ func TestHandlersConfig_ValidateConfig_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestHandlersConfig_ValidateConfig_MissingLogger tests validation failure with missing logger.
+// It checks that an error is returned and contains the expected message.
 func TestHandlersConfig_ValidateConfig_MissingLogger(t *testing.T) {
 	// Test validation failure with missing logger
 	cfg := &HandlersConfig{
@@ -187,6 +205,8 @@ func TestHandlersConfig_ValidateConfig_MissingLogger(t *testing.T) {
 	assert.Contains(t, err.Error(), "logger is required")
 }
 
+// TestHandlersConfig_ValidateConfig_MissingAuth tests validation failure with missing auth.
+// It checks that an error is returned and contains the expected message.
 func TestHandlersConfig_ValidateConfig_MissingAuth(t *testing.T) {
 	// Test validation failure with missing auth
 	logger := logrus.New()
@@ -202,6 +222,8 @@ func TestHandlersConfig_ValidateConfig_MissingAuth(t *testing.T) {
 	assert.Contains(t, err.Error(), "auth configuration is required")
 }
 
+// TestHandlersConfig_ValidateConfig_MissingAPIConfig tests validation failure with missing API config.
+// It checks that an error is returned and contains the expected message.
 func TestHandlersConfig_ValidateConfig_MissingAPIConfig(t *testing.T) {
 	// Test validation failure with missing API config
 	logger := logrus.New()
@@ -215,13 +237,16 @@ func TestHandlersConfig_ValidateConfig_MissingAPIConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), "API configuration is required")
 }
 
+// TestErrInvalidConfig_Error tests the error message returned by ErrInvalidConfig.
+// It checks that the error message matches the input string.
 func TestErrInvalidConfig_Error(t *testing.T) {
 	// Test ErrInvalidConfig error message
 	err := ErrInvalidConfig("test error message")
 	assert.Equal(t, "test error message", err.Error())
 }
 
-// Test interface compliance
+// TestInterfaceCompliance tests that mock services implement the required interfaces.
+// It checks that each mock can be assigned to its respective interface type.
 func TestInterfaceCompliance(t *testing.T) {
 	// Test that our mock services implement the interfaces correctly
 

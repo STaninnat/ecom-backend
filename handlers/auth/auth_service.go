@@ -39,7 +39,8 @@ const (
 	OAuthStateValid = "valid"
 )
 
-// AuthService defines the business logic interface for authentication
+// AuthService defines the business logic interface for authentication.
+// Provides methods for signup, signin, signout, token refresh, Google OAuth, and auth URL generation.
 type AuthService interface {
 	SignUp(ctx context.Context, params SignUpParams) (*AuthResult, error)
 	SignIn(ctx context.Context, params SignInParams) (*AuthResult, error)
@@ -79,8 +80,7 @@ type AuthResult struct {
 	IsNewUser           bool
 }
 
-// Define interfaces for dependencies
-
+// DBQueries defines the interface for database query operations needed by AuthServiceImpl.
 type DBQueries interface {
 	CheckUserExistsByName(ctx context.Context, name string) (bool, error)
 	CheckUserExistsByEmail(ctx context.Context, email string) (bool, error)
@@ -92,21 +92,25 @@ type DBQueries interface {
 	UpdateUserSigninStatusByEmail(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error
 }
 
+// DBConn defines the interface for database connection operations needed by AuthServiceImpl.
 type DBConn interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (DBTx, error)
 }
 
+// DBTx defines the interface for database transaction operations needed by AuthServiceImpl.
 type DBTx interface {
 	Commit() error
 	Rollback() error
 }
 
+// MinimalRedis defines the minimal Redis operations needed by AuthServiceImpl.
 type MinimalRedis interface {
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
 	Get(ctx context.Context, key string) *redis.StringCmd
 }
 
+// AuthConfig defines the interface for authentication configuration and token operations needed by AuthServiceImpl.
 type AuthConfig interface {
 	HashPassword(password string) (string, error)
 	GenerateTokens(userID string, expiresAt time.Time) (string, string, error)
@@ -122,7 +126,7 @@ type OAuth2Exchanger interface {
 	Client(ctx context.Context, t *oauth2.Token) *http.Client
 }
 
-// AuthServiceImpl implements AuthService
+// AuthServiceImpl implements AuthService, providing authentication business logic.
 type AuthServiceImpl struct {
 	db          DBQueries
 	dbConn      DBConn
@@ -131,7 +135,7 @@ type AuthServiceImpl struct {
 	oauth       OAuth2Exchanger
 }
 
-// NewAuthService creates a new AuthService instance
+// NewAuthService creates a new AuthService instance with the given dependencies.
 func NewAuthService(
 	db DBQueries,
 	dbConn DBConn,
@@ -152,7 +156,7 @@ func NewAuthService(
 // Now aliases handlers.AppError for consistency
 type AuthError = handlers.AppError
 
-// SignUp handles user registration with local authentication
+// SignUp handles user registration with local authentication.
 func (s *AuthServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*AuthResult, error) {
 	// Check if name exists
 	nameExists, err := s.db.CheckUserExistsByName(ctx, params.Name)
@@ -218,7 +222,7 @@ func (s *AuthServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	return authResult, nil
 }
 
-// SignIn handles user authentication with local credentials
+// SignIn handles user authentication with local credentials.
 func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*AuthResult, error) {
 	// Get user by email
 	user, err := s.db.GetUserByEmail(ctx, params.Email)
@@ -271,7 +275,7 @@ func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	return authResult, nil
 }
 
-// SignOut handles user logout by clearing refresh tokens
+// SignOut handles user signout, revoking tokens and cleaning up session state.
 func (s *AuthServiceImpl) SignOut(ctx context.Context, userID string, provider string) error {
 	// Delete refresh token from Redis
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
@@ -282,7 +286,7 @@ func (s *AuthServiceImpl) SignOut(ctx context.Context, userID string, provider s
 	return nil
 }
 
-// RefreshToken handles token refresh for both local and Google authentication
+// RefreshToken handles refresh token logic, issuing new tokens for the user.
 func (s *AuthServiceImpl) RefreshToken(ctx context.Context, userID string, provider string, refreshToken string) (*AuthResult, error) {
 	timeNow := time.Now().UTC()
 
@@ -293,7 +297,7 @@ func (s *AuthServiceImpl) RefreshToken(ctx context.Context, userID string, provi
 	return s.refreshLocalToken(ctx, userID, timeNow)
 }
 
-// GenerateGoogleAuthURL generates the Google OAuth authorization URL
+// GenerateGoogleAuthURL generates the Google OAuth authorization URL for the given state.
 func (s *AuthServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
 	// Store state in Redis
 	err := s.redisClient.Set(context.Background(), OAuthStateKeyPrefix+state, OAuthStateValid, OAuthStateTTL).Err()
@@ -305,7 +309,7 @@ func (s *AuthServiceImpl) GenerateGoogleAuthURL(state string) (string, error) {
 	return authURL, nil
 }
 
-// HandleGoogleAuth handles the Google OAuth callback and user authentication
+// HandleGoogleAuth processes the Google OAuth callback, exchanges code for tokens, and authenticates the user.
 func (s *AuthServiceImpl) HandleGoogleAuth(ctx context.Context, code string, state string) (*AuthResult, error) {
 	// Validate state
 	redisState, err := s.redisClient.Get(ctx, OAuthStateKeyPrefix+state).Result()

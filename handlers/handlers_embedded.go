@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// HandlersConfig represents the main configuration for handlers
+// HandlersConfig represents the main configuration for handlers, including API, auth, OAuth, logger, and cache service.
 type HandlersConfig struct {
 	*config.APIConfig
 	Auth              *auth.AuthConfig
@@ -22,18 +22,18 @@ type HandlersConfig struct {
 	CacheService      *utils.CacheService
 }
 
-// HandlerResponse represents a standard handler response
+// HandlerResponse represents a standard handler response with a message.
 type HandlerResponse struct {
 	Message string `json:"message"`
 }
 
-// TokenTTL constants
+// TokenTTL constants define the default TTL for access and refresh tokens.
 const (
 	AccessTokenTTL  = 30 * time.Minute
 	RefreshTokenTTL = 7 * 24 * time.Hour
 )
 
-// SetupHandlersConfig creates and configures a new HandlersConfig instance
+// SetupHandlersConfig creates and configures a new HandlersConfig instance with all dependencies.
 func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	apicfg := config.LoadConfig()
 
@@ -63,7 +63,7 @@ func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	}
 }
 
-// NewHandlerConfig creates a new HandlerConfig with interfaces for better testability
+// NewHandlerConfig creates a new HandlerConfig with interfaces for better testability.
 func NewHandlerConfig(
 	authService AuthService,
 	userService UserService,
@@ -87,7 +87,7 @@ func NewHandlerConfig(
 	}
 }
 
-// ValidateConfig validates the handler configuration
+// ValidateConfig validates the handler configuration and returns an error if invalid.
 func (cfg *HandlersConfig) ValidateConfig() error {
 	if cfg.Logger == nil {
 		return ErrInvalidConfig("logger is required")
@@ -101,9 +101,10 @@ func (cfg *HandlersConfig) ValidateConfig() error {
 	return nil
 }
 
-// ErrInvalidConfig represents an invalid configuration error
+// ErrInvalidConfig represents an invalid configuration error.
 type ErrInvalidConfig string
 
+// Error implements the error interface for ErrInvalidConfig.
 func (e ErrInvalidConfig) Error() string {
 	return string(e)
 }

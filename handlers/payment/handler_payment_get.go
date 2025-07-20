@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerGetPayment handles HTTP GET requests to retrieve payment information for a specific order.
-// It extracts the order ID from the URL parameters, validates it, and delegates retrieval to the payment service.
-// On success, it logs the event and responds with the payment details; on error, it logs and returns the appropriate error response.
-//
+// Extracts the order ID from the URL parameters, validates it, and delegates retrieval to the payment service.
+// On success, logs the event and responds with the payment details; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -53,9 +52,8 @@ func (cfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetPaymentHistory handles HTTP GET requests to retrieve payment history for the authenticated user.
-// It delegates retrieval to the payment service and returns the user's payment history.
-// On success, it logs the event and responds with the payment history; on error, it logs and returns the appropriate error response.
-//
+// Delegates retrieval to the payment service and returns the user's payment history.
+// On success, logs the event and responds with the payment history; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -81,9 +79,8 @@ func (cfg *HandlersPaymentConfig) HandlerGetPaymentHistory(w http.ResponseWriter
 }
 
 // HandlerAdminGetPayments handles HTTP GET requests to retrieve all payments for admin users.
-// It extracts optional status filter from URL parameters and delegates retrieval to the payment service.
-// On success, it logs the event and responds with the payment list; on error, it logs and returns the appropriate error response.
-//
+// Extracts optional status filter from URL parameters and delegates retrieval to the payment service.
+// On success, logs the event and responds with the payment list; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

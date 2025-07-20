@@ -11,14 +11,18 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
+// DeleteItemRequest represents a request containing a product ID.
 type DeleteItemRequest struct {
 	ProductID string `json:"product_id"`
 }
 
 // HandlerRemoveItemFromUserCart handles HTTP requests to remove an item from a user's cart.
-// It parses and validates the request body, calls the service layer to remove the item,
-// logs the operation, and returns an appropriate JSON response or error.
+// Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
 // Expects a valid user and DeleteItemRequest in the request body.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -63,9 +67,12 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWrit
 }
 
 // HandlerClearUserCart handles HTTP requests to clear all items from a user's cart.
-// It calls the service layer to clear the cart, logs the operation, and returns
-// a JSON response indicating success or an error if the operation fails.
+// Calls the service layer, logs the operation, and returns a JSON response indicating success or error.
 // Expects a valid user in the request context.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -85,9 +92,11 @@ func (cfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *ht
 }
 
 // HandlerRemoveItemFromGuestCart handles HTTP requests to remove an item from a guest cart (session-based).
-// It extracts the session ID, parses and validates the request body, calls the service layer to remove the item,
-// logs the operation, and returns an appropriate JSON response or error.
+// Extracts the session ID, parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
 // Expects a valid session ID and DeleteItemRequest in the request body.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -144,9 +153,11 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWri
 }
 
 // HandlerClearGuestCart handles HTTP requests to clear all items from a guest cart (session-based).
-// It extracts the session ID, calls the service layer to clear the cart, logs the operation,
-// and returns a JSON response indicating success or an error if the operation fails.
+// Extracts the session ID, calls the service layer, logs the operation, and returns a JSON response indicating success or error.
 // Expects a valid session ID in the request context.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

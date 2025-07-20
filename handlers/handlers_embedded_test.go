@@ -14,6 +14,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// TestNewHandlerConfig tests the NewHandlerConfig function for proper initialization.
+// It checks that all fields are set as expected and not nil.
 func TestNewHandlerConfig(t *testing.T) {
 	mockAuth := &MockAuthService{}
 	mockUser := &MockUserService{}
@@ -61,6 +63,8 @@ func TestNewHandlerConfig(t *testing.T) {
 	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
+// TestHandlersConfig_ValidateConfig tests the ValidateConfig method of HandlersConfig.
+// It checks that the method returns errors for missing required fields and passes for valid configs.
 func TestHandlersConfig_ValidateConfig(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -123,6 +127,8 @@ func TestHandlersConfig_ValidateConfig(t *testing.T) {
 	}
 }
 
+// TestErrInvalidConfig tests the ErrInvalidConfig function.
+// It checks that the returned error contains the expected message.
 func TestErrInvalidConfig(t *testing.T) {
 	errorMsg := "test error message"
 	err := ErrInvalidConfig(errorMsg)
@@ -131,12 +137,16 @@ func TestErrInvalidConfig(t *testing.T) {
 	assert.Equal(t, errorMsg, err.Error())
 }
 
+// TestTokenTTLConstants tests the token TTL constants.
+// It checks that the constants are set to the expected durations.
 func TestTokenTTLConstants(t *testing.T) {
 	// Test that constants are properly defined
 	assert.Equal(t, 30*time.Minute, AccessTokenTTL)
 	assert.Equal(t, 7*24*time.Hour, RefreshTokenTTL)
 }
 
+// TestHandlerResponse tests the HandlerResponse struct.
+// It checks that the Message field is set and accessible.
 func TestHandlerResponse(t *testing.T) {
 	message := "test message"
 	response := HandlerResponse{
@@ -146,6 +156,8 @@ func TestHandlerResponse(t *testing.T) {
 	assert.Equal(t, message, response.Message)
 }
 
+// TestOAuthConfig tests the OAuthConfig struct.
+// It checks that the Google config is set and fields are accessible.
 func TestOAuthConfig(t *testing.T) {
 	oauth := &OAuthConfig{
 		Google: &oauth2.Config{
@@ -160,6 +172,8 @@ func TestOAuthConfig(t *testing.T) {
 	assert.Equal(t, "test-client-secret", oauth.Google.ClientSecret)
 }
 
+// TestHandlerTypes tests the handler type definitions.
+// It checks that AuthHandler and OptionalHandler can be assigned and are nil by default.
 func TestHandlerTypes(t *testing.T) {
 	// Test that handler types are properly defined
 	var authHandler AuthHandler
@@ -170,6 +184,8 @@ func TestHandlerTypes(t *testing.T) {
 	assert.Nil(t, optionalHandler)
 }
 
+// TestClaims tests the Claims struct.
+// It checks that the UserID field is set and accessible.
 func TestClaims(t *testing.T) {
 	userID := "test-user-id"
 	claims := &Claims{
@@ -179,6 +195,8 @@ func TestClaims(t *testing.T) {
 	assert.Equal(t, userID, claims.UserID)
 }
 
+// TestRefreshTokenData tests the RefreshTokenData struct.
+// It checks that the Token and Provider fields are set and accessible.
 func TestRefreshTokenData(t *testing.T) {
 	token := "test-token"
 	provider := "test-provider"
@@ -198,6 +216,8 @@ func TestRefreshTokenData(t *testing.T) {
 
 // Edge case tests for handlers_embedded.go
 
+// TestNewHandlerConfig_EdgeCases tests NewHandlerConfig for edge cases with nil and empty parameters.
+// It checks that the config is still created and fields are set as expected.
 func TestNewHandlerConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name                   string
@@ -305,6 +325,8 @@ func TestNewHandlerConfig_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestHandlersConfig_ValidateConfig_EdgeCases tests ValidateConfig for edge cases, including nil configs and missing fields.
+// It checks that the method panics or returns the correct error message.
 func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -392,6 +414,8 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestErrInvalidConfig_EdgeCases tests ErrInvalidConfig with various error messages.
+// It checks that the returned error contains the expected message.
 func TestErrInvalidConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -424,6 +448,8 @@ func TestErrInvalidConfig_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestHandlerResponse_EdgeCases tests HandlerResponse with various message values.
+// It checks that the Message field is set and accessible for different inputs.
 func TestHandlerResponse_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -457,6 +483,8 @@ func TestHandlerResponse_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestOAuthConfig_EdgeCases tests OAuthConfig with various configurations.
+// It checks that the Google config and its fields are set as expected.
 func TestOAuthConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -510,6 +538,8 @@ func TestOAuthConfig_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestClaims_EdgeCases tests Claims with various user IDs.
+// It checks that the UserID field is set and accessible for different inputs.
 func TestClaims_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -543,6 +573,8 @@ func TestClaims_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestRefreshTokenData_EdgeCases tests RefreshTokenData with various token and provider values.
+// It checks that the fields are set and accessible for different inputs.
 func TestRefreshTokenData_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -583,6 +615,8 @@ func TestRefreshTokenData_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestTokenTTLConstants_EdgeCases tests the token TTL constants for edge cases.
+// It checks that the constants are positive and within reasonable bounds.
 func TestTokenTTLConstants_EdgeCases(t *testing.T) {
 	// Test that constants are positive values
 	assert.True(t, AccessTokenTTL > 0)
@@ -599,6 +633,8 @@ func TestTokenTTLConstants_EdgeCases(t *testing.T) {
 	assert.True(t, RefreshTokenTTL <= 30*24*time.Hour) // At most 30 days
 }
 
+// TestHandlerTypes_EdgeCases tests handler types for edge cases.
+// It checks that handler types can be assigned nil and functions.
 func TestHandlerTypes_EdgeCases(t *testing.T) {
 	// Test that handler types can be assigned nil
 	var authHandler AuthHandler

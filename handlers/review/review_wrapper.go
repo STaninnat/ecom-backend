@@ -12,7 +12,9 @@ import (
 	"github.com/STaninnat/ecom-backend/models"
 )
 
-// ReviewService defines the business logic interface for reviews
+// ReviewService defines the business logic interface for reviews.
+// Provides methods for creating, reading, updating, and deleting reviews,
+// as well as paginated retrieval with filtering and sorting capabilities.
 //
 //go:generate mockery --name=ReviewService --output=./mocks --case=underscore
 type ReviewService interface {
@@ -26,8 +28,9 @@ type ReviewService interface {
 	GetReviewsByUserIDPaginated(ctx context.Context, userID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error)
 }
 
-// HandlersReviewConfig contains configuration and dependencies for review handlers
-// Embeds HandlersConfig, provides logger, reviewService, and thread safety
+// HandlersReviewConfig contains configuration and dependencies for review handlers.
+// Embeds HandlersConfig, provides logger, reviewService, and thread safety.
+// Manages the lifecycle of review service instances with proper synchronization.
 type HandlersReviewConfig struct {
 	*handlers.HandlersConfig
 	Logger        handlers.HandlerLogger
@@ -35,7 +38,14 @@ type HandlersReviewConfig struct {
 	ReviewMutex   sync.RWMutex
 }
 
-// InitReviewService initializes the review service with the current configuration
+// InitReviewService initializes the review service with the current configuration.
+// Validates that the handlers config is initialized and sets up the logger if not already configured.
+// Thread-safe operation using mutex for concurrent access.
+// Parameters:
+//   - service: ReviewService instance to be initialized
+//
+// Returns:
+//   - error: nil on success, error if handlers config is not initialized
 func (cfg *HandlersReviewConfig) InitReviewService(service ReviewService) error {
 	if cfg.HandlersConfig == nil {
 		return errors.New("handlers config not initialized")
@@ -49,7 +59,10 @@ func (cfg *HandlersReviewConfig) InitReviewService(service ReviewService) error 
 	return nil
 }
 
-// GetReviewService returns the review service instance (thread-safe)
+// GetReviewService returns the review service instance (thread-safe).
+// Uses read lock for concurrent access to the service instance.
+// Returns:
+//   - ReviewService: the current review service instance
 func (cfg *HandlersReviewConfig) GetReviewService() ReviewService {
 	cfg.ReviewMutex.RLock()
 	service := cfg.ReviewService
@@ -57,7 +70,15 @@ func (cfg *HandlersReviewConfig) GetReviewService() ReviewService {
 	return service
 }
 
-// handleReviewError maps service errors to HTTP responses and logs them
+// handleReviewError maps service errors to HTTP responses and logs them.
+// Converts AppError types to appropriate HTTP status codes and logs the error details.
+// Parameters:
+//   - w: http.ResponseWriter for sending the error response
+//   - r: *http.Request containing the request context
+//   - err: error that occurred during operation
+//   - operation: string identifier for the operation that failed
+//   - ip: string representing the client IP address
+//   - userAgent: string representing the client user agent
 func (cfg *HandlersReviewConfig) handleReviewError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
@@ -82,7 +103,8 @@ func (cfg *HandlersReviewConfig) handleReviewError(w http.ResponseWriter, r *htt
 	}
 }
 
-// ReviewCreateRequest is the DTO for creating a review
+// ReviewCreateRequest is the DTO for creating a review.
+// Contains all required fields for review creation with validation rules.
 // Validation: Rating 1-5, Comment required, ProductID required
 type ReviewCreateRequest struct {
 	ProductID string   `json:"product_id"`
@@ -91,8 +113,8 @@ type ReviewCreateRequest struct {
 	MediaURLs []string `json:"media_urls,omitempty"`
 }
 
-// PaginatedReviewsResponse is the response for paginated review lists
-//
+// PaginatedReviewsResponse is the response for paginated review lists.
+// Provides structured response with pagination metadata and review data.
 // Supported query params:
 //   - page, pageSize: pagination
 //   - rating: exact rating (1-5)
@@ -112,7 +134,8 @@ type PaginatedReviewsResponse struct {
 	Message    string `json:"message,omitempty"`
 }
 
-// ReviewUpdateRequest is the DTO for updating a review
+// ReviewUpdateRequest is the DTO for updating a review.
+// Contains fields that can be updated for an existing review.
 // Validation: Rating 1-5, Comment required
 type ReviewUpdateRequest struct {
 	Rating    int      `json:"rating"`

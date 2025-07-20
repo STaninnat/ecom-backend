@@ -11,10 +11,11 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// HandlerSignUp handles user registration requests
-// It validates the signup payload, creates a new user account,
-// generates authentication tokens, merges guest cart if needed,
-// and returns a success response
+// HandlerSignUp handles user registration requests.
+// Validates the signup payload, creates a new user account, generates tokens, merges guest cart if needed, and returns a success response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -65,10 +66,11 @@ func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-// HandlerSignIn handles user authentication requests
-// It validates the signin payload, authenticates the user,
-// generates authentication tokens, merges guest cart if needed,
-// and returns a success response
+// HandlerSignIn handles user authentication requests.
+// Validates the signin payload, authenticates the user, generates tokens, merges guest cart if needed, and returns a success response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -117,9 +119,11 @@ func (cfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-// HandlerSignOut handles user logout requests
-// It validates the user's authentication, clears their session,
-// revokes tokens, clears cookies, and handles OAuth provider-specific logout
+// HandlerSignOut handles user logout requests.
+// Validates authentication, clears session, revokes tokens, clears cookies, and handles OAuth provider-specific logout.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

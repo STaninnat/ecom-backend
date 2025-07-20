@@ -14,46 +14,52 @@ import (
 )
 
 // FileStorage abstracts file operations for uploads.
-// It is implemented by LocalFileStorage and S3FileStorage.
+// Provides a common interface for saving and deleting files across different storage backends.
+// Implemented by LocalFileStorage and S3FileStorage for local disk and cloud storage respectively.
 type FileStorage interface {
 	Save(file multipart.File, fileHeader *multipart.FileHeader, uploadPath string) (string, error)
 	Delete(imageURL, uploadPath string) error
 }
 
 // LocalFileStorage implements FileStorage for local disk storage.
-// It provides methods to save and delete files on the local filesystem.
+// Provides methods to save and delete files on the local filesystem with security checks.
 type LocalFileStorage struct{}
 
 // Save saves the uploaded file to local disk using SaveUploadedFile.
-//
+// Delegates to the underlying file save function with security validation.
 // Parameters:
 //   - file: multipart.File representing the uploaded file
 //   - fileHeader: *multipart.FileHeader containing file metadata
 //   - uploadPath: string path to the upload directory
 //
-// Returns the full file path and an error, if any.
+// Returns:
+//   - string: the full file path on success
+//   - error: nil on success, error on failure
 func (l *LocalFileStorage) Save(file multipart.File, fileHeader *multipart.FileHeader, uploadPath string) (string, error) {
 	return SaveUploadedFile(file, fileHeader, uploadPath)
 }
 
 // Delete removes a file from local disk using DeleteFileIfExists.
-//
+// Delegates to the underlying file deletion function with security validation.
 // Parameters:
 //   - imageURL: string URL of the image to delete
 //   - uploadPath: string path to the upload directory
 //
-// Returns an error, if any.
+// Returns:
+//   - error: nil on success, error on failure
 func (l *LocalFileStorage) Delete(imageURL, uploadPath string) error {
 	return DeleteFileIfExists(imageURL, uploadPath)
 }
 
 // ParseAndGetImageFile parses the multipart form and retrieves the image file and header from the request.
-// It validates the file extension and returns an error for unsupported types.
-//
+// Validates the file extension against allowed types and handles form parsing errors.
 // Parameters:
 //   - r: *http.Request containing the multipart form data
 //
-// Returns the file, file header, and an error, if any.
+// Returns:
+//   - multipart.File: the uploaded file
+//   - *multipart.FileHeader: file metadata
+//   - error: nil on success, error on failure
 func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
 	err := r.ParseMultipartForm(10 << 20) // 10 MB max
 	if err != nil {
@@ -66,21 +72,24 @@ func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeade
 	// Validate file extension
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	if _, ok := AllowedImageExtensions[ext]; !ok {
-		file.Close()
+		if err := file.Close(); err != nil {
+			// Optionally log the error
+		}
 		return nil, nil, fmt.Errorf("unsupported file extension: %s", ext)
 	}
 	return file, fileHeader, nil
 }
 
 // SaveUploadedFile saves the uploaded file to disk and returns the full file path.
-// It performs path traversal checks and ensures the file is written securely.
-//
+// Performs path traversal checks, creates secure filenames with UUIDs, and ensures the file is written securely.
 // Parameters:
 //   - file: multipart.File representing the uploaded file
 //   - fileHeader: *multipart.FileHeader containing file metadata
 //   - uploadPath: string path to the upload directory
 //
-// Returns the full file path and an error, if any.
+// Returns:
+//   - string: the full file path on success
+//   - error: nil on success, error on failure
 func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, uploadPath string) (string, error) {
 	defer file.Close()
 	if err := os.MkdirAll(uploadPath, 0750); err != nil {
@@ -108,13 +117,13 @@ func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, upl
 }
 
 // DeleteFileIfExists deletes a file if it exists, given an image URL and upload path.
-// It performs path traversal checks and only deletes files within the upload directory.
-//
+// Performs path traversal checks and only deletes files within the upload directory for security.
 // Parameters:
 //   - imageURL: string URL of the image to delete
 //   - uploadPath: string path to the upload directory
 //
-// Returns an error, if any.
+// Returns:
+//   - error: nil on success, error on failure
 func DeleteFileIfExists(imageURL, uploadPath string) error {
 	if imageURL == "" {
 		return nil
@@ -141,6 +150,7 @@ func DeleteFileIfExists(imageURL, uploadPath string) error {
 }
 
 // AllowedImageExtensions is a set of allowed image file extensions for uploads.
+// Defines the supported image formats: JPG, JPEG, PNG, GIF, and WebP.
 var AllowedImageExtensions = map[string]struct{}{
 	".jpg":  {},
 	".jpeg": {},

@@ -12,9 +12,12 @@ import (
 )
 
 // HandlerUpdateItemQuantity handles HTTP requests to update the quantity of an item in a user's cart.
-// It parses and validates the request body, calls the service layer to update the item quantity,
-// logs the operation, and returns an appropriate JSON response or error.
+// Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
 // Expects a valid user and CartUpdateRequest in the request body.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -59,9 +62,11 @@ func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, 
 }
 
 // HandlerUpdateGuestItemQuantity handles HTTP requests to update the quantity of an item in a guest cart (session-based).
-// It extracts the session ID, parses and validates the request body, calls the service layer to update the item quantity,
-// logs the operation, and returns an appropriate JSON response or error.
+// Extracts the session ID, parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
 // Expects a valid session ID and CartUpdateRequest in the request body.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersCartConfig) HandlerUpdateGuestItemQuantity(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

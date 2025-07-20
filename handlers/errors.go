@@ -2,14 +2,15 @@ package handlers
 
 import "fmt"
 
-// AppError is a generic error type for all handler modules
-// It can be used directly or embedded/aliased for module-specific errors
+// AppError is a generic error type for all handler modules.
+// Can be used directly or embedded/aliased for module-specific errors.
 type AppError struct {
 	Code    string
 	Message string
 	Err     error
 }
 
+// Error implements the error interface for AppError, returning the error message.
 func (e *AppError) Error() string {
 	if e.Err != nil {
 		return fmt.Sprintf("%s: %s", e.Message, e.Err.Error())
@@ -17,12 +18,13 @@ func (e *AppError) Error() string {
 	return e.Message
 }
 
+// Unwrap returns the underlying error for AppError, supporting error unwrapping.
 func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
-// APIResponse is a standard response struct for all API handlers
-// Use Data for success payloads, Error for error messages, and Code for error codes
+// APIResponse is a standard response struct for all API handlers.
+// Use Data for success payloads, Error for error messages, and Code for error codes.
 type APIResponse struct {
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`

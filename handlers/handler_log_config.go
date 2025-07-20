@@ -8,7 +8,7 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// LogHandlerError logs an error with structured logging and user action tracking
+// LogHandlerError logs an error with structured logging and user action tracking for HandlerConfig.
 func (cfg *HandlerConfig) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
 	if cfg.LoggerService == nil {
 		return
@@ -23,13 +23,13 @@ func (cfg *HandlerConfig) LogHandlerError(ctx context.Context, action, details, 
 	// TODO: Create an adapter or modify utils.LogUserAction to accept interfaces
 }
 
-// LogHandlerSuccess logs a successful operation with structured logging and user action tracking
+// LogHandlerSuccess logs a successful operation with structured logging and user action tracking for HandlerConfig.
 func (cfg *HandlerConfig) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	// For now, we'll use the legacy method since utils.LogUserAction expects *logrus.Logger
 	// TODO: Create an adapter or modify utils.LogUserAction to accept interfaces
 }
 
-// ErrMsgOrNil returns the error message or empty string if error is nil
+// ErrMsgOrNil returns the error message or empty string if error is nil.
 func ErrMsgOrNil(err error) string {
 	if err != nil {
 		return err.Error()
@@ -37,7 +37,7 @@ func ErrMsgOrNil(err error) string {
 	return ""
 }
 
-// GetRequestMetadata extracts IP address and user agent from the request
+// GetRequestMetadata extracts IP address and user agent from the request using the configured RequestMetadataService.
 func (cfg *HandlerConfig) GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
 	if cfg.RequestMetadataService == nil {
 		return "", ""
@@ -48,6 +48,7 @@ func (cfg *HandlerConfig) GetRequestMetadata(r *http.Request) (ip string, userAg
 }
 
 // Legacy compatibility methods for existing HandlersConfig
+// LogHandlerError logs an error with structured logging and user action tracking for HandlersConfig.
 func (apicfg *HandlersConfig) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
 	if err != nil {
 		apicfg.Logger.WithError(err).Error(logMsg)
@@ -67,6 +68,7 @@ func (apicfg *HandlersConfig) LogHandlerError(ctx context.Context, action, detai
 	})
 }
 
+// LogHandlerSuccess logs a successful operation with structured logging and user action tracking for HandlersConfig.
 func (apicfg *HandlersConfig) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	utils.LogUserAction(utils.ActionLogParams{
 		Logger:    apicfg.Logger,
@@ -79,6 +81,7 @@ func (apicfg *HandlersConfig) LogHandlerSuccess(ctx context.Context, action, det
 	})
 }
 
+// GetRequestMetadata extracts IP address and user agent from the request using middlewares.GetIPAddress and r.UserAgent().
 func GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
 	ip = middlewares.GetIPAddress(r)
 	userAgent = r.UserAgent()

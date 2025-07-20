@@ -14,34 +14,40 @@ import (
 	"github.com/google/uuid"
 )
 
-// Define interface for mocking
+// S3Client defines the interface for AWS S3 operations.
+// Provides methods for uploading and deleting objects in S3 buckets.
+// Used for mocking in tests and dependency injection.
 type S3Client interface {
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 }
 
+// S3Uploader provides helper methods for S3 file operations.
+// Manages S3 client and bucket configuration for upload operations.
 type S3Uploader struct {
 	Client     S3Client
 	BucketName string
 }
 
 // S3FileStorage implements FileStorage for AWS S3.
-// S3Client must satisfy utilsuploaders.S3Client.
-// BucketName is the S3 bucket to use.
-// S3Uploader is a helper for S3 operations.
+// Provides cloud storage operations using AWS S3 with proper error handling.
+// S3Client must satisfy the S3Client interface for S3 operations.
+// BucketName specifies the S3 bucket to use for file storage.
 type S3FileStorage struct {
 	S3Client   S3Client
 	BucketName string
 }
 
 // Save uploads the provided file to AWS S3 using the configured S3 client and bucket.
-//
+// Validates file extensions, generates unique keys, and returns the S3 URL.
 // Parameters:
 //   - file: multipart.File representing the uploaded file
 //   - fileHeader: *multipart.FileHeader containing file metadata
 //   - _: string (unused, for interface compatibility)
 //
-// Returns the image URL and an error, if any.
+// Returns:
+//   - string: the S3 image URL on success
+//   - error: nil on success, error on failure
 func (s *S3FileStorage) Save(file multipart.File, fileHeader *multipart.FileHeader, _ string) (string, error) {
 	uploader := &S3Uploader{
 		Client:     s.S3Client,
@@ -55,16 +61,28 @@ func (s *S3FileStorage) Save(file multipart.File, fileHeader *multipart.FileHead
 }
 
 // Delete removes a file from AWS S3 using the configured S3 client and bucket.
-//
+// Parses the S3 URL to extract the object key and deletes it from the bucket.
 // Parameters:
 //   - imageURL: string URL of the image to delete
 //   - _: string (unused, for interface compatibility)
 //
-// Returns an error, if any.
+// Returns:
+//   - error: nil on success, error on failure
 func (s *S3FileStorage) Delete(imageURL, _ string) error {
 	return DeleteFileFromS3IfExists(s.S3Client, s.BucketName, imageURL)
 }
 
+// UploadFileToS3 uploads a file to S3 with validation and unique key generation.
+// Validates file extensions, creates unique S3 keys with UUIDs, and uploads with proper content type.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - file: multipart.File representing the file to upload
+//   - fileHeader: *multipart.FileHeader containing file metadata
+//
+// Returns:
+//   - string: the S3 object key
+//   - string: the S3 image URL
+//   - error: nil on success, error on failure
 func (u *S3Uploader) UploadFileToS3(ctx context.Context, file multipart.File, fileHeader *multipart.FileHeader) (string, string, error) {
 	defer file.Seek(0, io.SeekStart) // reset pointer
 
@@ -90,6 +108,15 @@ func (u *S3Uploader) UploadFileToS3(ctx context.Context, file multipart.File, fi
 	return key, url, nil
 }
 
+// DeleteFileFromS3IfExists deletes a file from S3 if it exists.
+// Parses the S3 URL to extract the object key and deletes it from the specified bucket.
+// Parameters:
+//   - client: S3Client for S3 operations
+//   - bucketName: string name of the S3 bucket
+//   - imageURL: string URL of the image to delete
+//
+// Returns:
+//   - error: nil on success, error on failure
 func DeleteFileFromS3IfExists(client S3Client, bucketName string, imageURL string) error {
 	u, err := url.Parse(imageURL)
 	if err != nil {

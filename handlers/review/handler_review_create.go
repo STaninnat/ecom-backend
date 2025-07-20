@@ -13,9 +13,8 @@ import (
 )
 
 // Validate checks the request for required fields and valid values.
-// It ensures that the ProductID is provided, the Rating is within the valid range (1-5),
-// and the Comment field is not empty. Returns an AppError if any validation fails.
-//
+// Ensures that the ProductID is provided, the Rating is within the valid range (1-5), and the Comment field is not empty.
+// Returns an AppError if any validation fails.
 // Returns:
 //   - error: AppError with appropriate code and message if validation fails, nil otherwise
 func (r *ReviewCreateRequest) Validate() error {
@@ -32,9 +31,8 @@ func (r *ReviewCreateRequest) Validate() error {
 }
 
 // HandlerCreateReview handles HTTP POST requests to create a new review.
-// It parses the request body for review parameters, validates them, and delegates creation to the review service.
-// On success, it logs the event and responds with the created review; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for review parameters, validates them, and delegates creation to the review service.
+// On success, logs the event and responds with the created review; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

@@ -12,11 +12,7 @@ import (
 )
 
 // HandlerDeleteOrder handles HTTP DELETE requests to delete an order by its ID.
-// It extracts the order ID from the URL parameters, validates the request,
-// calls the business logic service to delete the order, logs the event,
-// and responds with a success message. On error or missing order ID,
-// it logs and returns the appropriate error response.
-//
+// Extracts the order ID from the URL parameters, validates the request, calls the business logic service to delete the order, logs the event, and responds with a success message or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

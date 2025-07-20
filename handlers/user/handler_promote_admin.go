@@ -11,7 +11,13 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// HandlerPromoteUserToAdmin promotes a user to admin (admin only)
+// HandlerPromoteUserToAdmin handles HTTP POST requests to promote a user to admin role (admin only).
+// Extracts user from request context, validates the target user ID, delegates to user service,
+// and handles specific error cases with appropriate HTTP status codes. On success, logs the event
+// and responds with success message; on error, logs and returns appropriate error response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data with user in context and target user ID in body
 func (cfg *HandlersUserConfig) HandlerPromoteUserToAdmin(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

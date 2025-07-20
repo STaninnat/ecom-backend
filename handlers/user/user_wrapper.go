@@ -11,6 +11,9 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
+// HandlersUserConfig contains configuration and dependencies for user handlers.
+// Embeds HandlersConfig, provides logger, userService, and thread safety.
+// Manages the lifecycle of user service instances with proper synchronization.
 type HandlersUserConfig struct {
 	HandlersConfig *handlers.HandlersConfig // for DB, etc.
 	Logger         handlers.HandlerLogger   // for logging
@@ -18,7 +21,11 @@ type HandlersUserConfig struct {
 	userMutex      sync.RWMutex
 }
 
-// InitUserService initializes the user service with the current configuration
+// InitUserService initializes the user service with the current configuration.
+// Validates that handlers config and database are initialized before creating the service.
+// Thread-safe operation using mutex for concurrent access.
+// Returns:
+//   - error: nil on success, error if handlers config or database is not initialized
 func (cfg *HandlersUserConfig) InitUserService() error {
 	if cfg.HandlersConfig == nil {
 		return errors.New("handlers config not initialized")
@@ -32,7 +39,11 @@ func (cfg *HandlersUserConfig) InitUserService() error {
 	return nil
 }
 
-// GetUserService returns the user service instance, initializing it if necessary
+// GetUserService returns the user service instance, initializing it if necessary.
+// Uses double-checked locking pattern for thread-safe lazy initialization.
+// Creates service with available dependencies or fallback to nil dependencies.
+// Returns:
+//   - UserService: the current user service instance
 func (cfg *HandlersUserConfig) GetUserService() UserService {
 	cfg.userMutex.RLock()
 	if cfg.userService != nil {
@@ -52,7 +63,15 @@ func (cfg *HandlersUserConfig) GetUserService() UserService {
 	return cfg.userService
 }
 
-// handleUserError handles user-specific errors with proper logging and responses
+// handleUserError handles user-specific errors with proper logging and responses.
+// Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
+// Parameters:
+//   - w: http.ResponseWriter for sending the error response
+//   - r: *http.Request containing the request context
+//   - err: error to handle
+//   - operation: string describing the operation that failed
+//   - ip: string client IP address
+//   - userAgent: string client user agent
 func (cfg *HandlersUserConfig) handleUserError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
@@ -78,6 +97,13 @@ func (cfg *HandlersUserConfig) handleUserError(w http.ResponseWriter, r *http.Re
 }
 
 // UserExtractionMiddleware extracts the user from the request and sets it in the context using contextKeyUser.
+// Extracts JWT token from Authorization header, validates it, and fetches user from database.
+// Sets user in request context for downstream handlers to access.
+// Parameters:
+//   - next: http.Handler to call after user extraction
+//
+// Returns:
+//   - http.Handler: middleware that processes requests with user context
 func (cfg *HandlersUserConfig) UserExtractionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Example: extract user from a JWT in the Authorization header (pseudo-code)
@@ -93,7 +119,14 @@ func (cfg *HandlersUserConfig) UserExtractionMiddleware(next http.Handler) http.
 	})
 }
 
-// extractUserFromRequest is a placeholder for your actual user extraction logic
+// extractUserFromRequest is a placeholder for your actual user extraction logic.
+// Extracts JWT from Authorization header, validates token, and fetches user from database.
+// Parameters:
+//   - r: *http.Request containing the Authorization header
+//
+// Returns:
+//   - database.User: the extracted user
+//   - error: nil on success, error on failure
 func (cfg *HandlersUserConfig) extractUserFromRequest(r *http.Request) (user database.User, err error) {
 	// Extract JWT from Authorization header
 	header := r.Header.Get("Authorization")
@@ -117,7 +150,12 @@ func (cfg *HandlersUserConfig) extractUserFromRequest(r *http.Request) (user dat
 	return user, nil
 }
 
-// AuthHandler wrappers for router
+// AuthHandlerGetUser wraps HandlerGetUser with user context for authenticated routes.
+// Sets the authenticated user in request context before calling the handler.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersUserConfig) AuthHandlerGetUser(w http.ResponseWriter, r *http.Request, user database.User) {
 	ctx := context.WithValue(r.Context(), contextKeyUser, user)
 	cfg.HandlerGetUser(w, r.WithContext(ctx))

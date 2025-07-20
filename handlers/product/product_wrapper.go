@@ -13,7 +13,7 @@ import (
 )
 
 // HandlersProductConfig holds the configuration and dependencies for product handlers.
-// It manages the product service lifecycle and provides thread-safe access to the service instance.
+// Manages the product service lifecycle and provides thread-safe access to the service instance.
 type HandlersProductConfig struct {
 	DB             *database.Queries
 	DBConn         *sql.DB
@@ -23,8 +23,7 @@ type HandlersProductConfig struct {
 }
 
 // InitProductService initializes the product service with the current configuration.
-// It validates that both DB and DBConn are set before creating the service.
-// Returns an error if either dependency is missing.
+// Validates that both DB and DBConn are set before creating the service. Returns an error if either dependency is missing.
 func (cfg *HandlersProductConfig) InitProductService() error {
 	if cfg.DB == nil {
 		return errors.New("database not initialized")
@@ -39,8 +38,7 @@ func (cfg *HandlersProductConfig) InitProductService() error {
 }
 
 // GetProductService returns the product service instance, initializing it if necessary.
-// It uses a double-checked locking pattern for thread-safe lazy initialization.
-// If dependencies are missing, it creates a service with nil dependencies.
+// Uses a double-checked locking pattern for thread-safe lazy initialization. If dependencies are missing, creates a service with nil dependencies.
 func (cfg *HandlersProductConfig) GetProductService() ProductService {
 	cfg.productMutex.RLock()
 	if cfg.productService != nil {
@@ -61,8 +59,7 @@ func (cfg *HandlersProductConfig) GetProductService() ProductService {
 }
 
 // handleProductError handles product-specific errors with proper logging and responses.
-// It categorizes errors by type and responds with appropriate HTTP status codes and messages.
-// All errors are logged with context information for debugging.
+// Categorizes errors by type and responds with appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersProductConfig) handleProductError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
@@ -90,7 +87,7 @@ func (cfg *HandlersProductConfig) handleProductError(w http.ResponseWriter, r *h
 // --- Request/Response Structs ---
 
 // ProductRequest represents the data structure for creating or updating a product.
-// It includes all product fields with optional ID for updates and optional IsActive for status changes.
+// Includes all product fields with optional ID for updates and optional IsActive for status changes.
 type ProductRequest struct {
 	ID          string  `json:"id,omitempty"`
 	CategoryID  string  `json:"category_id"`
@@ -112,7 +109,7 @@ type FilterProductsRequest struct {
 }
 
 // productResponse represents the standard response structure for product operations.
-// It includes a message describing the operation result and the product ID when applicable.
+// Includes a message describing the operation result and the product ID when applicable.
 type productResponse struct {
 	Message   string `json:"message"`
 	ProductID string `json:"product_id"`

@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerDeleteProduct handles HTTP DELETE requests to remove a product by its ID.
-// It extracts the product ID from the URL, validates it, and delegates deletion to the product service.
-// On success, it logs the event and responds with a success message; on error, it logs and returns the appropriate error response.
-//
+// Extracts the product ID from the URL, validates it, and delegates deletion to the product service.
+// On success, logs the event and responds with a success message; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

@@ -14,7 +14,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// OrderService defines the business logic interface for order operations
+// OrderService defines the business logic interface for order operations.
+// Provides methods for creating, retrieving, updating, and deleting orders and order items.
 type OrderService interface {
 	CreateOrder(ctx context.Context, user database.User, params CreateOrderRequest) (*OrderResponse, error)
 	GetAllOrders(ctx context.Context) ([]database.Order, error)
@@ -31,7 +32,8 @@ type orderServiceImpl struct {
 	dbConn *sql.DB
 }
 
-// NewOrderService creates a new OrderService instance
+// NewOrderService creates a new OrderService instance.
+// Accepts a database.Queries and a database connection, and returns an OrderService implementation.
 func NewOrderService(db *database.Queries, dbConn *sql.DB) OrderService {
 	return &orderServiceImpl{
 		db:     db,
@@ -39,7 +41,9 @@ func NewOrderService(db *database.Queries, dbConn *sql.DB) OrderService {
 	}
 }
 
-// CreateOrder handles the business logic for creating a new order
+// CreateOrder handles the business logic for creating a new order.
+// Validates the request, calculates totals, creates the order and items, and commits the transaction.
+// Returns the created order response or an error.
 func (s *orderServiceImpl) CreateOrder(ctx context.Context, user database.User, params CreateOrderRequest) (*OrderResponse, error) {
 	if s.dbConn == nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
@@ -122,7 +126,8 @@ func (s *orderServiceImpl) CreateOrder(ctx context.Context, user database.User, 
 	}, nil
 }
 
-// GetAllOrders retrieves all orders (admin only)
+// GetAllOrders retrieves all orders (admin only).
+// Returns a list of all orders or an error.
 func (s *orderServiceImpl) GetAllOrders(ctx context.Context) ([]database.Order, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Database not initialized", Err: errors.New("db is nil")}
@@ -136,7 +141,8 @@ func (s *orderServiceImpl) GetAllOrders(ctx context.Context) ([]database.Order, 
 	return orders, nil
 }
 
-// GetUserOrders retrieves orders for a specific user
+// GetUserOrders retrieves orders for a specific user.
+// Returns a list of user orders with items or an error.
 func (s *orderServiceImpl) GetUserOrders(ctx context.Context, user database.User) ([]UserOrderResponse, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Database not initialized", Err: errors.New("db is nil")}
@@ -180,7 +186,8 @@ func (s *orderServiceImpl) GetUserOrders(ctx context.Context, user database.User
 	return response, nil
 }
 
-// GetOrderByID retrieves a specific order by ID with authorization check
+// GetOrderByID retrieves a specific order by ID with authorization check.
+// Returns detailed order information with items or an error.
 func (s *orderServiceImpl) GetOrderByID(ctx context.Context, orderID string, user database.User) (*OrderDetailResponse, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Database not initialized", Err: errors.New("db is nil")}
@@ -207,7 +214,8 @@ func (s *orderServiceImpl) GetOrderByID(ctx context.Context, orderID string, use
 	}, nil
 }
 
-// GetOrderItemsByOrderID retrieves items for a specific order
+// GetOrderItemsByOrderID retrieves items for a specific order.
+// Returns a list of order items or an error.
 func (s *orderServiceImpl) GetOrderItemsByOrderID(ctx context.Context, orderID string) ([]OrderItemResponse, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Database not initialized", Err: errors.New("db is nil")}
@@ -231,7 +239,8 @@ func (s *orderServiceImpl) GetOrderItemsByOrderID(ctx context.Context, orderID s
 	return response, nil
 }
 
-// UpdateOrderStatus updates the status of an order
+// UpdateOrderStatus updates the status of an order.
+// Validates the status, updates the order, and commits the transaction. Returns an error if unsuccessful.
 func (s *orderServiceImpl) UpdateOrderStatus(ctx context.Context, orderID string, status string) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
@@ -275,7 +284,8 @@ func (s *orderServiceImpl) UpdateOrderStatus(ctx context.Context, orderID string
 	return nil
 }
 
-// DeleteOrder deletes an order by ID
+// DeleteOrder deletes an order by ID.
+// Performs the deletion in a transaction and returns an error if unsuccessful.
 func (s *orderServiceImpl) DeleteOrder(ctx context.Context, orderID string) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
@@ -302,5 +312,5 @@ func (s *orderServiceImpl) DeleteOrder(ctx context.Context, orderID string) erro
 	return nil
 }
 
-// Now aliases handlers.AppError for consistency
+// OrderError is an alias for handlers.AppError for order-related errors.
 type OrderError = handlers.AppError

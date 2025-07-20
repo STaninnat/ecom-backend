@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerUpdateProduct handles HTTP PUT requests to update an existing product.
-// It parses the request body for product parameters, validates them, and delegates the update to the product service.
-// On success, it logs the event and responds with a success message; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for product parameters, validates them, and delegates the update to the product service.
+// On success, logs the event and responds with a success message; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

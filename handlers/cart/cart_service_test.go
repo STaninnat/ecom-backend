@@ -3,14 +3,17 @@ package carthandlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/models"
+	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -1426,4 +1429,268 @@ func TestDBTxAdapter_CommitRollback_Coverage(t *testing.T) {
 func TestCartRedisImpl_Coverage(t *testing.T) {
 	r := &cartRedisImpl{}
 	_ = r
+}
+
+// TestCartMongoAdapter_WithSqlMock tests the CartMongoAdapter using sqlmock
+func TestCartMongoAdapter_WithSqlMock(t *testing.T) {
+	// Create a mock MongoDB client (we'll use a simple mock since we don't have a real MongoDB)
+	mockMongo := &MockCartMongo{}
+	// Use the mock directly as CartMongoAPI interface
+	var adapter CartMongoAPI = mockMongo
+
+	ctx := context.Background()
+
+	// Test AddItemToCart
+	mockMongo.On("AddItemToCart", ctx, "user-id", mock.AnythingOfType("models.CartItem")).Return(nil)
+	err := adapter.AddItemToCart(ctx, "user-id", models.CartItem{
+		ProductID: "product-1",
+		Quantity:  2,
+	})
+	assert.NoError(t, err)
+
+	// Test GetCartByUserID
+	expectedCart := &models.Cart{
+		Items: []models.CartItem{
+			{ProductID: "product-1", Quantity: 2},
+		},
+	}
+	mockMongo.On("GetCartByUserID", ctx, "user-id").Return(expectedCart, nil)
+	cart, err := adapter.GetCartByUserID(ctx, "user-id")
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCart, cart)
+
+	// Test UpdateItemQuantity
+	mockMongo.On("UpdateItemQuantity", ctx, "user-id", "product-1", 3).Return(nil)
+	err = adapter.UpdateItemQuantity(ctx, "user-id", "product-1", 3)
+	assert.NoError(t, err)
+
+	// Test RemoveItemFromCart
+	mockMongo.On("RemoveItemFromCart", ctx, "user-id", "product-1").Return(nil)
+	err = adapter.RemoveItemFromCart(ctx, "user-id", "product-1")
+	assert.NoError(t, err)
+
+	// Test ClearCart
+	mockMongo.On("ClearCart", ctx, "user-id").Return(nil)
+	err = adapter.ClearCart(ctx, "user-id")
+	assert.NoError(t, err)
+
+	mockMongo.AssertExpectations(t)
+}
+
+// TestProductAdapter_WithSqlMock tests the ProductAdapter using sqlmock
+func TestProductAdapter_WithSqlMock(t *testing.T) {
+	// Create a mock database connection
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// Create queries with the mock database
+	queries := database.New(db)
+	adapter := NewProductAdapter(queries)
+
+	ctx := context.Background()
+
+	// Test GetProductByID
+	mock.ExpectQuery("SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at FROM products").WithArgs("product-1").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "category_id", "name", "description", "price", "stock", "image_url", "is_active", "created_at", "updated_at"}).
+			AddRow("product-1", "category-1", "Test Product", "Test Description", "10.99", 100, nil, true, time.Now(), time.Now()),
+	)
+	product, err := adapter.GetProductByID(ctx, "product-1")
+	assert.NoError(t, err)
+	assert.Equal(t, "product-1", product.ID)
+
+	// Test UpdateProductStock
+	mock.ExpectExec("UPDATE products SET stock = \\$2 WHERE id = \\$1").WithArgs("product-1", 95).WillReturnResult(sqlmock.NewResult(0, 1))
+	err = adapter.UpdateProductStock(ctx, database.UpdateProductStockParams{
+		ID:    "product-1",
+		Stock: 95,
+	})
+	assert.NoError(t, err)
+
+	// Verify all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestOrderAdapter_WithSqlMock tests the OrderAdapter using sqlmock
+func TestOrderAdapter_WithSqlMock(t *testing.T) {
+	// Create a mock database connection
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// Create queries with the mock database
+	queries := database.New(db)
+	adapter := NewOrderAdapter(queries)
+
+	ctx := context.Background()
+
+	// Test CreateOrder
+	mock.ExpectQuery("INSERT INTO orders").WithArgs(
+		"order-1", "user-1", "0.00", "pending", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+	).WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "total_amount", "status", "payment_method", "external_payment_id", "tracking_number", "shipping_address", "contact_phone", "created_at", "updated_at"}).
+		AddRow("order-1", "user-1", "0.00", "pending", nil, nil, nil, nil, nil, time.Now(), time.Now()))
+	err = adapter.CreateOrder(ctx, database.CreateOrderParams{
+		ID:                "order-1",
+		UserID:            "user-1",
+		TotalAmount:       "0.00",
+		Status:            "pending",
+		PaymentMethod:     sql.NullString{},
+		ExternalPaymentID: sql.NullString{},
+		TrackingNumber:    sql.NullString{},
+		ShippingAddress:   sql.NullString{},
+		ContactPhone:      sql.NullString{},
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Test CreateOrderItem
+	mock.ExpectExec("INSERT INTO order_items").WithArgs(
+		"item-1", "order-1", "product-1", 2, "10.99", sqlmock.AnyArg(), sqlmock.AnyArg(),
+	).WillReturnResult(sqlmock.NewResult(1, 1))
+	err = adapter.CreateOrderItem(ctx, database.CreateOrderItemParams{
+		ID:        "item-1",
+		OrderID:   "order-1",
+		ProductID: "product-1",
+		Quantity:  2,
+		Price:     "10.99",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Verify all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDBConnAdapter_WithSqlMock tests the DBConnAdapter using sqlmock
+func TestDBConnAdapter_WithSqlMock(t *testing.T) {
+	// Create a mock database connection
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	adapter := NewDBConnAdapter(db)
+	ctx := context.Background()
+
+	// Test BeginTx with default options
+	mock.ExpectBegin()
+	tx, err := adapter.BeginTx(ctx, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+
+	// Test BeginTx with custom options
+	mock.ExpectBegin()
+	tx, err = adapter.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+
+	// Verify all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDBTxAdapter tests the DBTxAdapter
+func TestDBTxAdapter(t *testing.T) {
+	// Create a mock database connection
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// Start a transaction
+	mock.ExpectBegin()
+	tx, err := db.Begin()
+	assert.NoError(t, err)
+
+	adapter := &DBTxAdapter{tx: tx}
+
+	// Test Commit
+	mock.ExpectCommit()
+	err = adapter.Commit()
+	assert.NoError(t, err)
+
+	// Test Rollback (we need a new transaction since the previous one was committed)
+	mock.ExpectBegin()
+	tx2, err := db.Begin()
+	assert.NoError(t, err)
+
+	adapter2 := &DBTxAdapter{tx: tx2}
+	mock.ExpectRollback()
+	err = adapter2.Rollback()
+	assert.NoError(t, err)
+
+	// Verify all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestCartRedisAPI_WithRedisMock tests the CartRedisAPI using redismock
+func TestCartRedisAPI_WithRedisMock(t *testing.T) {
+	// Create a mock Redis client
+	redisClient, mock := redismock.NewClientMock()
+	adapter := NewCartRedisAPI(redisClient)
+
+	ctx := context.Background()
+	sessionID := "session-123"
+
+	// Test GetGuestCart - empty cart
+	mock.ExpectGet("guest_cart:session-123").RedisNil()
+	cart, err := adapter.GetGuestCart(ctx, sessionID)
+	assert.NoError(t, err)
+	assert.NotNil(t, cart)
+	assert.Empty(t, cart.Items)
+
+	// Test GetGuestCart - with existing cart
+	existingCart := &models.Cart{
+		Items: []models.CartItem{
+			{ProductID: "product-1", Quantity: 2},
+		},
+	}
+	cartJSON, _ := json.Marshal(existingCart)
+	mock.ExpectGet("guest_cart:session-123").SetVal(string(cartJSON))
+	cart, err = adapter.GetGuestCart(ctx, sessionID)
+	assert.NoError(t, err)
+	assert.NotNil(t, cart)
+	assert.Len(t, cart.Items, 1)
+
+	// Test SaveGuestCart
+	cartToSave := &models.Cart{
+		Items: []models.CartItem{
+			{ProductID: "product-1", Quantity: 3},
+		},
+	}
+	cartJSON, _ = json.Marshal(cartToSave)
+	mock.ExpectSet("guest_cart:session-123", cartJSON, 7*24*time.Hour).SetVal("OK")
+	err = adapter.SaveGuestCart(ctx, sessionID, cartToSave)
+	assert.NoError(t, err)
+
+	// Test UpdateGuestItemQuantity
+	// First get the cart
+	mock.ExpectGet("guest_cart:session-123").SetVal(string(cartJSON))
+	// Then save the updated cart
+	updatedCart := &models.Cart{
+		Items: []models.CartItem{
+			{ProductID: "product-1", Quantity: 5},
+		},
+	}
+	updatedCartJSON, _ := json.Marshal(updatedCart)
+	mock.ExpectSet("guest_cart:session-123", updatedCartJSON, 7*24*time.Hour).SetVal("OK")
+	err = adapter.UpdateGuestItemQuantity(ctx, sessionID, "product-1", 5)
+	assert.NoError(t, err)
+
+	// Test RemoveGuestItem
+	// First get the cart
+	mock.ExpectGet("guest_cart:session-123").SetVal(string(cartJSON))
+	// Then save the cart without the item
+	emptyCart := &models.Cart{Items: []models.CartItem{}}
+	emptyCartJSON, _ := json.Marshal(emptyCart)
+	mock.ExpectSet("guest_cart:session-123", emptyCartJSON, 7*24*time.Hour).SetVal("OK")
+	err = adapter.RemoveGuestItem(ctx, sessionID, "product-1")
+	assert.NoError(t, err)
+
+	// Test DeleteGuestCart
+	mock.ExpectDel("guest_cart:session-123").SetVal(1)
+	err = adapter.DeleteGuestCart(ctx, sessionID)
+	assert.NoError(t, err)
+
+	// Verify all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

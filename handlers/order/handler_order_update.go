@@ -11,11 +11,7 @@ import (
 )
 
 // HandlerUpdateOrderStatus handles HTTP PUT/PATCH requests to update an order's status.
-// It validates the request payload, extracts the order ID from URL parameters,
-// calls the business logic service to update the order status, logs the event,
-// and responds with a success message. On error or invalid payload,
-// it logs and returns the appropriate error response.
-//
+// Validates the request payload, extracts the order ID from URL parameters, calls the business logic service to update the order status, logs the event, and responds with a success message or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

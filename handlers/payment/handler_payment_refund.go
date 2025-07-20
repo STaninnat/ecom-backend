@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerRefundPayment handles HTTP POST requests to process a payment refund.
-// It extracts the order ID from URL parameters, validates it, and delegates refund processing to the payment service.
-// On success, it logs the event and responds with a confirmation message; on error, it logs and returns the appropriate error response.
-//
+// Extracts the order ID from URL parameters, validates it, and delegates refund processing to the payment service.
+// On success, logs the event and responds with a confirmation message; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

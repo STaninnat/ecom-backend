@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// TestAppError_Error tests the Error() method of AppError.
+// It checks the string output for various error and message combinations.
 func TestAppError_Error(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -68,6 +70,8 @@ func TestAppError_Error(t *testing.T) {
 	}
 }
 
+// TestAppError_Unwrap tests the Unwrap() method of AppError.
+// It checks that the correct underlying error is returned or nil if none exists.
 func TestAppError_Unwrap(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -119,6 +123,8 @@ func TestAppError_Unwrap(t *testing.T) {
 	}
 }
 
+// TestAppError_Fields tests the fields of AppError.
+// It checks that the fields are accessible and properly set.
 func TestAppError_Fields(t *testing.T) {
 	// Test that AppError fields are accessible and properly set
 	underlyingErr := errors.New("test error")
@@ -141,13 +147,13 @@ func TestAppError_Fields(t *testing.T) {
 	}
 }
 
+// TestAPIResponse_Structure tests the structure of APIResponse.
+// It checks that APIResponse can be created with various field combinations and values.
 func TestAPIResponse_Structure(t *testing.T) {
 	// Test that APIResponse can be created with various field combinations
 	response := APIResponse{
 		Message: "Success",
 		Data:    map[string]string{"key": "value"},
-		Error:   "",
-		Code:    "",
 	}
 
 	if response.Message != "Success" {
@@ -165,10 +171,8 @@ func TestAPIResponse_Structure(t *testing.T) {
 
 	// Test error response
 	errorResponse := APIResponse{
-		Message: "",
-		Data:    nil,
-		Error:   "Something went wrong",
-		Code:    "INTERNAL_ERROR",
+		Error: "Something went wrong",
+		Code:  "INTERNAL_ERROR",
 	}
 
 	if errorResponse.Error != "Something went wrong" {

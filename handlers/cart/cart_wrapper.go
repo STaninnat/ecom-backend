@@ -15,7 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CartService defines the business logic interface for cart operations
+// CartService defines the business logic interface for cart operations.
 type CartService interface {
 	AddItemToUserCart(ctx context.Context, userID string, productID string, quantity int) error
 	AddItemToGuestCart(ctx context.Context, sessionID string, productID string, quantity int) error
@@ -31,14 +31,14 @@ type CartService interface {
 	CheckoutGuestCart(ctx context.Context, sessionID string, userID string) (*CartCheckoutResult, error)
 }
 
-// CartCheckoutResult represents the result of a cart checkout operation
+// CartCheckoutResult represents the result of a cart checkout operation.
 type CartCheckoutResult struct {
 	OrderID string `json:"order_id"`
 	Message string `json:"message"`
 }
 
-// HandlersCartConfig contains configuration and dependencies for cart handlers
-// Embeds HandlersConfig, provides logger, cartService, and thread safety
+// HandlersCartConfig contains configuration and dependencies for cart handlers.
+// Embeds HandlersConfig, provides logger, cartService, and thread safety.
 type HandlersCartConfig struct {
 	*handlers.HandlersConfig
 	Logger      handlers.HandlerLogger
@@ -47,7 +47,7 @@ type HandlersCartConfig struct {
 }
 
 // InitCartService initializes the cart service with the current configuration.
-// It sets the CartService and Logger fields, ensuring thread safety with CartMutex.
+// Sets the CartService and Logger fields, ensuring thread safety with CartMutex.
 // Returns an error if the embedded HandlersConfig is not initialized.
 func (cfg *HandlersCartConfig) InitCartService(service CartService) error {
 	if cfg.HandlersConfig == nil {
@@ -72,7 +72,7 @@ func (cfg *HandlersCartConfig) GetCartService() CartService {
 }
 
 // handleCartError maps service errors to HTTP responses and logs them.
-// It inspects the error type and code, logs the error, and sends an appropriate HTTP response.
+// Inspects the error type and code, logs the error, and sends an appropriate HTTP response.
 // Used by cart handlers to provide consistent error handling and logging.
 func (cfg *HandlersCartConfig) handleCartError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
@@ -159,7 +159,7 @@ type CartResponse struct {
 }
 
 // NewCartServiceWithDeps creates a new cart service with all required dependencies.
-// This is a convenience function to help with initialization in main or tests.
+// Convenience function for initialization in main or tests.
 // Parameters:
 //   - cartMongo: MongoDB adapter for cart persistence
 //   - db: SQL database queries for product/order

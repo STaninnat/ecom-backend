@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerCreatePayment handles HTTP POST requests to create a new payment intent.
-// It parses the request body for payment parameters, validates them, and delegates creation to the payment service.
-// On success, it logs the event and responds with the client secret; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for payment parameters, validates them, and delegates creation to the payment service.
+// On success, logs the event and responds with the client secret; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

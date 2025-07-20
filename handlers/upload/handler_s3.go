@@ -11,9 +11,8 @@ import (
 )
 
 // HandlerS3UploadProductImage handles HTTP POST requests to upload a new product image to S3 storage.
-// It enforces a max upload size, delegates to the S3 upload service, logs the event, and responds with the S3 image URL.
-// On error, it logs and returns the appropriate error response.
-//
+// Enforces a max upload size, delegates to the S3 upload service, logs the event, and responds with the S3 image URL.
+// On error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -41,9 +40,8 @@ func (cfg *HandlersUploadS3Config) HandlerS3UploadProductImage(w http.ResponseWr
 }
 
 // HandlerS3UpdateProductImageByID handles HTTP POST requests to update a product image by its ID in S3 storage.
-// It extracts the product ID from the URL, delegates to the S3 upload service, logs the event, and responds with the updated S3 image URL.
-// On error or missing ID, it logs and returns the appropriate error response.
-//
+// Extracts the product ID from the URL, delegates to the S3 upload service, logs the event, and responds with the updated S3 image URL.
+// On error or missing ID, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

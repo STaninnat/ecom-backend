@@ -9,9 +9,8 @@ import (
 )
 
 // HandlerStripeWebhook handles HTTP POST requests from Stripe webhooks.
-// It validates the webhook signature, processes the payload, and delegates handling to the payment service.
-// On success, it logs the event and responds with a confirmation; on error, it logs and returns the appropriate error response.
-//
+// Validates the webhook signature, processes the payload, and delegates handling to the payment service.
+// On success, logs the event and responds with a confirmation; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the webhook payload

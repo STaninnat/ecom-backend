@@ -12,7 +12,7 @@ import (
 )
 
 // HandlersOrderConfig holds the configuration and dependencies for order handlers.
-// It manages the order service lifecycle and provides thread-safe access to the service instance.
+// Manages the order service lifecycle and provides thread-safe access to the service instance.
 type HandlersOrderConfig struct {
 	*handlers.HandlersConfig
 	Logger       handlers.HandlerLogger
@@ -21,8 +21,7 @@ type HandlersOrderConfig struct {
 }
 
 // InitOrderService initializes the order service with the current configuration.
-// It validates that both DB and DBConn are set before creating the service.
-// Returns an error if either dependency is missing.
+// Validates that both DB and DBConn are set before creating the service. Returns an error if either dependency is missing.
 func (cfg *HandlersOrderConfig) InitOrderService() error {
 	if cfg.HandlersConfig == nil {
 		return errors.New("handlers config not initialized")
@@ -46,8 +45,7 @@ func (cfg *HandlersOrderConfig) InitOrderService() error {
 }
 
 // GetOrderService returns the order service instance, initializing it if necessary.
-// It uses a double-checked locking pattern for thread-safe lazy initialization.
-// If dependencies are missing, it creates a service with nil dependencies.
+// Uses a double-checked locking pattern for thread-safe lazy initialization. If dependencies are missing, creates a service with nil dependencies.
 func (cfg *HandlersOrderConfig) GetOrderService() OrderService {
 	cfg.orderMutex.RLock()
 	if cfg.orderService != nil {
@@ -68,8 +66,7 @@ func (cfg *HandlersOrderConfig) GetOrderService() OrderService {
 }
 
 // handleOrderError handles order-specific errors with proper logging and responses.
-// It categorizes errors by type and responds with appropriate HTTP status codes and messages.
-// All errors are logged with context information for debugging.
+// Categorizes errors by type and responds with appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersOrderConfig) handleOrderError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 

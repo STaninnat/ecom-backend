@@ -10,8 +10,11 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// HandlerGoogleSignIn initiates the Google OAuth signin process
-// It generates a state parameter and redirects the user to Google's authorization URL
+// HandlerGoogleSignIn initiates the Google OAuth signin process.
+// Generates a state parameter and redirects the user to Google's authorization URL.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
@@ -34,9 +37,11 @@ func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
-// HandlerGoogleCallback handles the Google OAuth callback
-// It processes the authorization code, exchanges it for tokens,
-// retrieves user information, and completes the authentication process
+// HandlerGoogleCallback handles the Google OAuth callback.
+// Processes the authorization code, exchanges it for tokens, retrieves user information, and completes authentication.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

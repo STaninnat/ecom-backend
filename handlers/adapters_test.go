@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
@@ -12,9 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Test HandlerConfig Adapters
-// ===========================
-
+// TestHandlerConfigAuthAdapter_ValidateAccessToken_Success tests successful validation of an access token.
+// It checks that the adapter returns the expected claims and no error.
 func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 	mockAuthService := &MockAuthService{}
 	adapter := &handlerConfigAuthAdapter{authService: mockAuthService}
@@ -33,6 +33,8 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 	mockAuthService.AssertExpectations(t)
 }
 
+// TestHandlerConfigAuthAdapter_ValidateAccessToken_Error tests error handling during access token validation.
+// It checks that the adapter returns an error and nil claims for invalid tokens.
 func TestHandlerConfigAuthAdapter_ValidateAccessToken_Error(t *testing.T) {
 	mockAuthService := &MockAuthService{}
 	adapter := &handlerConfigAuthAdapter{authService: mockAuthService}
@@ -51,6 +53,8 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Error(t *testing.T) {
 	mockAuthService.AssertExpectations(t)
 }
 
+// TestHandlerConfigUserAdapter_GetUserByID_Success tests successful retrieval of a user by ID.
+// It checks that the adapter returns the expected user and no error.
 func TestHandlerConfigUserAdapter_GetUserByID_Success(t *testing.T) {
 	mockUserService := &MockUserService{}
 	adapter := &handlerConfigUserAdapter{userService: mockUserService}
@@ -68,6 +72,8 @@ func TestHandlerConfigUserAdapter_GetUserByID_Success(t *testing.T) {
 	mockUserService.AssertExpectations(t)
 }
 
+// TestHandlerConfigUserAdapter_GetUserByID_Error tests error handling when retrieving a user by ID.
+// It checks that the adapter returns an error and an empty user for nonexistent IDs.
 func TestHandlerConfigUserAdapter_GetUserByID_Error(t *testing.T) {
 	mockUserService := &MockUserService{}
 	adapter := &handlerConfigUserAdapter{userService: mockUserService}
@@ -86,6 +92,8 @@ func TestHandlerConfigUserAdapter_GetUserByID_Error(t *testing.T) {
 	mockUserService.AssertExpectations(t)
 }
 
+// TestHandlerConfigLoggerAdapter_WithError tests the WithError method of the logger adapter.
+// It checks that the adapter returns a non-nil log entry with the error attached.
 func TestHandlerConfigLoggerAdapter_WithError(t *testing.T) {
 	mockLoggerService := &MockLoggerService{}
 	adapter := &handlerConfigLoggerAdapter{loggerService: mockLoggerService}
@@ -102,6 +110,8 @@ func TestHandlerConfigLoggerAdapter_WithError(t *testing.T) {
 	mockLoggerService.AssertExpectations(t)
 }
 
+// TestHandlerConfigLoggerAdapter_Error tests the Error method of the logger adapter.
+// It checks that the adapter calls the logger service's Error method as expected.
 func TestHandlerConfigLoggerAdapter_Error(t *testing.T) {
 	mockLoggerService := &MockLoggerService{}
 	adapter := &handlerConfigLoggerAdapter{loggerService: mockLoggerService}
@@ -113,6 +123,8 @@ func TestHandlerConfigLoggerAdapter_Error(t *testing.T) {
 	mockLoggerService.AssertExpectations(t)
 }
 
+// TestHandlerConfigMetadataAdapter_GetIPAddress tests retrieval of the IP address from a request.
+// It checks that the adapter returns the expected IP address from the metadata service.
 func TestHandlerConfigMetadataAdapter_GetIPAddress(t *testing.T) {
 	mockMetadataService := &MockRequestMetadataService{}
 	adapter := &handlerConfigMetadataAdapter{metadataService: mockMetadataService}
@@ -128,6 +140,8 @@ func TestHandlerConfigMetadataAdapter_GetIPAddress(t *testing.T) {
 	mockMetadataService.AssertExpectations(t)
 }
 
+// TestHandlerConfigMetadataAdapter_GetUserAgent tests retrieval of the user agent from a request.
+// It checks that the adapter returns the expected user agent from the metadata service.
 func TestHandlerConfigMetadataAdapter_GetUserAgent(t *testing.T) {
 	mockMetadataService := &MockRequestMetadataService{}
 	adapter := &handlerConfigMetadataAdapter{metadataService: mockMetadataService}
@@ -146,11 +160,12 @@ func TestHandlerConfigMetadataAdapter_GetUserAgent(t *testing.T) {
 // Test Legacy Adapters
 // ===================
 
-// MockLegacyAuth for testing legacy auth adapter
+// MockLegacyAuth is a mock for testing the legacy auth adapter.
 type MockLegacyAuth struct {
 	mock.Mock
 }
 
+// ValidateAccessToken mocks the ValidateAccessToken method for legacy auth.
 func (m *MockLegacyAuth) ValidateAccessToken(tokenString, secret string) (*auth.Claims, error) {
 	args := m.Called(tokenString, secret)
 	if args.Get(0) == nil {
@@ -159,6 +174,8 @@ func (m *MockLegacyAuth) ValidateAccessToken(tokenString, secret string) (*auth.
 	return args.Get(0).(*auth.Claims), args.Error(1)
 }
 
+// TestLegacyAuthService_ValidateAccessToken_Success tests successful validation of an access token using the legacy auth service.
+// It checks that the adapter returns the expected claims and no error.
 func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 	mockAuth := &MockLegacyAuth{}
 	adapter := &legacyAuthService{auth: mockAuth}
@@ -177,6 +194,8 @@ func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 	mockAuth.AssertExpectations(t)
 }
 
+// TestLegacyAuthService_ValidateAccessToken_Error tests error handling during access token validation in the legacy auth service.
+// It checks that the adapter returns an error and nil claims for invalid tokens.
 func TestLegacyAuthService_ValidateAccessToken_Error(t *testing.T) {
 	mockAuth := &MockLegacyAuth{}
 	adapter := &legacyAuthService{auth: mockAuth}
@@ -199,6 +218,43 @@ func TestLegacyAuthService_ValidateAccessToken_Error(t *testing.T) {
 // which is difficult to mock properly. In a real scenario, these would be tested
 // with integration tests using a test database.
 
+// TestLegacyUserService_GetUserByID tests retrieval of a user by ID using the legacy user service.
+// It checks that the adapter returns the expected user and no error, and verifies SQL expectations.
+func TestLegacyUserService_GetUserByID(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	queries := database.New(db)
+	adapter := &legacyUserService{db: queries}
+
+	ctx := context.Background()
+	userID := "user123"
+	expectedUser := database.User{ID: userID, Name: "Test User", Email: "test@example.com"}
+
+	// Set up expected query and result
+	mock.ExpectQuery(`SELECT id, name, email, password, provider, provider_id, phone, address, role, created_at, updated_at FROM users\s+WHERE id = \$1\s+LIMIT 1`).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email", "password", "provider", "provider_id", "phone", "address", "role", "created_at", "updated_at"}).
+			AddRow(expectedUser.ID, expectedUser.Name, expectedUser.Email, nil, "local", nil, nil, nil, "user", expectedUser.CreatedAt, expectedUser.UpdatedAt))
+
+	user, err := adapter.GetUserByID(ctx, userID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUser.ID, user.ID)
+	assert.Equal(t, expectedUser.Name, user.Name)
+	assert.Equal(t, expectedUser.Email, user.Email)
+	// Optionally check other fields
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+// TestLegacyUserService_Structure tests the structure of the legacy user service.
+// It checks that the adapter can be created (placeholder test).
 func TestLegacyUserService_Structure(t *testing.T) {
 	// Test that the legacy user service can be created (structure test)
 	// This is a placeholder test - actual functionality would be tested with integration tests
@@ -206,6 +262,8 @@ func TestLegacyUserService_Structure(t *testing.T) {
 	assert.NotNil(t, adapter)
 }
 
+// TestLegacyLoggerService_WithError tests the WithError method of the legacy logger service.
+// It checks that the adapter returns a logrus.Entry with the error attached.
 func TestLegacyLoggerService_WithError(t *testing.T) {
 	logger := logrus.New()
 	adapter := &legacyLoggerService{logger: logger}
@@ -221,6 +279,8 @@ func TestLegacyLoggerService_WithError(t *testing.T) {
 	assert.NotNil(t, entry)
 }
 
+// TestLegacyLoggerService_Error tests the Error method of the legacy logger service.
+// It checks that calling Error does not panic.
 func TestLegacyLoggerService_Error(t *testing.T) {
 	logger := logrus.New()
 	adapter := &legacyLoggerService{logger: logger}
@@ -231,6 +291,8 @@ func TestLegacyLoggerService_Error(t *testing.T) {
 	})
 }
 
+// TestLegacyMetadataService_GetIPAddress tests retrieval of the IP address from a request using the legacy metadata service.
+// It checks that the adapter returns a non-empty IP address.
 func TestLegacyMetadataService_GetIPAddress(t *testing.T) {
 	adapter := &legacyMetadataService{}
 
@@ -242,6 +304,8 @@ func TestLegacyMetadataService_GetIPAddress(t *testing.T) {
 	assert.NotEmpty(t, ip)
 }
 
+// TestLegacyMetadataService_GetUserAgent tests retrieval of the user agent from a request using the legacy metadata service.
+// It checks that the adapter returns the expected user agent string.
 func TestLegacyMetadataService_GetUserAgent(t *testing.T) {
 	adapter := &legacyMetadataService{}
 
@@ -253,6 +317,8 @@ func TestLegacyMetadataService_GetUserAgent(t *testing.T) {
 	assert.Equal(t, "test-user-agent", ua)
 }
 
+// TestLegacyMetadataService_GetUserAgent_Empty tests retrieval of the user agent when the header is missing.
+// It checks that the adapter returns an empty string if the User-Agent header is not set.
 func TestLegacyMetadataService_GetUserAgent_Empty(t *testing.T) {
 	adapter := &legacyMetadataService{}
 

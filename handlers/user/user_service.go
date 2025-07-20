@@ -11,9 +11,9 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// UserService defines the business logic interface for user operations
-// Add more methods as needed for user-related features
-// (e.g., GetProfile, UpdateProfile, etc.)
+// UserService defines the business logic interface for user operations.
+// Provides methods for user retrieval, updates, and role management with proper error handling.
+// Add more methods as needed for user-related features (e.g., GetProfile, UpdateProfile, etc.).
 type UserService interface {
 	GetUser(ctx context.Context, user database.User) (*UserResponse, error)
 	UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error
@@ -21,7 +21,8 @@ type UserService interface {
 	PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error
 }
 
-// UpdateUserParams represents parameters for updating user info
+// UpdateUserParams represents parameters for updating user information.
+// Contains all fields that can be updated for a user profile.
 type UpdateUserParams struct {
 	Name    string
 	Email   string
@@ -29,7 +30,8 @@ type UpdateUserParams struct {
 	Address string
 }
 
-// UserResponse represents the user data returned to the client
+// UserResponse represents the user data returned to the client.
+// Structured response format for user information with optional fields.
 type UserResponse struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
@@ -38,13 +40,21 @@ type UserResponse struct {
 	Address string `json:"address,omitempty"`
 }
 
-// userServiceImpl implements UserService
+// userServiceImpl implements UserService.
+// Provides business logic for user operations with database transaction management.
 type userServiceImpl struct {
 	db     *database.Queries
 	dbConn *sql.DB
 }
 
-// NewUserService creates a new UserService instance
+// NewUserService creates a new UserService instance.
+// Factory function for creating user service instances with database dependencies.
+// Parameters:
+//   - db: *database.Queries for database operations
+//   - dbConn: *sql.DB for transaction management
+//
+// Returns:
+//   - UserService: configured user service instance
 func NewUserService(db *database.Queries, dbConn *sql.DB) UserService {
 	return &userServiceImpl{
 		db:     db,
@@ -52,7 +62,15 @@ func NewUserService(db *database.Queries, dbConn *sql.DB) UserService {
 	}
 }
 
-// GetUser returns the user info as a response struct
+// GetUser returns the user info as a response struct.
+// Maps database user model to client-friendly response format.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - user: database.User to convert to response format
+//
+// Returns:
+//   - *UserResponse: formatted user data for client consumption
+//   - error: nil on success, error on failure
 func (s *userServiceImpl) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
 	return &UserResponse{
 		ID:      user.ID,
@@ -63,7 +81,15 @@ func (s *userServiceImpl) GetUser(ctx context.Context, user database.User) (*Use
 	}, nil
 }
 
-// UpdateUser updates the user's information in the database
+// UpdateUser updates the user's information in the database.
+// Uses database transactions to ensure data consistency and proper error handling.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - user: database.User to update
+//   - params: UpdateUserParams containing the update data
+//
+// Returns:
+//   - error: nil on success, AppError with appropriate code on failure
 func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: errors.New("dbConn is nil")}
@@ -95,7 +121,15 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, pa
 	return nil
 }
 
-// PromoteUserToAdmin promotes a user to admin, only if the acting user is admin
+// PromoteUserToAdmin promotes a user to admin, only if the acting user is admin.
+// Validates admin privileges, checks target user existence, and updates role in database transaction.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - adminUser: database.User representing the admin performing the action
+//   - targetUserID: string identifier of the user to promote
+//
+// Returns:
+//   - error: nil on success, AppError with appropriate code on failure
 func (s *userServiceImpl) PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error {
 	if adminUser.Role != "admin" {
 		return &handlers.AppError{Code: "unauthorized_user", Message: "Admin privileges required"}
@@ -132,10 +166,18 @@ func (s *userServiceImpl) PromoteUserToAdmin(ctx context.Context, adminUser data
 	return nil
 }
 
-// Now aliases handlers.AppError for consistency
+// UserError is an alias for handlers.AppError for consistency in user service.
 type UserError = handlers.AppError
 
-// Add GetUserByID to userServiceImpl to satisfy handlers.UserService
+// GetUserByID retrieves a user by their ID from the database.
+// Delegates to the underlying database queries with nil check.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - id: string identifier of the user to retrieve
+//
+// Returns:
+//   - database.User: the found user
+//   - error: nil on success, error on failure
 func (s *userServiceImpl) GetUserByID(ctx context.Context, id string) (database.User, error) {
 	if s.db == nil {
 		return database.User{}, errors.New("db is nil")

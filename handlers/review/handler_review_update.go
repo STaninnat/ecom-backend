@@ -14,9 +14,8 @@ import (
 )
 
 // Validate checks the request for required fields and valid values.
-// It ensures that the Rating is within the valid range (1-5) and the Comment field is not empty.
+// Ensures that the Rating is within the valid range (1-5) and the Comment field is not empty.
 // Returns an AppError if any validation fails.
-//
 // Returns:
 //   - error: AppError with appropriate code and message if validation fails, nil otherwise
 func (r *ReviewUpdateRequest) Validate() error {
@@ -30,10 +29,9 @@ func (r *ReviewUpdateRequest) Validate() error {
 }
 
 // HandlerUpdateReviewByID handles HTTP PUT requests to update an existing review by its ID.
-// It validates the review ID parameter, checks if the review exists, verifies user ownership,
+// Validates the review ID parameter, checks if the review exists, verifies user ownership,
 // parses and validates the update request, and delegates the update to the review service.
-// On success, it logs the event and responds with the updated review; on error, it logs and returns the appropriate error response.
-//
+// On success, logs the event and responds with the updated review; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data with review ID in URL parameters and update data in body

@@ -12,9 +12,12 @@ import (
 )
 
 // HandlerCheckoutUserCart handles HTTP requests to checkout a user's cart.
-// It calls the service layer to perform the checkout, logs the operation, and returns
-// a JSON response with the order details or an error if the checkout fails.
+// Calls the service layer, logs the operation, and returns a JSON response with the order details or an error.
 // Expects a valid user in the request context.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCartConfig) HandlerCheckoutUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -36,9 +39,11 @@ func (cfg *HandlersCartConfig) HandlerCheckoutUserCart(w http.ResponseWriter, r 
 }
 
 // HandlerCheckoutGuestCart handles HTTP requests to checkout a guest cart (session-based).
-// It extracts the session ID and user ID, validates them, calls the service layer to perform the checkout,
-// logs the operation, and returns a JSON response with the order details or an error if the checkout fails.
+// Extracts the session ID and user ID, validates them, calls the service layer, logs the operation, and returns a JSON response with the order details or an error.
 // Expects a valid session ID and user ID in the request body.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersCartConfig) HandlerCheckoutGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

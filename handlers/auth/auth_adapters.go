@@ -11,15 +11,15 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
-// contextKey is a custom type for context keys to avoid collisions
+// ContextKey is a custom type for context keys to avoid collisions.
 type ContextKey string
 
+// HttpRequestKey is the context key for storing *http.Request in context.
 const (
 	HttpRequestKey ContextKey = "httpRequest"
 )
 
-// DBQueriesAdapter adapts *database.Queries to DBQueries interface
-// (You may need to add more methods as needed)
+// DBQueriesAdapter adapts *database.Queries to the DBQueries interface.
 type DBQueriesAdapter struct {
 	*database.Queries
 }
@@ -49,7 +49,7 @@ func (a *DBQueriesAdapter) UpdateUserSigninStatusByEmail(ctx context.Context, pa
 	return a.Queries.UpdateUserSigninStatusByEmail(ctx, params)
 }
 
-// DBConnAdapter adapts *sql.DB to DBConn interface
+// DBConnAdapter adapts *sql.DB to the DBConn interface.
 type DBConnAdapter struct {
 	*sql.DB
 }
@@ -59,7 +59,7 @@ func (a *DBConnAdapter) BeginTx(ctx context.Context, opts *sql.TxOptions) (DBTx,
 	return tx, err
 }
 
-// AuthConfigAdapter adapts *auth.AuthConfig to AuthConfig interface
+// AuthConfigAdapter adapts *auth.AuthConfig to the AuthConfig interface.
 type AuthConfigAdapter struct {
 	AuthConfig *auth.AuthConfig
 }

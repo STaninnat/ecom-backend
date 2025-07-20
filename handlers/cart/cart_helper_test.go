@@ -195,3 +195,33 @@ func (m *MockCartRedisAPI) DeleteGuestCart(ctx context.Context, sessionID string
 	args := m.Called(ctx, sessionID)
 	return args.Error(0)
 }
+
+// MockCartMongo is a mock implementation of CartMongo for testing
+type MockCartMongo struct {
+	mock.Mock
+}
+
+func (m *MockCartMongo) AddItemToCart(ctx context.Context, userID string, item models.CartItem) error {
+	args := m.Called(ctx, userID, item)
+	return args.Error(0)
+}
+
+func (m *MockCartMongo) GetCartByUserID(ctx context.Context, userID string) (*models.Cart, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).(*models.Cart), args.Error(1)
+}
+
+func (m *MockCartMongo) UpdateItemQuantity(ctx context.Context, userID string, productID string, quantity int) error {
+	args := m.Called(ctx, userID, productID, quantity)
+	return args.Error(0)
+}
+
+func (m *MockCartMongo) RemoveItemFromCart(ctx context.Context, userID string, productID string) error {
+	args := m.Called(ctx, userID, productID)
+	return args.Error(0)
+}
+
+func (m *MockCartMongo) ClearCart(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}

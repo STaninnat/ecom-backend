@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// AuthService defines the interface for authentication operations
+// AuthService defines the interface for authentication operations.
 type AuthService interface {
 	ValidateAccessToken(tokenString, secret string) (*Claims, error)
 	GenerateAccessToken(userID string, expiresAt time.Time) (string, error)
@@ -21,7 +21,7 @@ type AuthService interface {
 	ValidateCookieRefreshTokenData(w http.ResponseWriter, r *http.Request) (string, *RefreshTokenData, error)
 }
 
-// UserService defines the interface for user database operations
+// UserService defines the interface for user database operations.
 type UserService interface {
 	GetUserByID(ctx context.Context, id string) (database.User, error)
 	GetUserByEmail(ctx context.Context, email string) (database.User, error)
@@ -33,7 +33,7 @@ type UserService interface {
 	CheckExistsAndGetIDByEmail(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error)
 }
 
-// LoggerService defines the interface for logging operations
+// LoggerService defines the interface for logging operations.
 type LoggerService interface {
 	WithError(err error) *logrus.Entry
 	Error(args ...any)
@@ -42,25 +42,25 @@ type LoggerService interface {
 	Warn(args ...any)
 }
 
-// RequestMetadataService defines the interface for extracting request metadata
+// RequestMetadataService defines the interface for extracting request metadata from HTTP requests.
 type RequestMetadataService interface {
 	GetIPAddress(r *http.Request) string
 	GetUserAgent(r *http.Request) string
 }
 
-// Claims represents JWT claims
+// Claims represents JWT claims, including the user ID.
 type Claims struct {
 	UserID string `json:"user_id"`
 	// Add other JWT claims as needed
 }
 
-// RefreshTokenData represents refresh token data structure
+// RefreshTokenData represents refresh token data structure, including token and provider.
 type RefreshTokenData struct {
 	Token    string `json:"token"`
 	Provider string `json:"provider"`
 }
 
-// HandlerConfig defines the configuration for handlers with interfaces
+// HandlerConfig defines the configuration for handlers with interfaces for better testability.
 type HandlerConfig struct {
 	AuthService            AuthService
 	UserService            UserService
@@ -74,17 +74,18 @@ type HandlerConfig struct {
 	CustomTokenSource      func(ctx context.Context, refreshToken string) oauth2.TokenSource
 }
 
-// OAuthConfig represents OAuth configuration
+// OAuthConfig represents OAuth configuration for Google authentication.
 type OAuthConfig struct {
 	Google *oauth2.Config
 }
 
-// Handler types for different middleware patterns
+// AuthHandler is a handler type for authenticated endpoints, receiving a database.User.
 type AuthHandler func(http.ResponseWriter, *http.Request, database.User)
+
+// OptionalHandler is a handler type for optionally authenticated endpoints, receiving a pointer to database.User (or nil).
 type OptionalHandler func(http.ResponseWriter, *http.Request, *database.User)
 
-// HandlerLogger defines logging methods for handlers
-// Allows for dependency injection and mocking in tests
+// HandlerLogger defines logging methods for handlers, allowing for dependency injection and mocking in tests.
 type HandlerLogger interface {
 	LogHandlerSuccess(ctx context.Context, action, details, ip, ua string)
 	LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error)

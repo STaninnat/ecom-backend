@@ -11,8 +11,12 @@ import (
 )
 
 // HandlerGetAllCategories handles HTTP GET requests to retrieve all categories.
-// It delegates the retrieval to the category service and returns the categories as JSON.
-// On success, it logs the event and responds with the category list; on error, it logs and returns the appropriate error response.
+// Delegates the retrieval to the category service and returns the categories as JSON.
+// On success, logs the event and responds with the category list; on error, logs and returns the appropriate error response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: *database.User representing the authenticated user (may be nil)
 func (cfg *HandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

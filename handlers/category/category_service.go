@@ -13,6 +13,7 @@ import (
 )
 
 // --- Interfaces for DB and Transaction ---
+// CategoryDBQueries defines the interface for category-related database operations.
 type CategoryDBQueries interface {
 	WithTx(tx CategoryDBTx) CategoryDBQueries
 	CreateCategory(ctx context.Context, params database.CreateCategoryParams) error
@@ -21,16 +22,19 @@ type CategoryDBQueries interface {
 	GetAllCategories(ctx context.Context) ([]database.Category, error)
 }
 
+// CategoryDBConn defines the interface for beginning database transactions for category operations.
 type CategoryDBConn interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (CategoryDBTx, error)
 }
 
+// CategoryDBTx defines the interface for a database transaction used in category operations.
 type CategoryDBTx interface {
 	Commit() error
 	Rollback() error
 }
 
 // --- Adapters for sqlc-generated types ---
+// CategoryDBQueriesAdapter adapts sqlc-generated Queries to the CategoryDBQueries interface.
 type CategoryDBQueriesAdapter struct {
 	*database.Queries
 }
@@ -55,6 +59,7 @@ func (a *CategoryDBQueriesAdapter) GetAllCategories(ctx context.Context) ([]data
 	return a.Queries.GetAllCategories(ctx)
 }
 
+// CategoryDBConnAdapter adapts a sql.DB to the CategoryDBConn interface.
 type CategoryDBConnAdapter struct {
 	*sql.DB
 }
@@ -70,7 +75,8 @@ type categoryServiceImpl struct {
 	dbConn CategoryDBConn
 }
 
-// CategoryService defines the business logic interface for category operations
+// CategoryService defines the business logic interface for category operations.
+// Provides methods for creating, updating, deleting, and retrieving categories.
 type CategoryService interface {
 	CreateCategory(ctx context.Context, params CategoryRequest) (string, error)
 	UpdateCategory(ctx context.Context, params CategoryRequest) error
@@ -78,14 +84,14 @@ type CategoryService interface {
 	GetAllCategories(ctx context.Context) ([]database.Category, error)
 }
 
-// CategoryRequest represents the request parameters for category operations
+// CategoryRequest represents the request parameters for category operations.
 type CategoryRequest struct {
 	ID          string `json:"id,omitempty"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
 
-// CategoryResponse represents the category data returned to the client
+// CategoryResponse represents the category data returned to the client.
 type CategoryResponse struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -94,6 +100,8 @@ type CategoryResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// NewCategoryService creates a new CategoryService with the provided database query and connection adapters.
+// Returns a CategoryService implementation.
 func NewCategoryService(db *database.Queries, dbConn *sql.DB) CategoryService {
 	var dbQueries CategoryDBQueries
 	var dbConnection CategoryDBConn
@@ -111,7 +119,8 @@ func NewCategoryService(db *database.Queries, dbConn *sql.DB) CategoryService {
 	}
 }
 
-// CreateCategory creates a new category
+// CreateCategory creates a new category.
+// Validates the request, creates the category in a transaction, and returns the new category ID or an error.
 func (s *categoryServiceImpl) CreateCategory(ctx context.Context, params CategoryRequest) (string, error) {
 	if s.dbConn == nil {
 		return "", &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -155,7 +164,8 @@ func (s *categoryServiceImpl) CreateCategory(ctx context.Context, params Categor
 	return id, nil
 }
 
-// UpdateCategory updates an existing category
+// UpdateCategory updates an existing category.
+// Validates the request, updates the category in a transaction, and returns an error if unsuccessful.
 func (s *categoryServiceImpl) UpdateCategory(ctx context.Context, params CategoryRequest) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -198,7 +208,8 @@ func (s *categoryServiceImpl) UpdateCategory(ctx context.Context, params Categor
 	return nil
 }
 
-// DeleteCategory deletes a category by ID
+// DeleteCategory deletes a category by ID.
+// Validates the ID, deletes the category in a transaction, and returns an error if unsuccessful.
 func (s *categoryServiceImpl) DeleteCategory(ctx context.Context, categoryID string) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -227,7 +238,8 @@ func (s *categoryServiceImpl) DeleteCategory(ctx context.Context, categoryID str
 	return nil
 }
 
-// GetAllCategories returns all categories
+// GetAllCategories returns all categories.
+// Returns a list of all categories or an error.
 func (s *categoryServiceImpl) GetAllCategories(ctx context.Context) ([]database.Category, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "database_error", Message: "DB is nil", Err: fmt.Errorf("db is nil")}
@@ -236,5 +248,5 @@ func (s *categoryServiceImpl) GetAllCategories(ctx context.Context) ([]database.
 	return s.db.GetAllCategories(ctx)
 }
 
-// Now aliases handlers.AppError for consistency
+// CategoryError is an alias for handlers.AppError, used for category-related errors.
 type CategoryError = handlers.AppError

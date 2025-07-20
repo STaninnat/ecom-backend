@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestHandlerReadiness tests the HandlerReadiness function for the /healthz endpoint.
+// It checks that the response is OK and contains the expected JSON fields.
 func TestHandlerReadiness(t *testing.T) {
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
@@ -26,6 +28,8 @@ func TestHandlerReadiness(t *testing.T) {
 	assert.Equal(t, "ecom-backend", response["service"])
 }
 
+// TestHandlerError tests the HandlerError function for the /error endpoint.
+// It checks that the response is InternalServerError and contains the expected JSON error fields.
 func TestHandlerError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/error", nil)
 	w := httptest.NewRecorder()
@@ -44,6 +48,8 @@ func TestHandlerError(t *testing.T) {
 	assert.Equal(t, "An unexpected error occurred. Please try again later.", response["message"])
 }
 
+// TestHandlerHealth tests the HandlerHealth function for the /health endpoint.
+// It checks that the response is OK and contains the expected health information.
 func TestHandlerHealth(t *testing.T) {
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
@@ -63,6 +69,8 @@ func TestHandlerHealth(t *testing.T) {
 	assert.Equal(t, "2024-01-01T00:00:00Z", response["timestamp"])
 }
 
+// TestHandlerReadiness_ResponseStructure tests the structure of the HandlerReadiness response.
+// It checks that the response contains exactly the expected fields.
 func TestHandlerReadiness_ResponseStructure(t *testing.T) {
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
@@ -81,6 +89,8 @@ func TestHandlerReadiness_ResponseStructure(t *testing.T) {
 	assert.Len(t, response, len(expectedKeys))
 }
 
+// TestHandlerError_ResponseStructure tests the structure of the HandlerError response.
+// It checks that the response contains exactly the expected error fields.
 func TestHandlerError_ResponseStructure(t *testing.T) {
 	req := httptest.NewRequest("GET", "/error", nil)
 	w := httptest.NewRecorder()
@@ -99,6 +109,8 @@ func TestHandlerError_ResponseStructure(t *testing.T) {
 	assert.Len(t, response, len(expectedKeys))
 }
 
+// TestHandlerHealth_ResponseStructure tests the structure of the HandlerHealth response.
+// It checks that the response contains exactly the expected health fields.
 func TestHandlerHealth_ResponseStructure(t *testing.T) {
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
@@ -117,6 +129,8 @@ func TestHandlerHealth_ResponseStructure(t *testing.T) {
 	assert.Len(t, response, len(expectedKeys))
 }
 
+// TestHandlerReadiness_DifferentMethods tests HandlerReadiness with different HTTP methods.
+// It checks that the response is OK and has the correct content type for each method.
 func TestHandlerReadiness_DifferentMethods(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 
@@ -133,6 +147,8 @@ func TestHandlerReadiness_DifferentMethods(t *testing.T) {
 	}
 }
 
+// TestHandlerError_DifferentMethods tests HandlerError with different HTTP methods.
+// It checks that the response is InternalServerError and has the correct content type for each method.
 func TestHandlerError_DifferentMethods(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 
@@ -149,6 +165,8 @@ func TestHandlerError_DifferentMethods(t *testing.T) {
 	}
 }
 
+// TestHandlerHealth_DifferentMethods tests HandlerHealth with different HTTP methods.
+// It checks that the response is OK and has the correct content type for each method.
 func TestHandlerHealth_DifferentMethods(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 
@@ -167,6 +185,8 @@ func TestHandlerHealth_DifferentMethods(t *testing.T) {
 
 // Edge case tests for handler_ready.go
 
+// TestHandlerReadiness_EdgeCases tests HandlerReadiness for edge cases such as nil requests and response writers.
+// It checks that the function panics or not as expected for each case.
 func TestHandlerReadiness_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -221,6 +241,8 @@ func TestHandlerReadiness_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestHandlerError_EdgeCases tests HandlerError for edge cases such as nil requests and response writers.
+// It checks that the function panics or not as expected for each case.
 func TestHandlerError_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -275,6 +297,8 @@ func TestHandlerError_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestHandlerHealth_EdgeCases tests HandlerHealth for edge cases such as nil requests and response writers.
+// It checks that the function panics or not as expected for each case.
 func TestHandlerHealth_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -329,6 +353,8 @@ func TestHandlerHealth_EdgeCases(t *testing.T) {
 	}
 }
 
+// TestHandlerReadiness_MalformedRequests tests HandlerReadiness with malformed or unusual requests.
+// It checks that the function does not panic and returns a valid response.
 func TestHandlerReadiness_MalformedRequests(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -385,6 +411,8 @@ func TestHandlerReadiness_MalformedRequests(t *testing.T) {
 	}
 }
 
+// TestHandlerError_MalformedRequests tests HandlerError with malformed or unusual requests.
+// It checks that the function does not panic and returns a valid response.
 func TestHandlerError_MalformedRequests(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -441,6 +469,8 @@ func TestHandlerError_MalformedRequests(t *testing.T) {
 	}
 }
 
+// TestHandlerHealth_MalformedRequests tests HandlerHealth with malformed or unusual requests.
+// It checks that the function does not panic and returns a valid response.
 func TestHandlerHealth_MalformedRequests(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -497,6 +527,8 @@ func TestHandlerHealth_MalformedRequests(t *testing.T) {
 	}
 }
 
+// TestHandlerReadiness_ResponseConsistency tests that HandlerReadiness returns consistent responses across multiple calls.
+// It checks that all responses are identical.
 func TestHandlerReadiness_ResponseConsistency(t *testing.T) {
 	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/healthz", nil)
@@ -520,6 +552,8 @@ func TestHandlerReadiness_ResponseConsistency(t *testing.T) {
 	}
 }
 
+// TestHandlerError_ResponseConsistency tests that HandlerError returns consistent responses across multiple calls.
+// It checks that all responses are identical.
 func TestHandlerError_ResponseConsistency(t *testing.T) {
 	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/error", nil)
@@ -543,6 +577,8 @@ func TestHandlerError_ResponseConsistency(t *testing.T) {
 	}
 }
 
+// TestHandlerHealth_ResponseConsistency tests that HandlerHealth returns consistent responses across multiple calls.
+// It checks that all responses are identical.
 func TestHandlerHealth_ResponseConsistency(t *testing.T) {
 	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/health", nil)
@@ -566,6 +602,8 @@ func TestHandlerHealth_ResponseConsistency(t *testing.T) {
 	}
 }
 
+// TestHandlerReadiness_Headers tests the headers set by HandlerReadiness.
+// It checks that only expected headers are set and common security headers are not set.
 func TestHandlerReadiness_Headers(t *testing.T) {
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
@@ -585,6 +623,8 @@ func TestHandlerReadiness_Headers(t *testing.T) {
 	}
 }
 
+// TestHandlerError_Headers tests the headers set by HandlerError.
+// It checks that only expected headers are set and common security headers are not set.
 func TestHandlerError_Headers(t *testing.T) {
 	req := httptest.NewRequest("GET", "/error", nil)
 	w := httptest.NewRecorder()
@@ -604,6 +644,8 @@ func TestHandlerError_Headers(t *testing.T) {
 	}
 }
 
+// TestHandlerHealth_Headers tests the headers set by HandlerHealth.
+// It checks that only expected headers are set and common security headers are not set.
 func TestHandlerHealth_Headers(t *testing.T) {
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()

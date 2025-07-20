@@ -9,7 +9,7 @@ import (
 )
 
 // HandlersUploadConfig holds dependencies and configuration for local upload handlers.
-// It includes the logger, upload path, and the upload service.
+// Includes the logger, upload path, and the upload service for local file storage operations.
 type HandlersUploadConfig struct {
 	HandlersConfig *handlers.HandlersConfig
 	Logger         handlers.HandlerLogger
@@ -18,7 +18,7 @@ type HandlersUploadConfig struct {
 }
 
 // HandlersUploadS3Config holds dependencies and configuration for S3 upload handlers.
-// It includes the logger, upload path, and the upload service.
+// Includes the logger, upload path, and the upload service for S3 cloud storage operations.
 type HandlersUploadS3Config struct {
 	HandlersConfig *handlers.HandlersConfig
 	Logger         handlers.HandlerLogger
@@ -27,17 +27,19 @@ type HandlersUploadS3Config struct {
 }
 
 // imageUploadResponse is the response payload for image upload endpoints.
+// Contains success message and the generated image URL for client consumption.
 type imageUploadResponse struct {
 	Message  string `json:"message"`
 	ImageURL string `json:"image_url"`
 }
 
 // chiURLParam is a patchable reference to chi.URLParam for testing.
+// Allows dependency injection for URL parameter extraction in test scenarios.
 var chiURLParam = chi.URLParam
 
 // handleUploadError centralizes error handling for local upload endpoints.
-// It logs the error and sends the appropriate HTTP response based on the error type.
-//
+// Logs the error and sends the appropriate HTTP response based on the error type.
+// Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -73,8 +75,8 @@ func (cfg *HandlersUploadConfig) handleUploadError(w http.ResponseWriter, r *htt
 }
 
 // handleUploadError centralizes error handling for S3 upload endpoints.
-// It logs the error and sends the appropriate HTTP response based on the error type.
-//
+// Logs the error and sends the appropriate HTTP response based on the error type.
+// Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

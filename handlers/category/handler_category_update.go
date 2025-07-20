@@ -12,8 +12,12 @@ import (
 )
 
 // HandlerUpdateCategory handles HTTP PUT requests to update a category.
-// It parses the request body for category parameters, validates them, and delegates update to the category service.
-// On success, it logs the event and responds with a confirmation message; on error, it logs and returns the appropriate error response.
+// Parses the request body for category parameters, validates them, and delegates update to the category service.
+// On success, logs the event and responds with a confirmation message; on error, logs and returns the appropriate error response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

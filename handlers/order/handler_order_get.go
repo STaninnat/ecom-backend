@@ -12,10 +12,7 @@ import (
 )
 
 // HandlerGetAllOrders handles HTTP GET requests to retrieve all orders (admin only).
-// It calls the business logic service to fetch all orders, logs the event,
-// and responds with the complete order list. On error, it logs and returns
-// the appropriate error response.
-//
+// Calls the business logic service, logs the event, and responds with the complete order list or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -41,10 +38,7 @@ func (cfg *HandlersOrderConfig) HandlerGetAllOrders(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetUserOrders handles HTTP GET requests to retrieve orders for a specific user.
-// It calls the business logic service to fetch user-specific orders, logs the event,
-// and responds with the user's order list. On error, it logs and returns
-// the appropriate error response.
-//
+// Calls the business logic service, logs the event, and responds with the user's order list or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -70,11 +64,7 @@ func (cfg *HandlersOrderConfig) HandlerGetUserOrders(w http.ResponseWriter, r *h
 }
 
 // HandlerGetOrderByID handles HTTP GET requests to retrieve a specific order by its ID.
-// It extracts the order ID from URL parameters, validates the request,
-// calls the business logic service to fetch the order details, logs the event,
-// and responds with the order information. On error or missing order ID,
-// it logs and returns the appropriate error response.
-//
+// Extracts the order ID from URL parameters, validates the request, calls the business logic service, logs the event, and responds with the order information or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -116,11 +106,7 @@ func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetOrderItemsByOrderID handles HTTP GET requests to retrieve items for a specific order.
-// It extracts the order ID from URL parameters, validates the request,
-// calls the business logic service to fetch the order items, logs the event,
-// and responds with the order items list. On error or missing order ID,
-// it logs and returns the appropriate error response.
-//
+// Extracts the order ID from URL parameters, validates the request, calls the business logic service, logs the event, and responds with the order items list or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

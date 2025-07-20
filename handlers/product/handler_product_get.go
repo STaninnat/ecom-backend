@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerGetAllProducts handles HTTP GET requests to retrieve all products.
-// It checks if the user is an admin, fetches products accordingly, logs the event, and responds with the product list.
-// On error, it logs and returns the appropriate error response.
-//
+// Checks if the user is an admin, fetches products accordingly, logs the event, and responds with the product list.
+// On error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -42,9 +41,8 @@ func (cfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r
 }
 
 // HandlerGetProductByID handles HTTP GET requests to retrieve a product by its ID.
-// It extracts the product ID from the URL, checks admin status, fetches the product, logs the event, and responds with the product data.
-// On error or missing ID, it logs and returns the appropriate error response.
-//
+// Extracts the product ID from the URL, checks admin status, fetches the product, logs the event, and responds with the product data.
+// On error or missing ID, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

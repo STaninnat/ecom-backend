@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerFilterProducts handles HTTP POST requests to filter products based on provided criteria.
-// It parses the request body for filter parameters, validates them, and delegates filtering to the product service.
-// On success, it logs the event and responds with the filtered products; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for filter parameters, validates them, and delegates filtering to the product service.
+// On success, logs the event and responds with the filtered products; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

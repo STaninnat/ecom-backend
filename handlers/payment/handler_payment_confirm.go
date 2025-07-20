@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerConfirmPayment handles HTTP POST requests to confirm a payment.
-// It parses the request body for payment confirmation parameters, validates them, and delegates confirmation to the payment service.
-// On success, it logs the event and responds with the payment status; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for payment confirmation parameters, validates them, and delegates confirmation to the payment service.
+// On success, logs the event and responds with the payment status; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

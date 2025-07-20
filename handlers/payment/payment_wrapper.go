@@ -11,9 +11,8 @@ import (
 	"github.com/stripe/stripe-go/v82"
 )
 
-// HandlersPaymentConfig contains the configuration for payment handlers
-// It embeds the base handlers config and provides access to the payment service
-// for business logic operations
+// HandlersPaymentConfig contains the configuration for payment handlers.
+// Embeds the base handlers config and provides access to the payment service for business logic operations.
 type HandlersPaymentConfig struct {
 	*handlers.HandlersConfig
 	Logger         handlers.HandlerLogger
@@ -21,8 +20,8 @@ type HandlersPaymentConfig struct {
 	paymentMutex   sync.RWMutex
 }
 
-// InitPaymentService initializes the payment service with the current configuration
-// This method should be called during application startup
+// InitPaymentService initializes the payment service with the current configuration.
+// Validates required dependencies and sets up the service. This method should be called during application startup.
 func (cfg *HandlersPaymentConfig) InitPaymentService() error {
 	// Validate that the embedded config is not nil
 	if cfg.HandlersConfig == nil {
@@ -59,8 +58,8 @@ func (cfg *HandlersPaymentConfig) InitPaymentService() error {
 	return nil
 }
 
-// GetPaymentService returns the payment service instance, initializing it if necessary
-// This method is thread-safe and will initialize the service on first access
+// GetPaymentService returns the payment service instance, initializing it if necessary.
+// This method is thread-safe and will initialize the service on first access.
 func (cfg *HandlersPaymentConfig) GetPaymentService() PaymentService {
 	cfg.paymentMutex.RLock()
 	if cfg.paymentService != nil {
@@ -91,13 +90,13 @@ func (cfg *HandlersPaymentConfig) GetPaymentService() PaymentService {
 	return cfg.paymentService
 }
 
-// SetupStripeAPI sets up the Stripe API key (kept for backward compatibility)
+// SetupStripeAPI sets up the Stripe API key (kept for backward compatibility).
 func (cfg *HandlersPaymentConfig) SetupStripeAPI() {
 	stripe.Key = cfg.StripeSecretKey
 }
 
-// handlePaymentError handles payment-specific errors with proper logging and responses
-// It categorizes errors and provides appropriate HTTP status codes and messages
+// handlePaymentError handles payment-specific errors with proper logging and responses.
+// Categorizes errors and provides appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersPaymentConfig) handlePaymentError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
@@ -131,24 +130,28 @@ func (cfg *HandlersPaymentConfig) handlePaymentError(w http.ResponseWriter, r *h
 	}
 }
 
-// Request/Response types (kept for backward compatibility)
+// CreatePaymentIntentRequest represents the request structure for creating a payment intent.
 type CreatePaymentIntentRequest struct {
 	OrderID  string `json:"order_id"`
 	Currency string `json:"currency"`
 }
 
+// CreatePaymentIntentResponse represents the response structure for a created payment intent.
 type CreatePaymentIntentResponse struct {
 	ClientSecret string `json:"client_secret"`
 }
 
+// ConfirmPaymentRequest represents the request structure for confirming a payment.
 type ConfirmPaymentRequest struct {
 	OrderID string `json:"order_id"`
 }
 
+// ConfirmPaymentResponse represents the response structure for a confirmed payment.
 type ConfirmPaymentResponse struct {
 	Status string `json:"status"`
 }
 
+// GetPaymentResponse represents the response structure for payment details.
 type GetPaymentResponse struct {
 	ID                string    `json:"id"`
 	OrderID           string    `json:"order_id"`
@@ -161,6 +164,7 @@ type GetPaymentResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+// PaymentHistoryItem represents a payment item in the payment history.
 type PaymentHistoryItem struct {
 	ID                string    `json:"id"`
 	OrderID           string    `json:"order_id"`

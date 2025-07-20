@@ -11,9 +11,8 @@ import (
 )
 
 // HandlerUploadProductImage handles HTTP POST requests to upload a new product image (local storage).
-// It enforces a max upload size, delegates to the upload service, logs the event, and responds with the image URL.
-// On error, it logs and returns the appropriate error response.
-//
+// Enforces a max upload size, delegates to the upload service, logs the event, and responds with the image URL.
+// On error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
@@ -41,9 +40,8 @@ func (cfg *HandlersUploadConfig) HandlerUploadProductImage(w http.ResponseWriter
 }
 
 // HandlerUpdateProductImageByID handles HTTP POST requests to update a product image by its ID (local storage).
-// It extracts the product ID from the URL, delegates to the upload service, logs the event, and responds with the updated image URL.
-// On error or missing ID, it logs and returns the appropriate error response.
-//
+// Extracts the product ID from the URL, delegates to the upload service, logs the event, and responds with the updated image URL.
+// On error or missing ID, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

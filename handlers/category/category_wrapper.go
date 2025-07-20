@@ -9,9 +9,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
-// HandlersCategoryConfig contains the configuration for category handlers
-// It embeds the base handlers config and provides access to the category service
-// for business logic operations
+// HandlersCategoryConfig contains the configuration for category handlers.
+// Manages the category service lifecycle and provides thread-safe access to the service instance.
 type HandlersCategoryConfig struct {
 	*handlers.HandlersConfig
 	Logger          handlers.HandlerLogger
@@ -19,8 +18,8 @@ type HandlersCategoryConfig struct {
 	categoryMutex   sync.RWMutex
 }
 
-// InitCategoryService initializes the category service with the current configuration
-// This method should be called during application startup
+// InitCategoryService initializes the category service with the current configuration.
+// Validates required dependencies and sets up the service. Returns an error if any dependency is missing.
 func (cfg *HandlersCategoryConfig) InitCategoryService() error {
 	// Validate that the embedded config is not nil
 	if cfg.HandlersConfig == nil {
@@ -50,8 +49,8 @@ func (cfg *HandlersCategoryConfig) InitCategoryService() error {
 	return nil
 }
 
-// GetCategoryService returns the category service instance, initializing it if necessary
-// This method is thread-safe and will initialize the service on first access
+// GetCategoryService returns the category service instance, initializing it if necessary.
+// Uses a double-checked locking pattern for thread-safe lazy initialization. If dependencies are missing, creates a service with nil dependencies.
 func (cfg *HandlersCategoryConfig) GetCategoryService() CategoryService {
 	cfg.categoryMutex.RLock()
 	if cfg.categoryService != nil {
@@ -78,8 +77,8 @@ func (cfg *HandlersCategoryConfig) GetCategoryService() CategoryService {
 	return cfg.categoryService
 }
 
-// handleCategoryError handles category-specific errors with proper logging and responses
-// It categorizes errors and provides appropriate HTTP status codes and messages
+// handleCategoryError handles category-specific errors with proper logging and responses.
+// Categorizes errors and provides appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
@@ -101,6 +100,7 @@ func (cfg *HandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r 
 	}
 }
 
+// CategoryWithIDRequest represents a request containing a category ID and optional name and description.
 type CategoryWithIDRequest struct {
 	ID          string `json:"id"`
 	Name        string `json:"name,omitempty"`

@@ -15,9 +15,8 @@ import (
 )
 
 // parsePagination extracts and validates pagination parameters from the HTTP request query string.
-// It parses the 'page' and 'pageSize' query parameters, providing default values (page=1, pageSize=10)
+// Parses the 'page' and 'pageSize' query parameters, providing default values (page=1, pageSize=10)
 // if they are missing or invalid. Only positive integer values are accepted.
-//
 // Parameters:
 //   - r: *http.Request containing the query parameters to parse
 //
@@ -41,9 +40,8 @@ func parsePagination(r *http.Request) (page, pageSize int) {
 }
 
 // parseFilterSort parses all supported filter and sort query parameters from the HTTP request.
-// It extracts rating filters, date ranges, media filters, and sort options, validating each parameter
+// Extracts rating filters, date ranges, media filters, and sort options, validating each parameter
 // according to its expected format and range. Invalid parameters are ignored and return nil/default values.
-//
 // Parameters:
 //   - r: *http.Request containing the query parameters to parse
 //
@@ -92,9 +90,8 @@ func parseFilterSort(r *http.Request) (rating *int, minRating *int, maxRating *i
 }
 
 // HandlerGetReviewsByProductID handles HTTP GET requests to retrieve paginated, filtered, and sorted reviews for a product.
-// It parses pagination and filter parameters from the request, validates the product ID, and delegates retrieval to the review service.
-// On success, it logs the event and responds with the paginated review data; on error, it logs and returns the appropriate error response.
-//
+// Parses pagination and filter parameters from the request, validates the product ID, and delegates retrieval to the review service.
+// On success, logs the event and responds with the paginated review data; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data with product ID in URL parameters and filter/sort in query parameters
@@ -137,9 +134,8 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewsByProductID(w http.ResponseWri
 }
 
 // HandlerGetReviewsByUserID handles HTTP GET requests to retrieve paginated, filtered, and sorted reviews for the authenticated user.
-// It parses pagination and filter parameters from the request and delegates retrieval to the review service.
-// On success, it logs the event and responds with the paginated review data; on error, it logs and returns the appropriate error response.
-//
+// Parses pagination and filter parameters from the request and delegates retrieval to the review service.
+// On success, logs the event and responds with the paginated review data; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data with filter/sort in query parameters
@@ -177,9 +173,8 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewsByUserID(w http.ResponseWriter
 }
 
 // HandlerGetReviewByID handles HTTP GET requests to retrieve a single review by its ID.
-// It validates the review ID parameter and delegates retrieval to the review service.
-// On success, it logs the event and responds with the review data; on error, it logs and returns the appropriate error response.
-//
+// Validates the review ID parameter and delegates retrieval to the review service.
+// On success, logs the event and responds with the review data; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data with review ID in URL parameters

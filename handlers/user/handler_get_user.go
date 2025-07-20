@@ -10,11 +10,18 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
+// contextKey defines a type for context keys to ensure type safety.
 type contextKey string
 
+// contextKeyUser is the context key used to store user information in request context.
 const contextKeyUser contextKey = "user"
 
-// HandlerGetUser returns the user info as JSON
+// HandlerGetUser handles HTTP GET requests to retrieve user information.
+// Extracts user from request context, delegates to user service, and responds with user data.
+// On success, logs the event and responds with user information; on error, logs and returns appropriate error response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data with user in context
 func (cfg *HandlersUserConfig) HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

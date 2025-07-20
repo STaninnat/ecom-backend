@@ -12,11 +12,7 @@ import (
 )
 
 // HandlerCreateOrder handles HTTP POST requests to create a new order.
-// It validates the request payload, parses the order creation parameters,
-// calls the business logic service to create the order, logs the event,
-// and responds with the created order details. On error or invalid payload,
-// it logs and returns the appropriate error response.
-//
+// Validates the request payload, parses order creation parameters, calls the business logic service, logs the event, and responds with the created order details or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

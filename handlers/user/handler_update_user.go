@@ -11,7 +11,12 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// HandlerUpdateUser updates the user's information
+// HandlerUpdateUser handles HTTP PUT requests to update user information.
+// Extracts user from request context, validates update parameters, delegates to user service,
+// and responds with success message. On error, logs and returns appropriate error response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data with user in context and update parameters in body
 func (cfg *HandlersUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

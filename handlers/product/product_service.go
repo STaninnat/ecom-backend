@@ -13,6 +13,7 @@ import (
 )
 
 // --- Interfaces for DB and Transaction ---
+// ProductDBQueries defines the interface for product-related database operations.
 type ProductDBQueries interface {
 	WithTx(tx ProductDBTx) ProductDBQueries
 	CreateProduct(ctx context.Context, params database.CreateProductParams) error
@@ -25,16 +26,19 @@ type ProductDBQueries interface {
 	FilterProducts(ctx context.Context, params database.FilterProductsParams) ([]database.Product, error)
 }
 
+// ProductDBConn defines the interface for beginning database transactions for product operations.
 type ProductDBConn interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (ProductDBTx, error)
 }
 
+// ProductDBTx defines the interface for a database transaction used in product operations.
 type ProductDBTx interface {
 	Commit() error
 	Rollback() error
 }
 
 // --- Adapters for sqlc-generated types ---
+// ProductDBQueriesAdapter adapts sqlc-generated Queries to the ProductDBQueries interface.
 type ProductDBQueriesAdapter struct {
 	*database.Queries
 }
@@ -67,6 +71,7 @@ func (a *ProductDBQueriesAdapter) FilterProducts(ctx context.Context, params dat
 	return a.Queries.FilterProducts(ctx, params)
 }
 
+// ProductDBConnAdapter adapts a sql.DB to the ProductDBConn interface.
 type ProductDBConnAdapter struct {
 	*sql.DB
 }
@@ -82,9 +87,8 @@ type productServiceImpl struct {
 	dbConn ProductDBConn
 }
 
-// ProductService defines the business logic interface for product operations
-// Add more methods as needed for product-related features
-// (e.g., Create, Update, Delete, Get, Filter, etc.)
+// ProductService defines the business logic interface for product operations.
+// Provides methods for creating, updating, deleting, retrieving, and filtering products.
 type ProductService interface {
 	CreateProduct(ctx context.Context, params ProductRequest) (string, error)
 	UpdateProduct(ctx context.Context, params ProductRequest) error
@@ -94,6 +98,8 @@ type ProductService interface {
 	FilterProducts(ctx context.Context, params FilterProductsRequest) ([]database.Product, error)
 }
 
+// NewProductService creates a new ProductService with the provided database query and connection adapters.
+// Returns a ProductService implementation.
 func NewProductService(db *database.Queries, dbConn *sql.DB) ProductService {
 	return &productServiceImpl{
 		db:     &ProductDBQueriesAdapter{db},
@@ -101,7 +107,8 @@ func NewProductService(db *database.Queries, dbConn *sql.DB) ProductService {
 	}
 }
 
-// CreateProduct creates a new product
+// CreateProduct creates a new product.
+// Validates the request, creates the product in a transaction, and returns the new product ID or an error.
 func (s *productServiceImpl) CreateProduct(ctx context.Context, params ProductRequest) (string, error) {
 	if s.dbConn == nil {
 		return "", &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -142,7 +149,8 @@ func (s *productServiceImpl) CreateProduct(ctx context.Context, params ProductRe
 	return id, nil
 }
 
-// UpdateProduct updates an existing product
+// UpdateProduct updates an existing product.
+// Validates the request, updates the product in a transaction, and returns an error if unsuccessful.
 func (s *productServiceImpl) UpdateProduct(ctx context.Context, params ProductRequest) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -180,7 +188,8 @@ func (s *productServiceImpl) UpdateProduct(ctx context.Context, params ProductRe
 	return nil
 }
 
-// DeleteProduct deletes a product by ID
+// DeleteProduct deletes a product by ID.
+// Validates the ID, checks if product exists, deletes it in a transaction, and returns an error if unsuccessful.
 func (s *productServiceImpl) DeleteProduct(ctx context.Context, productID string) error {
 	if s.dbConn == nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
@@ -208,7 +217,8 @@ func (s *productServiceImpl) DeleteProduct(ctx context.Context, productID string
 	return nil
 }
 
-// GetAllProducts returns all products (admin: all, non-admin: only active)
+// GetAllProducts returns all products (admin: all, non-admin: only active).
+// Returns a list of products based on admin status or an error.
 func (s *productServiceImpl) GetAllProducts(ctx context.Context, isAdmin bool) ([]database.Product, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "DB is nil", Err: fmt.Errorf("db is nil")}
@@ -219,7 +229,8 @@ func (s *productServiceImpl) GetAllProducts(ctx context.Context, isAdmin bool) (
 	return s.db.GetAllActiveProducts(ctx)
 }
 
-// GetProductByID returns a product by ID (admin: all, non-admin: only active)
+// GetProductByID returns a product by ID (admin: all, non-admin: only active).
+// Validates the ID and returns product details based on admin status or an error.
 func (s *productServiceImpl) GetProductByID(ctx context.Context, productID string, isAdmin bool) (database.Product, error) {
 	if s.db == nil {
 		return database.Product{}, &handlers.AppError{Code: "transaction_error", Message: "DB is nil", Err: fmt.Errorf("db is nil")}
@@ -233,7 +244,8 @@ func (s *productServiceImpl) GetProductByID(ctx context.Context, productID strin
 	return s.db.GetActiveProductByID(ctx, productID)
 }
 
-// FilterProducts filters products by various criteria
+// FilterProducts filters products by various criteria.
+// Returns a filtered list of products based on the provided criteria or an error.
 func (s *productServiceImpl) FilterProducts(ctx context.Context, params FilterProductsRequest) ([]database.Product, error) {
 	if s.db == nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "DB is nil", Err: fmt.Errorf("db is nil")}

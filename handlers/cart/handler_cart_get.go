@@ -11,9 +11,12 @@ import (
 )
 
 // HandlerGetUserCart handles HTTP requests to retrieve a user's cart.
-// It calls the service layer to fetch the cart, logs the operation, and returns
-// a JSON response with the cart data or an error if the retrieval fails.
+// Calls the service layer, logs the operation, and returns a JSON response with the cart data or an error.
 // Expects a valid user in the request context.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
+//   - user: database.User representing the authenticated user
 func (cfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -32,9 +35,11 @@ func (cfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http
 }
 
 // HandlerGetGuestCart handles HTTP requests to retrieve a guest cart (session-based).
-// It extracts the session ID, calls the service layer to fetch the cart, logs the operation,
-// and returns a JSON response with the cart data or an error if the retrieval fails.
+// Extracts the session ID, calls the service layer, logs the operation, and returns a JSON response with the cart data or an error.
 // Expects a valid session ID in the request context.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

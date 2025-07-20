@@ -12,9 +12,8 @@ import (
 )
 
 // HandlerCreateProduct handles HTTP POST requests to create a new product.
-// It parses the request body for product parameters, validates them, and delegates creation to the product service.
-// On success, it logs the event and responds with the new product ID; on error, it logs and returns the appropriate error response.
-//
+// Parses the request body for product parameters, validates them, and delegates creation to the product service.
+// On success, logs the event and responds with the new product ID; on error, logs and returns the appropriate error response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data

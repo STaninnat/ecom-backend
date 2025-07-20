@@ -21,6 +21,7 @@ import (
 )
 
 // --- Interfaces for DB and Transaction ---
+// PaymentDBQueries defines the interface for payment-related database operations.
 type PaymentDBQueries interface {
 	WithTx(tx PaymentDBTx) PaymentDBQueries
 	GetOrderByID(ctx context.Context, id string) (database.Order, error)
@@ -36,16 +37,19 @@ type PaymentDBQueries interface {
 	UpdateOrderStatus(ctx context.Context, params database.UpdateOrderStatusParams) error
 }
 
+// PaymentDBConn defines the interface for beginning database transactions for payment operations.
 type PaymentDBConn interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (PaymentDBTx, error)
 }
 
+// PaymentDBTx defines the interface for a database transaction used in payment operations.
 type PaymentDBTx interface {
 	Commit() error
 	Rollback() error
 }
 
 // --- Adapters for sqlc-generated types ---
+// PaymentDBQueriesAdapter adapts sqlc-generated Queries to the PaymentDBQueries interface.
 type PaymentDBQueriesAdapter struct {
 	*database.Queries
 }
@@ -99,6 +103,7 @@ func (a *PaymentDBQueriesAdapter) UpdateOrderStatus(ctx context.Context, params 
 	return a.Queries.UpdateOrderStatus(ctx, params)
 }
 
+// PaymentDBConnAdapter adapts a sql.DB to the PaymentDBConn interface.
 type PaymentDBConnAdapter struct {
 	*sql.DB
 }
@@ -108,7 +113,7 @@ func (a *PaymentDBConnAdapter) BeginTx(ctx context.Context, opts *sql.TxOptions)
 	return tx, err
 }
 
-// StripeClient abstracts Stripe operations for testability
+// StripeClient abstracts Stripe operations for testability.
 // (If you use mockery, otherwise define a manual mock in tests)
 //
 //go:generate mockery --name=StripeClient --output=./mocks --case=underscore
@@ -119,8 +124,7 @@ type StripeClient interface {
 	ParseWebhook(payload []byte, sigHeader, secret string) (stripe.Event, error)
 }
 
-// realStripeClient implements StripeClient using the stripe-go SDK
-// (used in production)
+// realStripeClient implements StripeClient using the stripe-go SDK (used in production).
 type realStripeClient struct{}
 
 func (c *realStripeClient) CreatePaymentIntent(params *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error) {
@@ -141,10 +145,11 @@ type paymentServiceImpl struct {
 	db     PaymentDBQueries
 	dbConn PaymentDBConn
 	apiKey string
-	stripe StripeClient // <-- add this field
+	stripe StripeClient
 }
 
-// PaymentService defines the business logic interface for payment operations
+// PaymentService defines the business logic interface for payment operations.
+// Provides methods for creating, confirming, retrieving, and refunding payments, as well as handling webhooks.
 type PaymentService interface {
 	CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error)
 	ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error)
@@ -156,26 +161,31 @@ type PaymentService interface {
 }
 
 // Request/Response types
+// CreatePaymentParams represents the parameters for creating a payment.
 type CreatePaymentParams struct {
 	OrderID  string
 	UserID   string
 	Currency string
 }
 
+// CreatePaymentResult represents the result of creating a payment.
 type CreatePaymentResult struct {
 	PaymentID    string
 	ClientSecret string
 }
 
+// ConfirmPaymentParams represents the parameters for confirming a payment.
 type ConfirmPaymentParams struct {
 	OrderID string
 	UserID  string
 }
 
+// ConfirmPaymentResult represents the result of confirming a payment.
 type ConfirmPaymentResult struct {
 	Status string
 }
 
+// GetPaymentResult represents the result of retrieving a payment.
 type GetPaymentResult struct {
 	ID                string    `json:"id"`
 	OrderID           string    `json:"order_id"`
@@ -188,11 +198,14 @@ type GetPaymentResult struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+// RefundPaymentParams represents the parameters for refunding a payment.
 type RefundPaymentParams struct {
 	OrderID string
 	UserID  string
 }
 
+// NewPaymentService creates a new PaymentService with the provided database query and connection adapters.
+// Returns a PaymentService implementation.
 func NewPaymentService(db *database.Queries, dbConn *sql.DB, apiKey string) PaymentService {
 	return &paymentServiceImpl{
 		db:     &PaymentDBQueriesAdapter{db},
@@ -202,7 +215,8 @@ func NewPaymentService(db *database.Queries, dbConn *sql.DB, apiKey string) Paym
 	}
 }
 
-// CreatePayment creates a new payment intent and records it in the database
+// CreatePayment creates a new payment intent and records it in the database.
+// Validates the request, creates a Stripe payment intent, and records the payment in a transaction.
 func (s *paymentServiceImpl) CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error) {
 	if params.OrderID == "" || params.UserID == "" || params.Currency == "" {
 		return nil, &handlers.AppError{Code: "invalid_request", Message: "Missing required fields"}
@@ -294,7 +308,7 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, params CreatePay
 	}, nil
 }
 
-// isValidCurrency checks if the currency is supported
+// isValidCurrency checks if the currency is supported.
 func (s *paymentServiceImpl) isValidCurrency(currency string) bool {
 	valid := map[string]struct{}{
 		"USD": {}, "EUR": {}, "GBP": {}, "JPY": {}, "CAD": {}, "AUD": {}, "CHF": {}, "CNY": {}, "SEK": {}, "NZD": {},
@@ -303,7 +317,8 @@ func (s *paymentServiceImpl) isValidCurrency(currency string) bool {
 	return ok
 }
 
-// ConfirmPayment confirms a payment and updates its status
+// ConfirmPayment confirms a payment and updates its status.
+// Validates the payment, checks Stripe status, and updates both payment and order status in a transaction.
 func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
 	if params.OrderID == "" || params.UserID == "" {
 		return nil, &handlers.AppError{Code: "invalid_request", Message: "Missing required fields"}
@@ -403,7 +418,8 @@ func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmP
 	return &ConfirmPaymentResult{Status: newStatus}, nil
 }
 
-// GetPayment retrieves a payment by order ID
+// GetPayment retrieves a payment by order ID.
+// Validates ownership and returns payment details or an error.
 func (s *paymentServiceImpl) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
 	if orderID == "" {
 		return nil, &handlers.AppError{Code: "invalid_request", Message: "Order ID is required"}
@@ -436,7 +452,8 @@ func (s *paymentServiceImpl) GetPayment(ctx context.Context, orderID string, use
 	}, nil
 }
 
-// GetPaymentHistory retrieves payment history for a user
+// GetPaymentHistory retrieves payment history for a user.
+// Returns a list of payment history items or an error.
 func (s *paymentServiceImpl) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
 	if userID == "" {
 		return nil, &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
@@ -464,7 +481,8 @@ func (s *paymentServiceImpl) GetPaymentHistory(ctx context.Context, userID strin
 	return result, nil
 }
 
-// GetAllPayments retrieves all payments with optional status filter
+// GetAllPayments retrieves all payments with optional status filter.
+// Returns a list of payment history items or an error.
 func (s *paymentServiceImpl) GetAllPayments(ctx context.Context, status string) ([]PaymentHistoryItem, error) {
 	var payments []database.Payment
 	var err error
@@ -496,7 +514,8 @@ func (s *paymentServiceImpl) GetAllPayments(ctx context.Context, status string) 
 	return result, nil
 }
 
-// RefundPayment processes a refund for a payment
+// RefundPayment processes a refund for a payment.
+// Validates the payment, processes the refund with Stripe, and updates both payment and order status in a transaction.
 func (s *paymentServiceImpl) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
 	if params.OrderID == "" || params.UserID == "" {
 		return &handlers.AppError{Code: "invalid_request", Message: "Missing required fields"}
@@ -563,10 +582,11 @@ func (s *paymentServiceImpl) RefundPayment(ctx context.Context, params RefundPay
 	return nil
 }
 
-// PaymentError represents payment-specific errors
+// PaymentError represents payment-specific errors.
 type PaymentError = handlers.AppError
 
-// HandleWebhook processes Stripe webhook events
+// HandleWebhook processes Stripe webhook events.
+// Validates the webhook signature, processes different event types, and updates payment statuses in a transaction.
 func (s *paymentServiceImpl) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {
 	stripe.Key = s.apiKey
 	event, err := s.stripe.ParseWebhook(payload, signature, secret)

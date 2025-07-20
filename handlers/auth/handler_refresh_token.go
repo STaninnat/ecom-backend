@@ -10,9 +10,11 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-// HandlerRefreshToken handles token refresh requests
-// It validates the current refresh token, generates new access and refresh tokens,
-// sets new cookies, and returns a success response
+// HandlerRefreshToken handles token refresh requests.
+// Validates the current refresh token, generates new access and refresh tokens, sets new cookies, and returns a success response.
+// Parameters:
+//   - w: http.ResponseWriter for sending the response
+//   - r: *http.Request containing the request data
 func (cfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
