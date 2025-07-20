@@ -3,6 +3,7 @@ package intmongo
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/models"
@@ -11,12 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// ReviewMongo handles review operations in MongoDB
+// ReviewMongo handles review operations in MongoDB.
 type ReviewMongo struct {
 	Collection CollectionInterface
 }
 
-// NewReviewMongo creates a new ReviewMongo instance
+// NewReviewMongo creates a new ReviewMongo instance for the given MongoDB database.
 func NewReviewMongo(db *mongo.Database) *ReviewMongo {
 	return &ReviewMongo{
 		Collection: &MongoCollectionAdapter{
@@ -25,7 +26,7 @@ func NewReviewMongo(db *mongo.Database) *ReviewMongo {
 	}
 }
 
-// CreateReview creates a new review in the database
+// CreateReview creates a new review in the database.
 func (r *ReviewMongo) CreateReview(ctx context.Context, review *models.Review) error {
 	if review == nil {
 		return fmt.Errorf("review cannot be nil")
@@ -47,7 +48,7 @@ func (r *ReviewMongo) CreateReview(ctx context.Context, review *models.Review) e
 	return nil
 }
 
-// CreateReviews creates multiple reviews in a single operation
+// CreateReviews creates multiple reviews in a single operation.
 func (r *ReviewMongo) CreateReviews(ctx context.Context, reviews []*models.Review) error {
 	if len(reviews) == 0 {
 		return fmt.Errorf("reviews slice cannot be empty")
@@ -79,7 +80,7 @@ func (r *ReviewMongo) CreateReviews(ctx context.Context, reviews []*models.Revie
 	return nil
 }
 
-// GetReviewsByProductID retrieves all reviews for a specific product
+// GetReviewsByProductID retrieves all reviews for a specific product.
 func (r *ReviewMongo) GetReviewsByProductID(ctx context.Context, productID string) ([]*models.Review, error) {
 	if productID == "" {
 		return nil, fmt.Errorf("product ID cannot be empty")
@@ -101,7 +102,7 @@ func (r *ReviewMongo) GetReviewsByProductID(ctx context.Context, productID strin
 	return reviews, nil
 }
 
-// GetReviewsByProductIDPaginated retrieves paginated reviews for a specific product
+// GetReviewsByProductIDPaginated retrieves paginated reviews for a specific product.
 func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, productID string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
 	if productID == "" {
 		return nil, fmt.Errorf("product ID cannot be empty")
@@ -111,6 +112,9 @@ func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, produc
 	}
 
 	filter := bson.M{"product_id": productID}
+	if pagination.Filter != nil {
+		maps.Copy(filter, pagination.Filter)
+	}
 
 	// Get total count
 	totalCount, err := r.Collection.CountDocuments(ctx, filter)
@@ -152,7 +156,7 @@ func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, produc
 	}, nil
 }
 
-// GetReviewsByUserID retrieves all reviews by a specific user
+// GetReviewsByUserID retrieves all reviews by a specific user.
 func (r *ReviewMongo) GetReviewsByUserID(ctx context.Context, userID string) ([]*models.Review, error) {
 	if userID == "" {
 		return nil, fmt.Errorf("user ID cannot be empty")
@@ -174,7 +178,7 @@ func (r *ReviewMongo) GetReviewsByUserID(ctx context.Context, userID string) ([]
 	return reviews, nil
 }
 
-// GetReviewsByUserIDPaginated retrieves paginated reviews by a specific user
+// GetReviewsByUserIDPaginated retrieves paginated reviews by a specific user.
 func (r *ReviewMongo) GetReviewsByUserIDPaginated(ctx context.Context, userID string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
 	if userID == "" {
 		return nil, fmt.Errorf("user ID cannot be empty")
@@ -184,6 +188,9 @@ func (r *ReviewMongo) GetReviewsByUserIDPaginated(ctx context.Context, userID st
 	}
 
 	filter := bson.M{"user_id": userID}
+	if pagination.Filter != nil {
+		maps.Copy(filter, pagination.Filter)
+	}
 
 	// Get total count
 	totalCount, err := r.Collection.CountDocuments(ctx, filter)
@@ -225,7 +232,7 @@ func (r *ReviewMongo) GetReviewsByUserIDPaginated(ctx context.Context, userID st
 	}, nil
 }
 
-// GetReviewByID retrieves a specific review by its ID
+// GetReviewByID retrieves a specific review by its ID.
 func (r *ReviewMongo) GetReviewByID(ctx context.Context, reviewID string) (*models.Review, error) {
 	if reviewID == "" {
 		return nil, fmt.Errorf("review ID cannot be empty")
@@ -249,7 +256,7 @@ func (r *ReviewMongo) GetReviewByID(ctx context.Context, reviewID string) (*mode
 	return &review, nil
 }
 
-// UpdateReviewByID updates an existing review by its ID
+// UpdateReviewByID updates an existing review by its ID.
 func (r *ReviewMongo) UpdateReviewByID(ctx context.Context, reviewID string, updatedReview *models.Review) error {
 	if reviewID == "" {
 		return fmt.Errorf("review ID cannot be empty")
@@ -279,7 +286,7 @@ func (r *ReviewMongo) UpdateReviewByID(ctx context.Context, reviewID string, upd
 	return nil
 }
 
-// UpdateReviewsByProductID updates all reviews for a specific product
+// UpdateReviewsByProductID updates all reviews for a specific product.
 func (r *ReviewMongo) UpdateReviewsByProductID(ctx context.Context, productID string, update bson.M) error {
 	if productID == "" {
 		return fmt.Errorf("product ID cannot be empty")
@@ -298,7 +305,7 @@ func (r *ReviewMongo) UpdateReviewsByProductID(ctx context.Context, productID st
 	return nil
 }
 
-// DeleteReviewByID deletes a review by its ID
+// DeleteReviewByID deletes a review by its ID.
 func (r *ReviewMongo) DeleteReviewByID(ctx context.Context, reviewID string) error {
 	if reviewID == "" {
 		return fmt.Errorf("review ID cannot be empty")
@@ -317,7 +324,7 @@ func (r *ReviewMongo) DeleteReviewByID(ctx context.Context, reviewID string) err
 	return nil
 }
 
-// DeleteReviewsByUserID deletes all reviews by a specific user
+// DeleteReviewsByUserID deletes all reviews by a specific user.
 func (r *ReviewMongo) DeleteReviewsByUserID(ctx context.Context, userID string) error {
 	if userID == "" {
 		return fmt.Errorf("user ID cannot be empty")
@@ -333,7 +340,7 @@ func (r *ReviewMongo) DeleteReviewsByUserID(ctx context.Context, userID string) 
 	return nil
 }
 
-// GetProductRatingStats gets rating statistics for a product
+// GetProductRatingStats gets rating statistics for a product.
 func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID string) (map[string]any, error) {
 	if productID == "" {
 		return nil, fmt.Errorf("product ID cannot be empty")

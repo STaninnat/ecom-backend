@@ -11,12 +11,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// CartMongo handles cart operations in MongoDB
+// CartMongo handles cart operations in MongoDB.
 type CartMongo struct {
 	Collection CollectionInterface
 }
 
-// NewCartMongo creates a new CartMongo instance
+// NewCartMongo creates a new CartMongo instance for the given MongoDB database.
 func NewCartMongo(db *mongo.Database) *CartMongo {
 	return &CartMongo{
 		Collection: &MongoCollectionAdapter{
@@ -25,7 +25,7 @@ func NewCartMongo(db *mongo.Database) *CartMongo {
 	}
 }
 
-// GetCartByUserID retrieves a cart by user ID, creating an empty cart if not found
+// GetCartByUserID retrieves a cart by user ID, creating an empty cart if not found.
 func (c *CartMongo) GetCartByUserID(ctx context.Context, userID string) (*models.Cart, error) {
 	timeNow := time.Now().UTC()
 	filter := bson.M{"user_id": userID}
@@ -36,6 +36,7 @@ func (c *CartMongo) GetCartByUserID(ctx context.Context, userID string) (*models
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return &models.Cart{
+				ID:        generateCartID(userID), // Ensure ID is a string
 				UserID:    userID,
 				Items:     []models.CartItem{},
 				CreatedAt: timeNow,
@@ -48,7 +49,12 @@ func (c *CartMongo) GetCartByUserID(ctx context.Context, userID string) (*models
 	return &cart, nil
 }
 
-// GetCartsByUserIDs retrieves multiple carts by user IDs
+// generateCartID generates a unique string ID for a cart (simple version using userID and timestamp)
+func generateCartID(userID string) string {
+	return fmt.Sprintf("%s-%d", userID, time.Now().UnixNano())
+}
+
+// GetCartsByUserIDs retrieves multiple carts by user IDs.
 func (c *CartMongo) GetCartsByUserIDs(ctx context.Context, userIDs []string) ([]*models.Cart, error) {
 	if len(userIDs) == 0 {
 		return []*models.Cart{}, nil
@@ -70,13 +76,15 @@ func (c *CartMongo) GetCartsByUserIDs(ctx context.Context, userIDs []string) ([]
 	return carts, nil
 }
 
-// AddItemToCart adds an item to a user's cart, creating the cart if it doesn't exist
+// AddItemToCart adds an item to a user's cart, creating the cart if it doesn't exist.
 func (c *CartMongo) AddItemToCart(ctx context.Context, userID string, item models.CartItem) error {
 	timeNow := time.Now().UTC()
 	filter := bson.M{"user_id": userID}
 	update := bson.M{
 		"$setOnInsert": bson.M{
+			"_id":        generateCartID(userID), // Ensure _id is a string
 			"created_at": timeNow,
+			"user_id":    userID, // Also ensure user_id is set on insert
 		},
 		"$set": bson.M{
 			"updated_at": timeNow,
@@ -95,7 +103,7 @@ func (c *CartMongo) AddItemToCart(ctx context.Context, userID string, item model
 	return nil
 }
 
-// AddItemsToCart adds multiple items to a user's cart
+// AddItemsToCart adds multiple items to a user's cart.
 func (c *CartMongo) AddItemsToCart(ctx context.Context, userID string, items []models.CartItem) error {
 	if len(items) == 0 {
 		return fmt.Errorf("items slice cannot be empty")
@@ -124,7 +132,7 @@ func (c *CartMongo) AddItemsToCart(ctx context.Context, userID string, items []m
 	return nil
 }
 
-// RemoveItemFromCart removes an item from a user's cart
+// RemoveItemFromCart removes an item from a user's cart.
 func (c *CartMongo) RemoveItemFromCart(ctx context.Context, userID string, productID string) error {
 	filter := bson.M{"user_id": userID}
 	update := bson.M{
@@ -144,7 +152,7 @@ func (c *CartMongo) RemoveItemFromCart(ctx context.Context, userID string, produ
 	return nil
 }
 
-// RemoveItemsFromCart removes multiple items from a user's cart
+// RemoveItemsFromCart removes multiple items from a user's cart.
 func (c *CartMongo) RemoveItemsFromCart(ctx context.Context, userID string, productIDs []string) error {
 	if len(productIDs) == 0 {
 		return fmt.Errorf("product IDs slice cannot be empty")
@@ -168,7 +176,7 @@ func (c *CartMongo) RemoveItemsFromCart(ctx context.Context, userID string, prod
 	return nil
 }
 
-// ClearCart removes all items from a user's cart
+// ClearCart removes all items from a user's cart.
 func (c *CartMongo) ClearCart(ctx context.Context, userID string) error {
 	filter := bson.M{"user_id": userID}
 	update := bson.M{
@@ -186,7 +194,7 @@ func (c *CartMongo) ClearCart(ctx context.Context, userID string) error {
 	return nil
 }
 
-// ClearCarts removes all items from multiple users' carts
+// ClearCarts removes all items from multiple users' carts.
 func (c *CartMongo) ClearCarts(ctx context.Context, userIDs []string) error {
 	if len(userIDs) == 0 {
 		return fmt.Errorf("user IDs slice cannot be empty")
@@ -208,7 +216,7 @@ func (c *CartMongo) ClearCarts(ctx context.Context, userIDs []string) error {
 	return nil
 }
 
-// UpdateItemQuantity updates the quantity of an item in a user's cart
+// UpdateItemQuantity updates the quantity of an item in a user's cart.
 func (c *CartMongo) UpdateItemQuantity(ctx context.Context, userID, productID string, quantity int) error {
 	filter := bson.M{
 		"user_id":          userID,
@@ -242,7 +250,7 @@ func (c *CartMongo) UpdateItemQuantity(ctx context.Context, userID, productID st
 	return nil
 }
 
-// UpdateItemQuantities updates quantities of multiple items in a user's cart
+// UpdateItemQuantities updates quantities of multiple items in a user's cart.
 func (c *CartMongo) UpdateItemQuantities(ctx context.Context, userID string, updates map[string]int) error {
 	if len(updates) == 0 {
 		return fmt.Errorf("updates map cannot be empty")
@@ -259,7 +267,7 @@ func (c *CartMongo) UpdateItemQuantities(ctx context.Context, userID string, upd
 	return nil
 }
 
-// UpsertCart creates or updates a user's cart
+// UpsertCart creates or updates a user's cart.
 func (c *CartMongo) UpsertCart(ctx context.Context, userID string, cart models.Cart) error {
 	timeNow := time.Now().UTC()
 	filter := bson.M{"user_id": userID}
@@ -283,42 +291,7 @@ func (c *CartMongo) UpsertCart(ctx context.Context, userID string, cart models.C
 	return nil
 }
 
-// MergeGuestCartToUser merges guest cart items into a user's cart
-func (c *CartMongo) MergeGuestCartToUser(ctx context.Context, userID string, items []models.CartItem) error {
-	cart, err := c.GetCartByUserID(ctx, userID)
-	if err != nil && err != mongo.ErrNoDocuments {
-		return fmt.Errorf("failed to get user cart: %w", err)
-	}
-
-	// Create a map for deduplication and merging
-	itemMap := make(map[string]models.CartItem)
-	for _, item := range items {
-		itemMap[item.ProductID] = item
-	}
-
-	// Merge existing items with guest items
-	for _, existing := range cart.Items {
-		if guestItem, ok := itemMap[existing.ProductID]; ok {
-			existing.Quantity += guestItem.Quantity
-			itemMap[existing.ProductID] = existing
-		} else {
-			itemMap[existing.ProductID] = existing
-		}
-	}
-
-	// Convert map back to slice
-	mergedItems := make([]models.CartItem, 0, len(itemMap))
-	for _, item := range itemMap {
-		mergedItems = append(mergedItems, item)
-	}
-
-	cart.Items = mergedItems
-	cart.UpdatedAt = time.Now().UTC()
-
-	return c.UpsertCart(ctx, userID, *cart)
-}
-
-// GetCartStats gets statistics about carts
+// GetCartStats gets statistics about carts (total carts, total items, average items per cart).
 func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]any, error) {
 	pipeline := []bson.M{
 		{"$group": bson.M{
@@ -357,7 +330,7 @@ func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]any, error) {
 	return results[0], nil
 }
 
-// DeleteCart deletes a user's cart completely
+// DeleteCart deletes a user's cart completely.
 func (c *CartMongo) DeleteCart(ctx context.Context, userID string) error {
 	filter := bson.M{"user_id": userID}
 

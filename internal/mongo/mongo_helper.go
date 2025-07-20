@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -13,7 +14,7 @@ import (
 // Database Configuration
 // =====================
 
-// DatabaseConfig holds MongoDB configuration
+// DatabaseConfig holds MongoDB configuration settings.
 type DatabaseConfig struct {
 	URI            string
 	DatabaseName   string
@@ -22,7 +23,7 @@ type DatabaseConfig struct {
 	MinPoolSize    uint64
 }
 
-// DefaultDatabaseConfig returns default MongoDB configuration
+// DefaultDatabaseConfig returns default MongoDB configuration.
 func DefaultDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
 		URI:            "mongodb://localhost:27017",
@@ -33,14 +34,14 @@ func DefaultDatabaseConfig() *DatabaseConfig {
 	}
 }
 
-// DatabaseManager manages MongoDB connections and provides database access
+// DatabaseManager manages MongoDB connections and provides database access.
 type DatabaseManager struct {
 	client   *mongo.Client
 	database *mongo.Database
 	config   *DatabaseConfig
 }
 
-// NewDatabaseManager creates a new database manager with the given configuration
+// NewDatabaseManager creates a new database manager with the given configuration.
 func NewDatabaseManager(config *DatabaseConfig) (*DatabaseManager, error) {
 	if config == nil {
 		config = DefaultDatabaseConfig()
@@ -74,17 +75,17 @@ func NewDatabaseManager(config *DatabaseConfig) (*DatabaseManager, error) {
 	}, nil
 }
 
-// GetDatabase returns the MongoDB database instance
+// GetDatabase returns the MongoDB database instance.
 func (dm *DatabaseManager) GetDatabase() *mongo.Database {
 	return dm.database
 }
 
-// GetClient returns the MongoDB client instance
+// GetClient returns the MongoDB client instance.
 func (dm *DatabaseManager) GetClient() *mongo.Client {
 	return dm.client
 }
 
-// Close closes the database connection
+// Close closes the database connection.
 func (dm *DatabaseManager) Close(ctx context.Context) error {
 	return dm.client.Disconnect(ctx)
 }
@@ -93,14 +94,15 @@ func (dm *DatabaseManager) Close(ctx context.Context) error {
 // Pagination Support
 // =====================
 
-// PaginationOptions holds pagination parameters
+// PaginationOptions holds pagination parameters for MongoDB queries.
 type PaginationOptions struct {
 	Page     int64
 	PageSize int64
 	Sort     map[string]any
+	Filter   map[string]any // Added for flexible filtering
 }
 
-// NewPaginationOptions creates pagination options with defaults
+// NewPaginationOptions creates pagination options with defaults.
 func NewPaginationOptions(page, pageSize int64) *PaginationOptions {
 	if page < 1 {
 		page = 1
@@ -119,7 +121,7 @@ func NewPaginationOptions(page, pageSize int64) *PaginationOptions {
 	}
 }
 
-// PaginatedResult holds paginated query results
+// PaginatedResult holds paginated query results.
 type PaginatedResult[T any] struct {
 	Data       []T
 	TotalCount int64
@@ -134,7 +136,7 @@ type PaginatedResult[T any] struct {
 // MongoDB Abstractions
 // =====================
 
-// CollectionInterface abstracts mongo.Collection for testability
+// CollectionInterface abstracts mongo.Collection for testability.
 type CollectionInterface interface {
 	InsertOne(ctx context.Context, document any) (*mongo.InsertOneResult, error)
 	InsertMany(ctx context.Context, documents []any) (*mongo.InsertManyResult, error)
@@ -149,7 +151,7 @@ type CollectionInterface interface {
 	Indexes() mongo.IndexView
 }
 
-// CursorInterface abstracts mongo.Cursor for testability
+// CursorInterface abstracts mongo.Cursor for testability.
 type CursorInterface interface {
 	Next(ctx context.Context) bool
 	Decode(val any) error
@@ -158,7 +160,7 @@ type CursorInterface interface {
 	Err() error
 }
 
-// SingleResultInterface abstracts mongo.SingleResult for testability
+// SingleResultInterface abstracts mongo.SingleResult for testability.
 type SingleResultInterface interface {
 	Decode(val any) error
 	Err() error
@@ -168,7 +170,7 @@ type SingleResultInterface interface {
 // Adapters for MongoDB
 // =====================
 
-// MongoCollectionAdapter adapts mongo.Collection to CollectionInterface
+// MongoCollectionAdapter adapts mongo.Collection to CollectionInterface.
 type MongoCollectionAdapter struct {
 	Inner *mongo.Collection
 }
@@ -226,7 +228,7 @@ func (m *MongoCollectionAdapter) Indexes() mongo.IndexView {
 	return m.Inner.Indexes()
 }
 
-// MongoCursorAdapter adapts mongo.Cursor to CursorInterface
+// MongoCursorAdapter adapts mongo.Cursor to CursorInterface.
 type MongoCursorAdapter struct {
 	Inner *mongo.Cursor
 }
@@ -239,7 +241,7 @@ func (c *MongoCursorAdapter) All(ctx context.Context, results any) error {
 func (c *MongoCursorAdapter) Close(ctx context.Context) error { return c.Inner.Close(ctx) }
 func (c *MongoCursorAdapter) Err() error                      { return c.Inner.Err() }
 
-// MongoSingleResultAdapter adapts mongo.SingleResult to SingleResultInterface
+// MongoSingleResultAdapter adapts mongo.SingleResult to SingleResultInterface.
 type MongoSingleResultAdapter struct {
 	Inner *mongo.SingleResult
 }
@@ -265,8 +267,8 @@ func CreateIndexes(db *mongo.Database) error {
 	// Cart indexes
 	cartCollection := db.Collection("carts")
 	_, err := cartCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]any{
-			"user_id": 1,
+		Keys: bson.D{
+			{Key: "user_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true),
 	})
@@ -277,9 +279,9 @@ func CreateIndexes(db *mongo.Database) error {
 	// Review indexes
 	reviewCollection := db.Collection("reviews")
 	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]any{
-			"product_id": 1,
-			"created_at": -1,
+		Keys: bson.D{
+			{Key: "product_id", Value: 1},
+			{Key: "created_at", Value: -1},
 		},
 	})
 	if err != nil {
@@ -287,19 +289,9 @@ func CreateIndexes(db *mongo.Database) error {
 	}
 
 	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]any{
-			"user_id": 1,
+		Keys: bson.D{
+			{Key: "user_id", Value: 1},
 		},
-	})
-	if err != nil {
-		return fmt.Errorf("review index error: %w", err)
-	}
-
-	_, err = reviewCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]any{
-			"_id": 1,
-		},
-		Options: options.Index().SetUnique(true),
 	})
 	if err != nil {
 		return fmt.Errorf("review index error: %w", err)
