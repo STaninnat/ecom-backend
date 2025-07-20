@@ -9,13 +9,13 @@ import (
 // ContextKey is a custom type for context keys used in user action logging.
 type ContextKey string
 
-// Context keys for user ID and request ID in context.Context.
+// ContextKeyUserID and ContextKeyRequestID are context keys for storing user and request IDs in context.Context.
 const (
 	ContextKeyUserID    ContextKey = "userID"
 	ContextKeyRequestID ContextKey = "requestID"
 )
 
-// ActionLogParams holds parameters for logging a user action.
+// ActionLogParams holds parameters for logging a user action, including logger, context, action details, status, and metadata.
 type ActionLogParams struct {
 	Logger    *logrus.Logger
 	Ctx       context.Context
@@ -28,7 +28,7 @@ type ActionLogParams struct {
 }
 
 // LogUserAction logs a user action with contextual information and status.
-// It logs at Info level for "pending" and "success" (or default), and at Error level for "fail".
+// Logs at Info level for "pending" and "success" (or default), and at Error level for "fail".
 // If ErrorMsg is provided, it is included in the log fields.
 func LogUserAction(p ActionLogParams) {
 	userID := p.Ctx.Value(ContextKeyUserID)

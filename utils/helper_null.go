@@ -16,11 +16,12 @@ func ToNullStringIfNotEmpty(s sql.NullString) sql.NullString {
 	return s
 }
 
+// ToNullBoolFromSQL returns the given sql.NullBool as is.
 func ToNullBoolFromSQL(b sql.NullBool) sql.NullBool {
 	return b
 }
 
-// NullString is a wrapper for sql.NullString with JSON support
+// NullString is a wrapper for sql.NullString with JSON marshaling and unmarshaling support.
 type NullString struct {
 	sql.NullString
 }
@@ -33,7 +34,7 @@ func (ns NullString) MarshalJSON() ([]byte, error) {
 	return json.Marshal(nil)
 }
 
-// NullBool with JSON support
+// NullBool is a wrapper for sql.NullBool with JSON marshaling and unmarshaling support.
 type NullBool struct {
 	sql.NullBool
 }
@@ -46,7 +47,7 @@ func (nb NullBool) MarshalJSON() ([]byte, error) {
 	return json.Marshal(nil)
 }
 
-// NullFloat64 with JSON support
+// NullFloat64 is a wrapper for sql.NullFloat64 with JSON marshaling and unmarshaling support.
 type NullFloat64 struct {
 	sql.NullFloat64
 }

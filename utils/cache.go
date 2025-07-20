@@ -9,19 +9,20 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CacheService provides Redis-based caching functionality
+// CacheService provides Redis-based caching functionality.
 type CacheService struct {
 	client redis.Cmdable
 }
 
-// NewCacheService creates a new cache service instance
+// NewCacheService creates a new CacheService instance using the provided Redis client.
 func NewCacheService(client redis.Cmdable) *CacheService {
 	return &CacheService{
 		client: client,
 	}
 }
 
-// Get retrieves a value from cache and unmarshals it into the provided interface
+// Get retrieves a value from cache by key and unmarshals it into the provided destination.
+// Returns true if the key exists, false otherwise.
 func (c *CacheService) Get(ctx context.Context, key string, dest any) (bool, error) {
 	val, err := c.client.Get(ctx, key).Result()
 	if err == redis.Nil {
@@ -40,7 +41,7 @@ func (c *CacheService) Get(ctx context.Context, key string, dest any) (bool, err
 	return true, nil
 }
 
-// Set stores a value in cache with JSON marshaling
+// Set stores a value in cache under the given key, marshaling it as JSON, with the specified TTL.
 func (c *CacheService) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	// Marshal the value to JSON
 	data, err := json.Marshal(value)
@@ -57,7 +58,7 @@ func (c *CacheService) Set(ctx context.Context, key string, value any, ttl time.
 	return nil
 }
 
-// Delete removes a key from cache
+// Delete removes a key from cache.
 func (c *CacheService) Delete(ctx context.Context, key string) error {
 	err := c.client.Del(ctx, key).Err()
 	if err != nil {
@@ -66,7 +67,7 @@ func (c *CacheService) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-// DeletePattern removes all keys matching a pattern (e.g., "products:*")
+// DeletePattern removes all keys matching a pattern (e.g., "products:*").
 func (c *CacheService) DeletePattern(ctx context.Context, pattern string) error {
 	keys, err := c.client.Keys(ctx, pattern).Result()
 	if err != nil {
@@ -83,7 +84,7 @@ func (c *CacheService) DeletePattern(ctx context.Context, pattern string) error 
 	return nil
 }
 
-// Exists checks if a key exists in cache
+// Exists checks if a key exists in cache.
 func (c *CacheService) Exists(ctx context.Context, key string) (bool, error) {
 	result, err := c.client.Exists(ctx, key).Result()
 	if err != nil {
@@ -92,7 +93,7 @@ func (c *CacheService) Exists(ctx context.Context, key string) (bool, error) {
 	return result > 0, nil
 }
 
-// TTL gets the remaining time-to-live for a key
+// TTL gets the remaining time-to-live for a key.
 func (c *CacheService) TTL(ctx context.Context, key string) (time.Duration, error) {
 	ttl, err := c.client.TTL(ctx, key).Result()
 	if err != nil {
@@ -101,7 +102,7 @@ func (c *CacheService) TTL(ctx context.Context, key string) (time.Duration, erro
 	return ttl, nil
 }
 
-// FlushAll clears all cache entries (use with caution!)
+// FlushAll clears all cache entries from Redis (use with caution!).
 func (c *CacheService) FlushAll(ctx context.Context) error {
 	err := c.client.FlushAll(ctx).Err()
 	if err != nil {

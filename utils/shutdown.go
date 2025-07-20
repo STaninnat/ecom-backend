@@ -9,17 +9,18 @@ import (
 	"time"
 )
 
-// ServerWithShutdown is an interface for servers that support graceful shutdown.
+// ServerWithShutdown is an interface for servers that support graceful shutdown via a Shutdown method.
 type ServerWithShutdown interface {
 	Shutdown(ctx context.Context) error
 }
 
-// APIConfigWithDisconnect is an interface for configs that can disconnect from MongoDB.
+// APIConfigWithDisconnect is an interface for configs that can disconnect from MongoDB via a DisconnectMongoDB method.
 type APIConfigWithDisconnect interface {
 	DisconnectMongoDB(ctx context.Context) error
 }
 
 // GracefulShutdown handles OS signals to gracefully shut down the server and disconnect from MongoDB with a timeout.
+// It listens for interrupt or termination signals, shuts down the server, and disconnects MongoDB, logging the results.
 func GracefulShutdown(srv ServerWithShutdown, cfg APIConfigWithDisconnect, timeout time.Duration) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
