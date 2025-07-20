@@ -6,9 +6,11 @@ import (
 	"io"
 )
 
-// Allow override from test
+// RandomReader is the source of randomness for session state generation. It can be overridden for testing.
 var RandomReader io.Reader = rand.Reader
 
+// GenerateState generates a random URL-safe state string for session management or OAuth flows.
+// Returns a default value if random generation fails.
 func GenerateState() string {
 	b := make([]byte, 16)
 

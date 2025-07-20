@@ -15,8 +15,10 @@ import (
 	"github.com/google/uuid"
 )
 
+// RedisRefreshTokenPrefix is the prefix used for refresh token keys in Redis.
 const RedisRefreshTokenPrefix = "refresh_token:"
 
+// GenerateAccessToken generates a signed JWT access token for the given user ID and expiration time.
 func (cfg *AuthConfig) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
 	if cfg == nil {
 		return "", errors.New("cfg is nil")
@@ -51,6 +53,7 @@ func (cfg *AuthConfig) GenerateAccessToken(userID string, expiresAt time.Time) (
 	return tokenString, nil
 }
 
+// GenerateRefreshToken generates a new refresh token for the given user ID using HMAC and a random UUID.
 func (cfg *AuthConfig) GenerateRefreshToken(userID string) (string, error) {
 	if cfg == nil {
 		return "", errors.New("cfg is nil")
@@ -73,6 +76,7 @@ func (cfg *AuthConfig) GenerateRefreshToken(userID string) (string, error) {
 	return fmt.Sprintf("%s:%s:%s", userID, rawUUID.String(), signature), nil
 }
 
+// GenerateTokens generates both an access token and a refresh token for the given user ID.
 func (cfg *AuthConfig) GenerateTokens(userID string, accessTokenExpiresAt time.Time) (string, string, error) {
 	accessToken, err := cfg.GenerateAccessToken(userID, accessTokenExpiresAt)
 	if err != nil {
@@ -87,6 +91,7 @@ func (cfg *AuthConfig) GenerateTokens(userID string, accessTokenExpiresAt time.T
 	return accessToken, newRefreshToken, nil
 }
 
+// StoreRefreshTokenInRedis stores the refresh token and its metadata in Redis for the given user ID and provider.
 func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refreshToken, provider string, ttl time.Duration) error {
 	if cfg == nil {
 		return errors.New("AuthConfig is nil")
@@ -136,6 +141,7 @@ func (cfg *AuthConfig) StoreRefreshTokenInRedis(r *http.Request, userID, refresh
 	return nil
 }
 
+// ParseRefreshTokenData parses a JSON string into a RefreshTokenData struct and validates required fields.
 func ParseRefreshTokenData(jsonData string) (RefreshTokenData, error) {
 	var data RefreshTokenData
 
@@ -151,6 +157,7 @@ func ParseRefreshTokenData(jsonData string) (RefreshTokenData, error) {
 	return data, nil
 }
 
+// ValidateConfig checks that a secret is non-empty and of sufficient length.
 func ValidateConfig(secret string, secretName string) error {
 	if secret == "" {
 		return fmt.Errorf("%s is empty", secretName)
@@ -165,7 +172,7 @@ func ValidateConfig(secret string, secretName string) error {
 
 // WARNING: GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
 
-// GetUserIDByRefreshToken does O(1) lookup for userID by refresh token.
+// GetUserIDByRefreshToken does an O(1) lookup for the user ID associated with a given refresh token in Redis.
 func (cfg *AuthConfig) GetUserIDByRefreshToken(ctx context.Context, refreshToken string) (string, error) {
 	lookupKey := "refresh_token_lookup:" + refreshToken
 	userID, err := cfg.RedisClient.Get(ctx, lookupKey).Result()

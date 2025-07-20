@@ -22,10 +22,12 @@ var (
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+(?:\.[a-zA-Z0-9._%+-]+)*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 )
 
+// IsValidUserNameFormat checks if the provided username meets the required format and length constraints.
 func IsValidUserNameFormat(name string) bool {
 	return len(name) >= 3 && len(name) <= 30 && userNameRegex.MatchString(name)
 }
 
+// IsValidEmailFormat checks if the provided email address is valid and does not contain consecutive dots.
 func IsValidEmailFormat(email string) bool {
 	if strings.Contains(email, "..") {
 		return false
@@ -33,6 +35,7 @@ func IsValidEmailFormat(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
+// ValidateAccessToken validates a JWT access token string using the provided secret and returns the claims if valid.
 func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*Claims, error) {
 	claims := &Claims{}
 
@@ -66,6 +69,7 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 	return claims, nil
 }
 
+// ValidateRefreshToken validates the format and signature of a refresh token and returns the associated user UUID.
 func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, error) {
 	parts := strings.Split(refreshToken, ":")
 	if len(parts) != 3 {
@@ -94,6 +98,7 @@ func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, err
 	return userID, nil
 }
 
+// ValidateCookieRefreshTokenData validates the refresh token stored in a cookie and returns the user UUID and token data if valid.
 func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *http.Request) (uuid.UUID, *RefreshTokenData, error) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
@@ -124,6 +129,7 @@ func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *
 }
 
 // WARNING: GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
+// GetUserIDFromRefreshToken retrieves the user UUID associated with a given refresh token by scanning Redis keys. Avoid in hot paths.
 func (cfg *AuthConfig) GetUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
 	keys, err := cfg.RedisClient.Keys(context.Background(), "refresh_token:*").Result()
 	if err != nil {

@@ -16,6 +16,8 @@ var validate = validator.New()
 // 	Password string `json:"password" validate:"required,min=8"`
 // }
 
+// DecodeAndValidate decodes a JSON request body into the provided struct type and validates it using struct tags.
+// Returns an error if decoding or validation fails.
 func DecodeAndValidate[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 	defer r.Body.Close()
 
