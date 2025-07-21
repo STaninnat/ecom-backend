@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+// logger_test.go: Tests for logrus-based logger setup, hooks, and error handling.
 
 // mockWriter is a mock implementation of io.Writer for testing error scenarios in WriterHook.
 type mockWriter struct {
@@ -104,8 +107,9 @@ func (b *badFormatter) Format(*logrus.Entry) ([]byte, error) {
 
 // TestInitLoggerBasic tests InitLogger for basic logger setup and configuration in dev mode.
 func TestInitLoggerBasic(t *testing.T) {
-	// Patch environment to force dev mode
-	os.Setenv("APP_MODE", "dev")
+	if err := os.Setenv("APP_MODE", "dev"); err != nil {
+		t.Fatalf("os.Setenv failed: %v", err)
+	}
 	logger := InitLogger()
 	if logger == nil {
 		t.Fatal("InitLogger returned nil")
@@ -120,6 +124,7 @@ func TestInitLoggerBasic(t *testing.T) {
 func TestInitLoggerWithCreators_PanicOnInfoWriterError(t *testing.T) {
 	mockErr := errors.New("info rotator fail")
 	panicMsg := "failed to create info log rotator: info rotator fail"
+	//nolint:unparam // required to match InitLoggerWithCreators signature
 	infoFail := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
 		return nil, mockErr
 	}
@@ -138,6 +143,7 @@ func TestInitLoggerWithCreators_PanicOnErrorWriterError(t *testing.T) {
 	infoOK := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
 		return &rotatelogs.RotateLogs{}, nil
 	}
+	//nolint:unparam // required to match InitLoggerWithCreators signature
 	errorFail := func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error) {
 		return nil, mockErr
 	}

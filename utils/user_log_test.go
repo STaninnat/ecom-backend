@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -8,6 +9,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+
+// user_log_test.go: Tests for user action logging utilities and context handling.
 
 // testHook is a logrus hook for capturing log entries in tests.
 type testHook struct {

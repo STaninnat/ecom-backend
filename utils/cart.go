@@ -1,6 +1,9 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import "net/http"
+
+// cart.go: Provides helpers for managing guest cart sessions and retrieving session IDs from HTTP requests.
 
 // GuestCartSessionCookie is the name of the cookie used to store the guest session ID.
 const GuestCartSessionCookie = "guest_session_id"

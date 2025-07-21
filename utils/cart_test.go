@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -5,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 )
+
+// cart_test.go: Tests for cart session helpers and session ID retrieval.
 
 // TestGetSessionIDFromRequest tests the GetSessionIDFromRequest function for:
 // - When the session cookie is present

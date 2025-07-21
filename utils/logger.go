@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -9,6 +10,8 @@ import (
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/sirupsen/logrus"
 )
+
+// logger.go: Sets up logrus-based logging with file rotation and custom hooks.
 
 // WriterHook is a logrus hook that writes logs of specified levels to a given io.Writer.
 type WriterHook struct {

@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -9,6 +10,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+// cache_test.go: Tests for Redis-based caching service, including get, set, delete, and pattern operations.
+
+const (
+	testErrKey = "err-key"
+	testOkKey  = "ok-key"
 )
 
 // MockRedisCmdable is a testify mock for redis.Cmdable, used to simulate Redis operations in CacheService tests.
@@ -157,7 +165,7 @@ func TestCacheService_Set(t *testing.T) {
 		mockRedis := new(MockRedisCmdable)
 		cache := NewCacheService(mockRedis)
 
-		key := "err-key"
+		key := testErrKey
 		val := "data"
 		jsonVal, _ := json.Marshal(val)
 		cmd := redis.NewStatusResult("", assert.AnError)
@@ -174,7 +182,7 @@ func TestCacheService_Set(t *testing.T) {
 		mockRedis := new(MockRedisCmdable)
 		cache := NewCacheService(mockRedis)
 
-		key := "ok-key"
+		key := testOkKey
 		val := "data"
 		jsonVal, _ := json.Marshal(val)
 		cmd := redis.NewStatusResult("OK", nil)
@@ -195,7 +203,7 @@ func TestCacheService_Delete(t *testing.T) {
 		mockRedis := new(MockRedisCmdable)
 		cache := NewCacheService(mockRedis)
 
-		key := "err-key"
+		key := testErrKey
 		cmd := redis.NewIntResult(0, assert.AnError)
 		mockRedis.On("Del", ctx, []string{key}).Return(cmd)
 
@@ -210,7 +218,7 @@ func TestCacheService_Delete(t *testing.T) {
 		mockRedis := new(MockRedisCmdable)
 		cache := NewCacheService(mockRedis)
 
-		key := "ok-key"
+		key := testOkKey
 		cmd := redis.NewIntResult(1, nil)
 		mockRedis.On("Del", ctx, []string{key}).Return(cmd)
 

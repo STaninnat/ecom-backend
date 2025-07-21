@@ -1,9 +1,12 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
 	"database/sql"
 	"encoding/json"
 )
+
+// null_types.go: Defines nullable types and helpers for SQL and JSON marshaling/unmarshaling.
 
 // ToNullString returns a sql.NullString that is valid if s is not empty.
 func ToNullString(s string) sql.NullString {
@@ -60,6 +63,7 @@ func (nf NullFloat64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(nil)
 }
 
+// UnmarshalJSON implements json.Unmarshaler for NullString.
 func (ns *NullString) UnmarshalJSON(data []byte) error {
 	var s *string
 	if err := json.Unmarshal(data, &s); err != nil {
@@ -75,6 +79,7 @@ func (ns *NullString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements json.Unmarshaler for NullBool.
 func (nb *NullBool) UnmarshalJSON(data []byte) error {
 	var b *bool
 	if err := json.Unmarshal(data, &b); err != nil {
@@ -90,6 +95,7 @@ func (nb *NullBool) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements json.Unmarshaler for NullFloat64.
 func (nf *NullFloat64) UnmarshalJSON(data []byte) error {
 	var f *float64
 	if err := json.Unmarshal(data, &f); err != nil {

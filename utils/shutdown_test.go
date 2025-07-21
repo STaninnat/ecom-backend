@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -10,6 +11,8 @@ import (
 	"time"
 )
 
+// shutdown_test.go: Tests for graceful server shutdown and MongoDB disconnect logic.
+
 // mockServer is a mock implementation of a server for testing graceful shutdown.
 type mockServer struct {
 	shutdownCalled bool
@@ -17,7 +20,7 @@ type mockServer struct {
 }
 
 // Shutdown simulates shutting down the server and records if it was called.
-func (m *mockServer) Shutdown(ctx context.Context) error {
+func (m *mockServer) Shutdown(_ context.Context) error {
 	m.shutdownCalled = true
 	return m.shutdownErr
 }
@@ -29,7 +32,7 @@ type mockConfig struct {
 }
 
 // DisconnectMongoDB simulates disconnecting MongoDB and records if it was called.
-func (m *mockConfig) DisconnectMongoDB(ctx context.Context) error {
+func (m *mockConfig) DisconnectMongoDB(_ context.Context) error {
 	m.disconnectCalled = true
 	return m.disconnectErr
 }
@@ -49,7 +52,9 @@ func TestGracefulShutdown_Success(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		p, _ := os.FindProcess(os.Getpid())
-		p.Signal(syscall.SIGTERM)
+		if err := p.Signal(syscall.SIGTERM); err != nil {
+			t.Errorf("p.Signal failed: %v", err)
+		}
 		close(done)
 	}()
 
@@ -81,7 +86,9 @@ func TestGracefulShutdown_Errors(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		p, _ := os.FindProcess(os.Getpid())
-		p.Signal(syscall.SIGTERM)
+		if err := p.Signal(syscall.SIGTERM); err != nil {
+			t.Errorf("p.Signal failed: %v", err)
+		}
 		close(done)
 	}()
 

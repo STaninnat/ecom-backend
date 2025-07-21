@@ -1,13 +1,17 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+// cache.go: Implements Redis-based caching service with get, set, delete, and pattern operations.
 
 // CacheService provides Redis-based caching functionality.
 type CacheService struct {
@@ -25,7 +29,7 @@ func NewCacheService(client redis.Cmdable) *CacheService {
 // Returns true if the key exists, false otherwise.
 func (c *CacheService) Get(ctx context.Context, key string, dest any) (bool, error) {
 	val, err := c.client.Get(ctx, key).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return false, nil // Key doesn't exist
 	}
 	if err != nil {

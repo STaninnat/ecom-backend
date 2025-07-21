@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -8,6 +9,8 @@ import (
 	"syscall"
 	"time"
 )
+
+// shutdown.go: Implements graceful server shutdown and MongoDB disconnect logic on OS signals.
 
 // ServerWithShutdown is an interface for servers that support graceful shutdown via a Shutdown method.
 type ServerWithShutdown interface {

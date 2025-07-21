@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -5,6 +6,8 @@ import (
 	"encoding/json"
 	"testing"
 )
+
+// null_types_test.go: Tests for nullable types and SQL/JSON marshaling helpers.
 
 // TestToNullString tests the ToNullString function for converting strings to sql.NullString.
 func TestToNullString(t *testing.T) {

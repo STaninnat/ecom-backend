@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+
+// user_log.go: Provides utilities for logging user actions with contextual information.
 
 // ContextKey is a custom type for context keys used in user action logging.
 type ContextKey string
