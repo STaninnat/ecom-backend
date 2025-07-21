@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -11,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// logging_middleware.go: Middleware for structured request logging and request ID tracing.
 
 type statusResponseWriter struct {
 	http.ResponseWriter

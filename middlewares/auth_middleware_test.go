@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -10,17 +11,19 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
+// auth_middleware_test.go: Tests for authentication and authorization middleware.
+
 type mockLogger struct {
 	withErrorCalled bool
 	errorCalled     bool
 }
 
 // WithError mocks the logger WithError method for testing purposes
-func (m *mockLogger) WithError(err error) interface{ Error(args ...any) } {
+func (m *mockLogger) WithError(_ error) interface{ Error(args ...any) } {
 	m.withErrorCalled = true
 	return m
 }
-func (m *mockLogger) Error(args ...any) {
+func (m *mockLogger) Error(_ ...any) {
 	m.errorCalled = true
 }
 
@@ -49,16 +52,16 @@ type mockMetadataService struct {
 }
 
 // GetIPAddress mocks the metadata service IP extraction for testing purposes
-func (m *mockMetadataService) GetIPAddress(r *http.Request) string { return m.ip }
+func (m *mockMetadataService) GetIPAddress(_ *http.Request) string { return m.ip }
 
 // GetUserAgent mocks the metadata service user agent extraction for testing purposes
-func (m *mockMetadataService) GetUserAgent(r *http.Request) string { return m.ua }
+func (m *mockMetadataService) GetUserAgent(_ *http.Request) string { return m.ua }
 
 // TestLogHandlerError_WithError tests error logging when an error is provided
 // It verifies that both WithError and Error methods are called on the logger
 func TestLogHandlerError_WithError(t *testing.T) {
 	logger := &mockLogger{}
-	LogHandlerError(logger, context.Background(), "a", "b", "msg", "ip", "ua", errors.New("fail"))
+	LogHandlerError(context.Background(), logger, "a", "b", "msg", "ip", "ua", errors.New("fail"))
 	if !logger.withErrorCalled || !logger.errorCalled {
 		t.Error("expected WithError and Error to be called")
 	}
@@ -68,7 +71,7 @@ func TestLogHandlerError_WithError(t *testing.T) {
 // It verifies that only the Error method is called, not WithError
 func TestLogHandlerError_NoError(t *testing.T) {
 	logger := &mockLogger{}
-	LogHandlerError(logger, context.Background(), "a", "b", "msg", "ip", "ua", nil)
+	LogHandlerError(context.Background(), logger, "a", "b", "msg", "ip", "ua", nil)
 	if logger.withErrorCalled || !logger.errorCalled {
 		t.Error("expected only Error to be called")
 	}
@@ -90,7 +93,7 @@ func TestGetRequestMetadata(t *testing.T) {
 func TestCreateAuthMiddleware_MissingToken(t *testing.T) {
 	logger := &mockLogger{}
 	mw := CreateAuthMiddleware(&mockAuthService{}, &mockUserService{}, logger, &mockMetadataService{}, "secret")
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		t.Error("handler should not be called")
 	})
 	r := httptest.NewRequest("GET", "/", nil)
@@ -108,9 +111,9 @@ func TestCreateAuthMiddleware_MissingToken(t *testing.T) {
 // It verifies that the middleware returns 401 and logs the token validation error
 func TestCreateAuthMiddleware_InvalidToken(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return nil, errors.New("bad token") }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return nil, errors.New("bad token") }}
 	mw := CreateAuthMiddleware(auth, &mockUserService{}, logger, &mockMetadataService{}, "secret")
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		t.Error("handler should not be called")
 	})
 	r := httptest.NewRequest("GET", "/", nil)
@@ -129,12 +132,12 @@ func TestCreateAuthMiddleware_InvalidToken(t *testing.T) {
 // It verifies that the middleware returns 500 and logs the user lookup error
 func TestCreateAuthMiddleware_UserLookupFail(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) {
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) {
 		return database.User{}, errors.New("fail")
 	}}
 	mw := CreateAuthMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		t.Error("handler should not be called")
 	})
 	r := httptest.NewRequest("GET", "/", nil)
@@ -153,12 +156,12 @@ func TestCreateAuthMiddleware_UserLookupFail(t *testing.T) {
 // It verifies that the middleware calls the handler with the correct user when authentication succeeds
 func TestCreateAuthMiddleware_Success(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
 	user := database.User{ID: "u1", Role: "user"}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) { return user, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
 	mw := CreateAuthMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u database.User) {
 		called = true
 		if u.ID != "u1" {
 			t.Errorf("expected user u1, got %v", u)
@@ -177,11 +180,11 @@ func TestCreateAuthMiddleware_Success(t *testing.T) {
 // It verifies that non-admin users are denied access with 403 status and error logging
 func TestCreateAdminOnlyMiddleware_NonAdmin(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
 	user := database.User{ID: "u1", Role: "user"}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) { return user, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
 	mw := CreateAdminOnlyMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		t.Error("handler should not be called for non-admin")
 	})
 	r := httptest.NewRequest("GET", "/", nil)
@@ -200,12 +203,12 @@ func TestCreateAdminOnlyMiddleware_NonAdmin(t *testing.T) {
 // It verifies that admin users are allowed access and the handler is called with the admin user
 func TestCreateAdminOnlyMiddleware_Admin(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "admin"}, nil }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "admin"}, nil }}
 	user := database.User{ID: "admin", Role: "admin"}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) { return user, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
 	mw := CreateAdminOnlyMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u database.User) {
 		called = true
 		if u.ID != "admin" {
 			t.Errorf("expected admin user, got %v", u)
@@ -225,7 +228,7 @@ func TestCreateAdminOnlyMiddleware_Admin(t *testing.T) {
 func TestCreateOptionalAuthMiddleware_NoToken(t *testing.T) {
 	mw := CreateOptionalAuthMiddleware(&mockAuthService{}, &mockUserService{}, &mockLogger{}, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u *database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u *database.User) {
 		called = true
 		if u != nil {
 			t.Error("expected nil user when no token")
@@ -243,10 +246,10 @@ func TestCreateOptionalAuthMiddleware_NoToken(t *testing.T) {
 // It verifies that the handler is called with nil user and errors are logged for invalid tokens
 func TestCreateOptionalAuthMiddleware_InvalidToken(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return nil, errors.New("bad token") }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return nil, errors.New("bad token") }}
 	mw := CreateOptionalAuthMiddleware(auth, &mockUserService{}, logger, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u *database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u *database.User) {
 		called = true
 		if u != nil {
 			t.Error("expected nil user for invalid token")
@@ -268,13 +271,13 @@ func TestCreateOptionalAuthMiddleware_InvalidToken(t *testing.T) {
 // It verifies that the handler is called with nil user and errors are logged for lookup failures
 func TestCreateOptionalAuthMiddleware_UserLookupFail(t *testing.T) {
 	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) {
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) {
 		return database.User{}, errors.New("fail")
 	}}
 	mw := CreateOptionalAuthMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u *database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u *database.User) {
 		called = true
 		if u != nil {
 			t.Error("expected nil user for user lookup fail")
@@ -295,12 +298,12 @@ func TestCreateOptionalAuthMiddleware_UserLookupFail(t *testing.T) {
 // TestCreateOptionalAuthMiddleware_Success tests successful optional authentication flow
 // It verifies that the middleware calls the handler with the correct user when authentication succeeds
 func TestCreateOptionalAuthMiddleware_Success(t *testing.T) {
-	auth := &mockAuthService{validateFunc: func(token, secret string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
+	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
 	user := database.User{ID: "u1", Role: "user"}
-	userSvc := &mockUserService{getUserFunc: func(ctx context.Context, id string) (database.User, error) { return user, nil }}
+	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
 	mw := CreateOptionalAuthMiddleware(auth, userSvc, &mockLogger{}, &mockMetadataService{}, "secret")
 	called := false
-	h := mw(func(w http.ResponseWriter, r *http.Request, u *database.User) {
+	h := mw(func(_ http.ResponseWriter, _ *http.Request, u *database.User) {
 		called = true
 		if u == nil || u.ID != "u1" {
 			t.Errorf("expected user u1, got %v", u)

@@ -1,8 +1,11 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
 	"net/http"
 )
+
+// security_middleware.go: Middleware for security headers and request validation.
 
 // SecurityHeaders adds security headers to all HTTP responses to protect against common web vulnerabilities.
 // Sets HSTS, X-Content-Type-Options, X-Frame-Options, XSS Protection, CSP, Referrer Policy, and Permissions Policy headers.

@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -9,6 +10,8 @@ import (
 
 	"context"
 )
+
+// cache_middleware.go: Provides middleware for HTTP response caching and cache invalidation.
 
 // CacheServiceIface defines the interface for cache operations used by middleware.
 // This allows for easier testing and mocking.
@@ -59,9 +62,7 @@ func CacheMiddleware(config CacheConfig) func(http.Handler) http.Handler {
 					}
 				}
 				w.WriteHeader(cachedResponse.StatusCode)
-				if _, err := w.Write(cachedResponse.Body); err != nil {
-					// Optionally log the error
-				}
+				_, _ = w.Write(cachedResponse.Body)
 				return
 			}
 
@@ -84,10 +85,7 @@ func CacheMiddleware(config CacheConfig) func(http.Handler) http.Handler {
 				}
 
 				err := config.CacheService.Set(r.Context(), cacheKey, cachedResponse, config.TTL)
-				if err != nil {
-					// Log error but don't fail the request
-					// You might want to add logging here
-				}
+				_ = err
 			}
 		})
 	}
@@ -167,10 +165,7 @@ func InvalidateCache(cacheService CacheServiceIface, pattern string) func(http.H
 
 			// Then invalidate cache
 			err := cacheService.DeletePattern(r.Context(), pattern)
-			if err != nil {
-				// Log error but don't fail the request
-				// You might want to add logging here
-			}
+			_ = err
 		})
 	}
 }

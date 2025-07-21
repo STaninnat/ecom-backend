@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -11,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 )
+
+// cache_middleware_test.go: Tests for HTTP response caching and cache invalidation middleware.
 
 type MockCacheService struct {
 	mock.Mock
@@ -46,7 +49,7 @@ func TestCacheMiddleware_CacheHit(t *testing.T) {
 
 	config := CacheConfig{TTL: time.Minute, KeyPrefix: "test", CacheService: mockCache}
 	mw := CacheMiddleware(config)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Error("handler should not be called on cache hit")
 	}))
 	r := httptest.NewRequest("GET", "/foo", nil)
@@ -70,9 +73,12 @@ func TestCacheMiddleware_CacheMiss(t *testing.T) {
 
 	config := CacheConfig{TTL: time.Minute, KeyPrefix: "test", CacheService: mockCache}
 	mw := CacheMiddleware(config)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Fresh", "yes")
-		w.Write([]byte("fresh body"))
+		_, err := w.Write([]byte("fresh body"))
+		if err != nil {
+			t.Errorf("w.Write failed: %v", err)
+		}
 	}))
 	r := httptest.NewRequest("GET", "/bar", nil)
 	rw := httptest.NewRecorder()
@@ -93,8 +99,11 @@ func TestCacheMiddleware_NonGET(t *testing.T) {
 	mockCache := new(MockCacheService)
 	config := CacheConfig{TTL: time.Minute, KeyPrefix: "test", CacheService: mockCache}
 	mw := CacheMiddleware(config)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("not cached"))
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("not cached"))
+		if err != nil {
+			t.Errorf("w.Write failed: %v", err)
+		}
 	}))
 	r := httptest.NewRequest("POST", "/baz", nil)
 	rw := httptest.NewRecorder()
@@ -114,8 +123,11 @@ func TestCacheMiddleware_GetError(t *testing.T) {
 
 	config := CacheConfig{TTL: time.Minute, KeyPrefix: "test", CacheService: mockCache}
 	mw := CacheMiddleware(config)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("fallback"))
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("fallback"))
+		if err != nil {
+			t.Errorf("w.Write failed: %v", err)
+		}
 	}))
 	r := httptest.NewRequest("GET", "/err", nil)
 	rw := httptest.NewRecorder()
@@ -133,8 +145,11 @@ func TestInvalidateCache(t *testing.T) {
 	mockCache.On("DeletePattern", mock.Anything, "test*").Return(nil)
 
 	mw := InvalidateCache(mockCache, "test*")
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("done"))
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("done"))
+		if err != nil {
+			t.Errorf("w.Write failed: %v", err)
+		}
 	}))
 	r := httptest.NewRequest("DELETE", "/invalidate", nil)
 	rw := httptest.NewRecorder()

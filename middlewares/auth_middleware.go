@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -6,6 +7,8 @@ import (
 
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
+
+// auth_middleware.go: Implements authentication and authorization middleware for protected routes.
 
 // AuthHandler is a handler type for authenticated endpoints, receiving a database.User.
 type AuthHandler func(http.ResponseWriter, *http.Request, database.User)
@@ -41,7 +44,7 @@ type Claims struct {
 }
 
 // LogHandlerError logs an error with structured logging, using the logger service and additional context information.
-func LogHandlerError(logger LoggerService, ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+func LogHandlerError(_ context.Context, logger LoggerService, _ string, _ string, logMsg, _ string, _ string, err error) {
 	if err != nil {
 		logger.WithError(err).Error(logMsg)
 	} else {
@@ -73,8 +76,8 @@ func CreateAuthMiddleware(
 			cookie, err := r.Cookie("access_token")
 			if err != nil {
 				LogHandlerError(
-					loggerService,
 					ctx,
+					loggerService,
 					"auth_middleware",
 					"missing access token cookie",
 					"Access token cookie not found",
@@ -89,8 +92,8 @@ func CreateAuthMiddleware(
 			claims, err := authService.ValidateAccessToken(token, jwtSecret)
 			if err != nil {
 				LogHandlerError(
-					loggerService,
 					ctx,
+					loggerService,
 					"auth_middleware",
 					"invalid access token",
 					"Access token validation failed",
@@ -103,8 +106,8 @@ func CreateAuthMiddleware(
 			user, err := userService.GetUserByID(ctx, claims.UserID)
 			if err != nil {
 				LogHandlerError(
-					loggerService,
 					ctx,
+					loggerService,
 					"auth_middleware",
 					"user lookup failed",
 					"Failed to fetch user from database",
@@ -136,8 +139,8 @@ func CreateAdminOnlyMiddleware(
 
 			if user.Role != "admin" {
 				LogHandlerError(
-					loggerService,
 					ctx,
+					loggerService,
 					"admin_middleware",
 					"user is not admin",
 					"unauthorized access attempt",
@@ -173,8 +176,8 @@ func CreateOptionalAuthMiddleware(
 				claims, err := authService.ValidateAccessToken(token, jwtSecret)
 				if err != nil {
 					LogHandlerError(
-						loggerService,
 						ctx,
+						loggerService,
 						"optional_auth",
 						"invalid token",
 						"token validation failed",
@@ -184,8 +187,8 @@ func CreateOptionalAuthMiddleware(
 					u, err := userService.GetUserByID(ctx, claims.UserID)
 					if err != nil {
 						LogHandlerError(
-							loggerService,
 							ctx,
+							loggerService,
 							"optional_auth",
 							"user not found",
 							"user lookup failed",

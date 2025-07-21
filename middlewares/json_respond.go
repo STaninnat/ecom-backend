@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -5,6 +6,8 @@ import (
 	"log"
 	"net/http"
 )
+
+// json_respond.go: Utilities for consistent JSON HTTP responses in middleware.
 
 // RespondWithError writes an error response with the given status code and message, and an optional error code.
 // Logs 5XX errors and uses RespondWithJSON for consistent formatting.

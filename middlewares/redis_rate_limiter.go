@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -7,6 +8,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+// redis_rate_limiter.go: Distributed rate limiting middleware using Redis for request throttling.
 
 // RedisRateLimiter creates a distributed rate limiter middleware using Redis.
 // Tracks requests per client IP, sets rate limit headers, and returns HTTP 429 if the limit is exceeded.

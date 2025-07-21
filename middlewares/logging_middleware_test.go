@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/sirupsen/logrus"
 )
+
+// logging_middleware_test.go: Tests for structured request logging and request ID middleware.
 
 // TestShouldLog tests the path filtering logic for logging middleware
 // It verifies that include/exclude path rules work correctly for different scenarios
@@ -88,7 +91,7 @@ func TestIsValidIP(t *testing.T) {
 // It verifies that each request gets a unique UUID and it's accessible in the request context
 func TestRequestIDMiddleware(t *testing.T) {
 	var gotID string
-	h := RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := RequestIDMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		id := r.Context().Value(utils.ContextKeyRequestID)
 		if id == nil {
 			t.Error("request_id not set in context")
@@ -110,7 +113,7 @@ func TestLoggingMiddleware_CallsNextAndLogs(t *testing.T) {
 	logger := logrus.New()
 	logger.Out = &strings.Builder{} // discard output
 	mw := LoggingMiddleware(logger, map[string]struct{}{"/": {}}, nil)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(200)
 	}))

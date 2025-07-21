@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -7,14 +8,24 @@ import (
 	"testing"
 	"time"
 
-	redismock "github.com/go-redis/redismock/v9"
+	"github.com/go-redis/redismock/v9"
+)
+
+// redis_rate_limiter_test.go: Tests for Redis-based distributed rate limiting middleware.
+
+const (
+	testClientIP = "1.2.3.4:5678"
 )
 
 // TestRedisRateLimiter_UnderLimit tests rate limiting when requests are within the limit
 // It verifies that requests are allowed through and proper rate limit headers are set
 func TestRedisRateLimiter_UnderLimit(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("db.Close() failed: %v", err)
+		}
+	}()
 
 	mock.ExpectTxPipeline()
 	mock.ExpectIncr("rate_limit:1.2.3.4:5678").SetVal(1)
@@ -23,11 +34,11 @@ func TestRedisRateLimiter_UnderLimit(t *testing.T) {
 	mock.ExpectTTL("rate_limit:1.2.3.4:5678").SetVal(10 * time.Second)
 
 	mw := RedisRateLimiter(db, 5, 10*time.Second)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(200)
 	}))
 	r := httptest.NewRequest("GET", "/", nil)
-	r.RemoteAddr = "1.2.3.4:5678"
+	r.RemoteAddr = testClientIP
 	rw := httptest.NewRecorder()
 	h.ServeHTTP(rw, r)
 
@@ -52,7 +63,11 @@ func TestRedisRateLimiter_UnderLimit(t *testing.T) {
 // It verifies that requests are blocked with 429 status and rate limit headers are set
 func TestRedisRateLimiter_OverLimit(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("db.Close() failed: %v", err)
+		}
+	}()
 
 	mock.ExpectTxPipeline()
 	mock.ExpectIncr("rate_limit:1.2.3.4:5678").SetVal(6)
@@ -61,11 +76,11 @@ func TestRedisRateLimiter_OverLimit(t *testing.T) {
 	mock.ExpectTTL("rate_limit:1.2.3.4:5678").SetVal(10 * time.Second)
 
 	mw := RedisRateLimiter(db, 5, 10*time.Second)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Error("handler should not be called when over limit")
 	}))
 	r := httptest.NewRequest("GET", "/", nil)
-	r.RemoteAddr = "1.2.3.4:5678"
+	r.RemoteAddr = testClientIP
 	rw := httptest.NewRecorder()
 	h.ServeHTTP(rw, r)
 
@@ -84,7 +99,11 @@ func TestRedisRateLimiter_OverLimit(t *testing.T) {
 // It verifies that the middleware handles Redis errors gracefully and returns 500 status
 func TestRedisRateLimiter_ExecError(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("db.Close() failed: %v", err)
+		}
+	}()
 
 	mock.ExpectTxPipeline()
 	mock.ExpectIncr("rate_limit:1.2.3.4:5678").SetVal(1)
@@ -92,11 +111,11 @@ func TestRedisRateLimiter_ExecError(t *testing.T) {
 	mock.ExpectTxPipelineExec().SetErr(http.ErrAbortHandler)
 
 	mw := RedisRateLimiter(db, 5, 10*time.Second)
-	h := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := mw(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Error("handler should not be called on exec error")
 	}))
 	r := httptest.NewRequest("GET", "/", nil)
-	r.RemoteAddr = "1.2.3.4:5678"
+	r.RemoteAddr = testClientIP
 	rw := httptest.NewRecorder()
 	h.ServeHTTP(rw, r)
 

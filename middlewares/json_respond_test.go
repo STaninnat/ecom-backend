@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -6,6 +7,8 @@ import (
 	"strings"
 	"testing"
 )
+
+// json_respond_test.go: Tests for JSON response utilities in middleware.
 
 // TestRespondWithError tests error response generation with various scenarios
 // It verifies that error responses have correct status codes, JSON structure, and optional error codes
