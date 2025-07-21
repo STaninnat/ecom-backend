@@ -1,8 +1,11 @@
+// Package models defines data structures and database models for the ecom-backend project.
 package models
 
 import (
 	"time"
 )
+
+// model_review.go: Defines the Review model for product reviews and ratings.
 
 // Review represents a product review submitted by a user.
 // It contains rating, comment, and optional media attachments.

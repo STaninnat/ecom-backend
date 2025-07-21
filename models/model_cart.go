@@ -1,6 +1,9 @@
+// Package models defines data structures and database models for the ecom-backend project.
 package models
 
 import "time"
+
+// model_cart.go: Defines Cart and CartItem models for shopping cart functionality.
 
 // CartItem represents a single item in a user's shopping cart.
 // It contains product information and quantity for checkout purposes.

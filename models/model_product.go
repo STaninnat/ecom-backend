@@ -1,6 +1,9 @@
+// Package models defines data structures and database models for the ecom-backend project.
 package models
 
 import "time"
+
+// model_product.go: Defines the Product model for catalog items.
 
 // Product represents an item available for purchase in the e-commerce system.
 // It contains product details, pricing, inventory, and availability status.

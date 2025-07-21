@@ -1,3 +1,4 @@
+// Package models defines data structures and database models for the ecom-backend project.
 package models
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
+
+// model_user.go: Defines the User model and mapping from database entities.
 
 // User represents a customer account in the e-commerce system.
 // It contains personal information and contact details for order processing.
