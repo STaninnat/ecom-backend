@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+// validator_test.go: Tests for configuration validation logic and helpers.
 
 // validAPIConfig creates a valid APIConfig for testing purposes.
 func validAPIConfig() *APIConfig {

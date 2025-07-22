@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -6,6 +7,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+// config_mongodb.go: MongoDB connection helpers and legacy patterns.
 
 // ConnectMongoDB establishes a connection to MongoDB using the legacy pattern.
 // Uses log.Fatal on errors and is provided for backward compatibility.

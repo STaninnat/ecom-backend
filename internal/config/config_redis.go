@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -6,6 +7,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+// config_redis.go: Redis connection helpers and legacy patterns.
 
 // InitRedis initializes a Redis connection using the legacy pattern.
 // Uses log.Fatal on errors and is provided for backward compatibility.

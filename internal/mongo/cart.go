@@ -1,7 +1,9 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+// cart.go: MongoDB repository and operations for shopping cart management.
 
 // CartMongo handles cart operations in MongoDB.
 type CartMongo struct {
@@ -34,7 +38,7 @@ func (c *CartMongo) GetCartByUserID(ctx context.Context, userID string) (*models
 	result := c.Collection.FindOne(ctx, filter)
 	err := result.Decode(&cart)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return &models.Cart{
 				ID:        generateCartID(userID), // Ensure ID is a string
 				UserID:    userID,
@@ -66,7 +70,12 @@ func (c *CartMongo) GetCartsByUserIDs(ctx context.Context, userIDs []string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to find carts: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			// Log the error or handle it as appropriate
+			fmt.Printf("failed to close cursor: %v\n", err)
+		}
+	}()
 
 	var carts []*models.Cart
 	if err := cursor.All(ctx, &carts); err != nil {
@@ -312,7 +321,12 @@ func (c *CartMongo) GetCartStats(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to aggregate cart stats: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			// Log the error or handle it as appropriate
+			fmt.Printf("failed to close cursor: %v\n", err)
+		}
+	}()
 
 	var results []map[string]any
 	if err := cursor.All(ctx, &results); err != nil {

@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -5,9 +6,11 @@ import (
 	"fmt"
 )
 
-// ConfigBuilderImpl implements the ConfigBuilder interface for constructing APIConfig instances with various providers and settings.
-type ConfigBuilderImpl struct {
-	provider ConfigProvider
+// builder.go: Configuration builder pattern and construction logic.
+
+// BuilderImpl implements the ConfigBuilder interface for constructing APIConfig instances with various providers and settings.
+type BuilderImpl struct {
+	provider Provider
 	database DatabaseProvider
 	redis    RedisProvider
 	mongo    MongoProvider
@@ -17,181 +20,171 @@ type ConfigBuilderImpl struct {
 
 // NewConfigBuilder creates and returns a new instance of ConfigBuilderImpl.
 // Initializes a new configuration builder for constructing APIConfig instances.
-func NewConfigBuilder() *ConfigBuilderImpl {
-	return &ConfigBuilderImpl{}
+func NewConfigBuilder() *BuilderImpl {
+	return &BuilderImpl{}
 }
 
 // WithProvider sets the configuration provider for the builder.
 // The provider supplies configuration values from sources such as environment variables or config files.
-func (b *ConfigBuilderImpl) WithProvider(provider ConfigProvider) ConfigBuilder {
+func (b *BuilderImpl) WithProvider(provider Provider) Builder {
 	b.provider = provider
 	return b
 }
 
 // WithDatabase sets the database provider for the builder.
 // Handles creation and management of database connections.
-func (b *ConfigBuilderImpl) WithDatabase(provider DatabaseProvider) ConfigBuilder {
+func (b *BuilderImpl) WithDatabase(provider DatabaseProvider) Builder {
 	b.database = provider
 	return b
 }
 
 // WithRedis sets the Redis provider for the builder.
 // Manages Redis connections and caching functionality.
-func (b *ConfigBuilderImpl) WithRedis(provider RedisProvider) ConfigBuilder {
+func (b *BuilderImpl) WithRedis(provider RedisProvider) Builder {
 	b.redis = provider
 	return b
 }
 
 // WithMongo sets the MongoDB provider for the builder.
 // Handles NoSQL database connections and operations.
-func (b *ConfigBuilderImpl) WithMongo(provider MongoProvider) ConfigBuilder {
+func (b *BuilderImpl) WithMongo(provider MongoProvider) Builder {
 	b.mongo = provider
 	return b
 }
 
 // WithS3 sets the S3 provider for the builder.
 // Manages AWS S3 client creation and file storage operations.
-func (b *ConfigBuilderImpl) WithS3(provider S3Provider) ConfigBuilder {
+func (b *BuilderImpl) WithS3(provider S3Provider) Builder {
 	b.s3 = provider
 	return b
 }
 
 // WithOAuth sets the OAuth provider for the builder.
 // Handles authentication configuration, particularly for Google OAuth integration.
-func (b *ConfigBuilderImpl) WithOAuth(provider OAuthProvider) ConfigBuilder {
+func (b *BuilderImpl) WithOAuth(provider OAuthProvider) Builder {
 	b.oauth = provider
 	return b
 }
 
-// Build constructs and returns a complete APIConfig instance based on the builder's configuration.
-// Validates required configuration, establishes service connections, and returns a ready-to-use APIConfig.
-// Returns an error if any required configuration is missing or service connections fail.
-func (b *ConfigBuilderImpl) Build(ctx context.Context) (*APIConfig, error) {
+// Helper to load required config values
+func (b *BuilderImpl) loadRequiredConfig() (map[string]string, error) {
+	requiredKeys := []string{
+		"PORT", "JWT_SECRET", "REFRESH_SECRET", "ISSUER", "AUDIENCE",
+		"GOOGLE_CREDENTIALS_PATH", "S3_BUCKET", "S3_REGION",
+		"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "MONGO_URI",
+	}
+	values := make(map[string]string)
+	for _, key := range requiredKeys {
+		val, err := b.provider.GetRequiredString(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get %s: %w", key, err)
+		}
+		values[key] = val
+	}
+	return values, nil
+}
+
+func (b *BuilderImpl) getOptionalConfig() (uploadBackend, uploadPath string) {
+	uploadBackend = b.provider.GetStringOrDefault("UPLOAD_BACKEND", "local")
+	uploadPath = b.provider.GetStringOrDefault("UPLOAD_PATH", "./uploads")
+	return
+}
+
+func (b *BuilderImpl) connectRedis(ctx context.Context, config *APIConfig) error {
+	redisAddr := b.provider.GetString("REDIS_ADDR")
+	redisUsername := b.provider.GetString("REDIS_USERNAME")
+	redisPassword := b.provider.GetString("REDIS_PASSWORD")
+	if redisAddr != "" {
+		redisProvider := NewRedisProvider(redisAddr, redisUsername, redisPassword)
+		redisClient, err := redisProvider.Connect(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to connect to Redis: %w", err)
+		}
+		config.RedisClient = redisClient
+	}
+	return nil
+}
+
+func (b *BuilderImpl) connectMongo(ctx context.Context, config *APIConfig, mongoURI string) error {
+	var mongoProvider MongoProvider
+	if b.mongo != nil {
+		mongoProvider = b.mongo
+	} else {
+		mongoProvider = NewMongoProvider(mongoURI)
+	}
+	mongoClient, mongoDB, err := mongoProvider.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+	config.MongoClient = mongoClient
+	config.MongoDB = mongoDB
+	return nil
+}
+
+func (b *BuilderImpl) createS3Client(ctx context.Context, config *APIConfig, s3Region string) error {
+	s3Client, err := b.s3.CreateClient(ctx, s3Region)
+	if err != nil {
+		return fmt.Errorf("failed to create S3 client: %w", err)
+	}
+	config.S3Client = s3Client
+	return nil
+}
+
+func (b *BuilderImpl) loadOAuthConfig(credsPath string) error {
+	oauthConfig, err := b.oauth.LoadGoogleConfig(credsPath)
+	if err != nil {
+		return fmt.Errorf("failed to load OAuth config: %w", err)
+	}
+	_ = oauthConfig // Not stored in APIConfig
+	return nil
+}
+
+// Build constructs the configuration using the provided options.
+func (b *BuilderImpl) Build(ctx context.Context) (*APIConfig, error) {
 	if b.provider == nil {
 		return nil, fmt.Errorf("config provider is required")
 	}
 
-	// Load required configuration values
-	port, err := b.provider.GetRequiredString("PORT")
+	required, err := b.loadRequiredConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PORT: %w", err)
+		return nil, err
 	}
+	uploadBackend, uploadPath := b.getOptionalConfig()
 
-	jwtSecret, err := b.provider.GetRequiredString("JWT_SECRET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get JWT_SECRET: %w", err)
-	}
-
-	refreshSecret, err := b.provider.GetRequiredString("REFRESH_SECRET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get REFRESH_SECRET: %w", err)
-	}
-
-	issuer, err := b.provider.GetRequiredString("ISSUER")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ISSUER: %w", err)
-	}
-
-	audience, err := b.provider.GetRequiredString("AUDIENCE")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get AUDIENCE: %w", err)
-	}
-
-	credsPath, err := b.provider.GetRequiredString("GOOGLE_CREDENTIALS_PATH")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get GOOGLE_CREDENTIALS_PATH: %w", err)
-	}
-
-	s3Bucket, err := b.provider.GetRequiredString("S3_BUCKET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get S3_BUCKET: %w", err)
-	}
-
-	s3Region, err := b.provider.GetRequiredString("S3_REGION")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get S3_REGION: %w", err)
-	}
-
-	stripeSecretKey, err := b.provider.GetRequiredString("STRIPE_SECRET_KEY")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get STRIPE_SECRET_KEY: %w", err)
-	}
-
-	stripeWebhookSecret, err := b.provider.GetRequiredString("STRIPE_WEBHOOK_SECRET")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get STRIPE_WEBHOOK_SECRET: %w", err)
-	}
-
-	mongoURI, err := b.provider.GetRequiredString("MONGO_URI")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get MONGO_URI: %w", err)
-	}
-
-	// Get optional values with defaults
-	uploadBackend := b.provider.GetStringOrDefault("UPLOAD_BACKEND", "local")
-	uploadPath := b.provider.GetStringOrDefault("UPLOAD_PATH", "./uploads")
-
-	// Initialize services
 	config := &APIConfig{
-		Port:                port,
-		JWTSecret:           jwtSecret,
-		RefreshSecret:       refreshSecret,
-		Issuer:              issuer,
-		Audience:            audience,
-		CredsPath:           credsPath,
-		S3Bucket:            s3Bucket,
-		S3Region:            s3Region,
-		StripeSecretKey:     stripeSecretKey,
-		StripeWebhookSecret: stripeWebhookSecret,
+		Port:                required["PORT"],
+		JWTSecret:           required["JWT_SECRET"],
+		RefreshSecret:       required["REFRESH_SECRET"],
+		Issuer:              required["ISSUER"],
+		Audience:            required["AUDIENCE"],
+		CredsPath:           required["GOOGLE_CREDENTIALS_PATH"],
+		S3Bucket:            required["S3_BUCKET"],
+		S3Region:            required["S3_REGION"],
+		StripeSecretKey:     required["STRIPE_SECRET_KEY"],
+		StripeWebhookSecret: required["STRIPE_WEBHOOK_SECRET"],
 		UploadBackend:       uploadBackend,
 		UploadPath:          uploadPath,
 	}
 
-	// Connect to Redis
 	if b.redis != nil {
-		redisAddr := b.provider.GetString("REDIS_ADDR")
-		redisUsername := b.provider.GetString("REDIS_USERNAME")
-		redisPassword := b.provider.GetString("REDIS_PASSWORD")
-
-		if redisAddr != "" {
-			redisProvider := NewRedisProvider(redisAddr, redisUsername, redisPassword)
-			redisClient, err := redisProvider.Connect(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-			}
-			config.RedisClient = redisClient
+		if err := b.connectRedis(ctx, config); err != nil {
+			return nil, err
 		}
 	}
-
-	// Connect to MongoDB
 	if b.mongo != nil {
-		mongoProvider := NewMongoProvider(mongoURI)
-		mongoClient, mongoDB, err := mongoProvider.Connect(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+		if err := b.connectMongo(ctx, config, required["MONGO_URI"]); err != nil {
+			return nil, err
 		}
-		config.MongoClient = mongoClient
-		config.MongoDB = mongoDB
 	}
-
-	// Create S3 client
 	if b.s3 != nil {
-		s3Client, err := b.s3.CreateClient(ctx, s3Region)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create S3 client: %w", err)
+		if err := b.createS3Client(ctx, config, required["S3_REGION"]); err != nil {
+			return nil, err
 		}
-		config.S3Client = s3Client
 	}
-
-	// Load OAuth configuration
 	if b.oauth != nil {
-		oauthConfig, err := b.oauth.LoadGoogleConfig(credsPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load OAuth config: %w", err)
+		if err := b.loadOAuthConfig(required["GOOGLE_CREDENTIALS_PATH"]); err != nil {
+			return nil, err
 		}
-		// Note: OAuth config is not stored in APIConfig, it's used separately
-		_ = oauthConfig
 	}
-
 	return config, nil
 }

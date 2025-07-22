@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"golang.org/x/oauth2"
 )
+
+// config_oauth.go: Google OAuth2 configuration helpers and path validation.
 
 // OAuthConfig holds OAuth2 configuration for Google authentication.
 type OAuthConfig struct {

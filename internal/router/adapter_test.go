@@ -1,3 +1,4 @@
+// Package router defines HTTP routing, adapters, and related logic for the ecom-backend project.
 package router
 
 import (
@@ -10,11 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// adapter_test.go: Tests for handler adapter utilities and context handling.
+
 // TestAdapt verifies that the Adapt function correctly wraps an http.HandlerFunc
 // and calls the underlying handler when ServeHTTP is invoked.
 func TestAdapt(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request) {
+	h := func(_ http.ResponseWriter, _ *http.Request) {
 		called = true
 	}
 	hf := Adapt(h)
@@ -28,7 +31,7 @@ func TestAdapt(t *testing.T) {
 // It should return 401 Unauthorized and not call the handler function.
 func TestWithUser_NoUser(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		called = true
 	}
 	hf := WithUser(h)
@@ -43,7 +46,7 @@ func TestWithUser_NoUser(t *testing.T) {
 // It should call the handler function with the user from context.
 func TestWithUser_WithUser(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, user database.User) {
 		called = true
 		assert.Equal(t, "user", user.Role)
 	}
@@ -60,7 +63,7 @@ func TestWithUser_WithUser(t *testing.T) {
 // It should call the handler function with a nil user pointer.
 func TestWithOptionalUser_NilUser(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		called = true
 		assert.Nil(t, user)
 	}
@@ -75,7 +78,7 @@ func TestWithOptionalUser_NilUser(t *testing.T) {
 // It should call the handler function with a pointer to the user from context.
 func TestWithOptionalUser_WithUser(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		called = true
 		assert.NotNil(t, user)
 		assert.Equal(t, "user", user.Role)
@@ -93,7 +96,7 @@ func TestWithOptionalUser_WithUser(t *testing.T) {
 // It should return 403 Forbidden and not call the handler function.
 func TestWithAdmin_NotAdmin(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		called = true
 	}
 	hf := WithAdmin(h)
@@ -110,7 +113,7 @@ func TestWithAdmin_NotAdmin(t *testing.T) {
 // It should call the handler function with the admin user from context.
 func TestWithAdmin_Admin(t *testing.T) {
 	called := false
-	h := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	h := func(_ http.ResponseWriter, _ *http.Request, user database.User) {
 		called = true
 		assert.Equal(t, "admin", user.Role)
 	}

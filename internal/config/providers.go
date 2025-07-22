@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -18,6 +19,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/oauth2/google"
 )
+
+// providers.go: Environment, database, Redis, MongoDB, S3, and OAuth provider implementations.
+
+const strTrue = "true"
 
 // EnvironmentProvider implements ConfigProvider using environment variables
 type EnvironmentProvider struct{}
@@ -89,7 +94,7 @@ func (e *EnvironmentProvider) GetIntOrDefault(key string, defaultValue int) int 
 // Returns false for any other value or if the environment variable is not set.
 func (e *EnvironmentProvider) GetBool(key string) bool {
 	value := strings.ToLower(os.Getenv(key))
-	return value == "true" || value == "1" || value == "yes"
+	return value == strTrue || value == "1" || value == "yes"
 }
 
 // GetBoolOrDefault retrieves a boolean value from environment variables with a default fallback.

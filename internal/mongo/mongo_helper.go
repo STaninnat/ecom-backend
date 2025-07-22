@@ -1,3 +1,4 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
@@ -10,9 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// =====================
-// Database Configuration
-// =====================
+// mongo_helper.go: MongoDB connection management, abstractions, and index helpers.
 
 // DatabaseConfig holds MongoDB configuration settings.
 type DatabaseConfig struct {
@@ -175,14 +174,17 @@ type MongoCollectionAdapter struct {
 	Inner *mongo.Collection
 }
 
+// InsertOne inserts a single document into the collection.
 func (m *MongoCollectionAdapter) InsertOne(ctx context.Context, doc any) (*mongo.InsertOneResult, error) {
 	return m.Inner.InsertOne(ctx, doc)
 }
 
+// InsertMany inserts multiple documents into the collection.
 func (m *MongoCollectionAdapter) InsertMany(ctx context.Context, docs []any) (*mongo.InsertManyResult, error) {
 	return m.Inner.InsertMany(ctx, docs)
 }
 
+// Find finds documents in the collection matching the filter.
 func (m *MongoCollectionAdapter) Find(ctx context.Context, filter any, opts ...options.Lister[options.FindOptions]) (CursorInterface, error) {
 	cursor, err := m.Inner.Find(ctx, filter, opts...)
 	if err != nil {
@@ -191,31 +193,38 @@ func (m *MongoCollectionAdapter) Find(ctx context.Context, filter any, opts ...o
 	return &MongoCursorAdapter{Inner: cursor}, nil
 }
 
+// FindOne finds a single document in the collection matching the filter.
 func (m *MongoCollectionAdapter) FindOne(ctx context.Context, filter any, opts ...options.Lister[options.FindOneOptions]) SingleResultInterface {
 	result := m.Inner.FindOne(ctx, filter, opts...)
 	return &MongoSingleResultAdapter{Inner: result}
 }
 
+// UpdateOne updates a single document in the collection matching the filter.
 func (m *MongoCollectionAdapter) UpdateOne(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error) {
 	return m.Inner.UpdateOne(ctx, filter, update, opts...)
 }
 
+// UpdateMany updates multiple documents in the collection matching the filter.
 func (m *MongoCollectionAdapter) UpdateMany(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error) {
 	return m.Inner.UpdateMany(ctx, filter, update, opts...)
 }
 
+// DeleteOne deletes a single document from the collection matching the filter.
 func (m *MongoCollectionAdapter) DeleteOne(ctx context.Context, filter any, opts ...options.Lister[options.DeleteOneOptions]) (*mongo.DeleteResult, error) {
 	return m.Inner.DeleteOne(ctx, filter, opts...)
 }
 
+// DeleteMany deletes multiple documents from the collection matching the filter.
 func (m *MongoCollectionAdapter) DeleteMany(ctx context.Context, filter any, opts ...options.Lister[options.DeleteManyOptions]) (*mongo.DeleteResult, error) {
 	return m.Inner.DeleteMany(ctx, filter, opts...)
 }
 
+// CountDocuments counts the documents in the collection matching the filter.
 func (m *MongoCollectionAdapter) CountDocuments(ctx context.Context, filter any, opts ...options.Lister[options.CountOptions]) (int64, error) {
 	return m.Inner.CountDocuments(ctx, filter, opts...)
 }
 
+// Aggregate runs an aggregation pipeline on the collection.
 func (m *MongoCollectionAdapter) Aggregate(ctx context.Context, pipeline any, opts ...options.Lister[options.AggregateOptions]) (CursorInterface, error) {
 	cursor, err := m.Inner.Aggregate(ctx, pipeline, opts...)
 	if err != nil {
@@ -224,6 +233,7 @@ func (m *MongoCollectionAdapter) Aggregate(ctx context.Context, pipeline any, op
 	return &MongoCursorAdapter{Inner: cursor}, nil
 }
 
+// Indexes returns the index view for the collection.
 func (m *MongoCollectionAdapter) Indexes() mongo.IndexView {
 	return m.Inner.Indexes()
 }
@@ -233,21 +243,33 @@ type MongoCursorAdapter struct {
 	Inner *mongo.Cursor
 }
 
+// Next advances the cursor to the next document.
 func (c *MongoCursorAdapter) Next(ctx context.Context) bool { return c.Inner.Next(ctx) }
-func (c *MongoCursorAdapter) Decode(val any) error          { return c.Inner.Decode(val) }
+
+// Decode decodes the current document into the provided value.
+func (c *MongoCursorAdapter) Decode(val any) error { return c.Inner.Decode(val) }
+
+// All decodes all documents into the provided results.
 func (c *MongoCursorAdapter) All(ctx context.Context, results any) error {
 	return c.Inner.All(ctx, results)
 }
+
+// Close closes the cursor.
 func (c *MongoCursorAdapter) Close(ctx context.Context) error { return c.Inner.Close(ctx) }
-func (c *MongoCursorAdapter) Err() error                      { return c.Inner.Err() }
+
+// Err returns the error encountered during iteration, if any.
+func (c *MongoCursorAdapter) Err() error { return c.Inner.Err() }
 
 // MongoSingleResultAdapter adapts mongo.SingleResult to SingleResultInterface.
 type MongoSingleResultAdapter struct {
 	Inner *mongo.SingleResult
 }
 
+// Decode decodes the single result into the provided value.
 func (r *MongoSingleResultAdapter) Decode(val any) error { return r.Inner.Decode(val) }
-func (r *MongoSingleResultAdapter) Err() error           { return r.Inner.Err() }
+
+// Err returns the error encountered during single result decoding, if any.
+func (r *MongoSingleResultAdapter) Err() error { return r.Inner.Err() }
 
 // Factory functions for easy mocking
 var (

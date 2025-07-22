@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -5,8 +6,10 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // Import for PostgreSQL driver registration
 )
+
+// config_db.go: PostgreSQL database connection helpers and legacy patterns.
 
 // ConnectDB establishes a connection to the PostgreSQL database and initializes the queries object.
 // Uses the legacy pattern and calls log.Fatal on errors.

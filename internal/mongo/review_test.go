@@ -1,3 +1,4 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
@@ -11,6 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+// review_test.go: Tests for MongoDB review repository and review operations.
 
 // MockCollectionInterface for testing
 type MockReviewCollectionInterface struct {

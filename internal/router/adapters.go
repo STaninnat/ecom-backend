@@ -1,3 +1,4 @@
+// Package router defines HTTP routing, adapters, and related logic for the ecom-backend project.
 package router
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"github.com/STaninnat/ecom-backend/internal/database"
 )
+
+// adapters.go: Handler adapter utilities for user, admin, and optional user context.
 
 // Adapter helpers for router handler registration
 //

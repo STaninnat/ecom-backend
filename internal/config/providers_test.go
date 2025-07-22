@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -17,14 +18,22 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
+// providers_test.go: Tests for environment, database, Redis, MongoDB, S3, and OAuth providers.
+
 // Remove reflect, unsafe, and patch helpers
 
 // TestEnvironmentProvider_GetString tests the GetString method of EnvironmentProvider.
 // It verifies that environment variables are correctly retrieved and empty strings are returned for missing keys.
 func TestEnvironmentProvider_GetString(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("FOO", "bar")
-	t.Cleanup(func() { os.Unsetenv("FOO") })
+	if err := os.Setenv("FOO", "bar"); err != nil {
+		t.Errorf("Failed to set environment variable: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("FOO"); err != nil {
+			t.Errorf("Failed to unset environment variable: %v", err)
+		}
+	})
 	assert.Equal(t, "bar", provider.GetString("FOO"))
 	assert.Equal(t, "", provider.GetString("NOT_SET"))
 }
@@ -33,8 +42,14 @@ func TestEnvironmentProvider_GetString(t *testing.T) {
 // It verifies that default values are returned when environment variables are not set.
 func TestEnvironmentProvider_GetStringOrDefault(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("FOO", "bar")
-	t.Cleanup(func() { os.Unsetenv("FOO") })
+	if err := os.Setenv("FOO", "bar"); err != nil {
+		t.Errorf("Failed to set environment variable: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("FOO"); err != nil {
+			t.Errorf("Failed to unset environment variable: %v", err)
+		}
+	})
 	assert.Equal(t, "bar", provider.GetStringOrDefault("FOO", "baz"))
 	assert.Equal(t, "baz", provider.GetStringOrDefault("NOT_SET", "baz"))
 }
@@ -43,8 +58,14 @@ func TestEnvironmentProvider_GetStringOrDefault(t *testing.T) {
 // It verifies that required environment variables are retrieved successfully and errors are returned for missing keys.
 func TestEnvironmentProvider_GetRequiredString(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("FOO", "bar")
-	t.Cleanup(func() { os.Unsetenv("FOO") })
+	if err := os.Setenv("FOO", "bar"); err != nil {
+		t.Errorf("Failed to set environment variable: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("FOO"); err != nil {
+			t.Errorf("Failed to unset environment variable: %v", err)
+		}
+	})
 	val, err := provider.GetRequiredString("FOO")
 	assert.NoError(t, err)
 	assert.Equal(t, "bar", val)
@@ -56,12 +77,24 @@ func TestEnvironmentProvider_GetRequiredString(t *testing.T) {
 // It verifies that integer environment variables are correctly parsed and zero is returned for invalid values.
 func TestEnvironmentProvider_GetInt(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("INT_VAL", "42")
-	t.Cleanup(func() { os.Unsetenv("INT_VAL") })
+	if err := os.Setenv("INT_VAL", "42"); err != nil {
+		t.Errorf("Failed to set INT_VAL: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("INT_VAL"); err != nil {
+			t.Errorf("Failed to unset INT_VAL: %v", err)
+		}
+	})
 	assert.Equal(t, 42, provider.GetInt("INT_VAL"))
 	assert.Equal(t, 0, provider.GetInt("NOT_SET"))
-	os.Setenv("BAD_INT", "abc")
-	t.Cleanup(func() { os.Unsetenv("BAD_INT") })
+	if err := os.Setenv("BAD_INT", "abc"); err != nil {
+		t.Errorf("Failed to set BAD_INT: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("BAD_INT"); err != nil {
+			t.Errorf("Failed to unset BAD_INT: %v", err)
+		}
+	})
 	assert.Equal(t, 0, provider.GetInt("BAD_INT"))
 }
 
@@ -69,12 +102,24 @@ func TestEnvironmentProvider_GetInt(t *testing.T) {
 // It verifies that default integer values are returned when environment variables are not set or invalid.
 func TestEnvironmentProvider_GetIntOrDefault(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("INT_VAL", "42")
-	t.Cleanup(func() { os.Unsetenv("INT_VAL") })
+	if err := os.Setenv("INT_VAL", "42"); err != nil {
+		t.Errorf("Failed to set INT_VAL: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("INT_VAL"); err != nil {
+			t.Errorf("Failed to unset INT_VAL: %v", err)
+		}
+	})
 	assert.Equal(t, 42, provider.GetIntOrDefault("INT_VAL", 99))
 	assert.Equal(t, 99, provider.GetIntOrDefault("NOT_SET", 99))
-	os.Setenv("BAD_INT", "abc")
-	t.Cleanup(func() { os.Unsetenv("BAD_INT") })
+	if err := os.Setenv("BAD_INT", "abc"); err != nil {
+		t.Errorf("Failed to set BAD_INT: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("BAD_INT"); err != nil {
+			t.Errorf("Failed to unset BAD_INT: %v", err)
+		}
+	})
 	assert.Equal(t, 99, provider.GetIntOrDefault("BAD_INT", 99))
 }
 
@@ -82,15 +127,31 @@ func TestEnvironmentProvider_GetIntOrDefault(t *testing.T) {
 // It verifies that boolean environment variables are correctly parsed for various truthy and falsy values.
 func TestEnvironmentProvider_GetBool(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("BOOL_TRUE", "true")
-	os.Setenv("BOOL_ONE", "1")
-	os.Setenv("BOOL_YES", "yes")
-	os.Setenv("BOOL_FALSE", "false")
+	if err := os.Setenv("BOOL_TRUE", "true"); err != nil {
+		t.Errorf("Failed to set BOOL_TRUE: %v", err)
+	}
+	if err := os.Setenv("BOOL_ONE", "1"); err != nil {
+		t.Errorf("Failed to set BOOL_ONE: %v", err)
+	}
+	if err := os.Setenv("BOOL_YES", "yes"); err != nil {
+		t.Errorf("Failed to set BOOL_YES: %v", err)
+	}
+	if err := os.Setenv("BOOL_FALSE", "false"); err != nil {
+		t.Errorf("Failed to set BOOL_FALSE: %v", err)
+	}
 	t.Cleanup(func() {
-		os.Unsetenv("BOOL_TRUE")
-		os.Unsetenv("BOOL_ONE")
-		os.Unsetenv("BOOL_YES")
-		os.Unsetenv("BOOL_FALSE")
+		if err := os.Unsetenv("BOOL_TRUE"); err != nil {
+			t.Errorf("Failed to unset BOOL_TRUE: %v", err)
+		}
+		if err := os.Unsetenv("BOOL_ONE"); err != nil {
+			t.Errorf("Failed to unset BOOL_ONE: %v", err)
+		}
+		if err := os.Unsetenv("BOOL_YES"); err != nil {
+			t.Errorf("Failed to unset BOOL_YES: %v", err)
+		}
+		if err := os.Unsetenv("BOOL_FALSE"); err != nil {
+			t.Errorf("Failed to unset BOOL_FALSE: %v", err)
+		}
 	})
 	assert.True(t, provider.GetBool("BOOL_TRUE"))
 	assert.True(t, provider.GetBool("BOOL_ONE"))
@@ -103,8 +164,14 @@ func TestEnvironmentProvider_GetBool(t *testing.T) {
 // It verifies that default boolean values are returned when environment variables are not set.
 func TestEnvironmentProvider_GetBoolOrDefault(t *testing.T) {
 	provider := NewEnvironmentProvider()
-	os.Setenv("BOOL_TRUE", "true")
-	t.Cleanup(func() { os.Unsetenv("BOOL_TRUE") })
+	if err := os.Setenv("BOOL_TRUE", "true"); err != nil {
+		t.Errorf("Failed to set BOOL_TRUE: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Unsetenv("BOOL_TRUE"); err != nil {
+			t.Errorf("Failed to unset BOOL_TRUE: %v", err)
+		}
+	})
 	assert.True(t, provider.GetBoolOrDefault("BOOL_TRUE", false))
 	assert.True(t, provider.GetBoolOrDefault("NOT_SET", true))
 	assert.False(t, provider.GetBoolOrDefault("NOT_SET", false))
@@ -115,11 +182,15 @@ func TestEnvironmentProvider_GetBoolOrDefault(t *testing.T) {
 func TestPostgresProvider_Connect_Success(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
-
 	mock.ExpectPing()
+	mock.ExpectClose()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("db.Close() failed: %v", err)
+		}
+	}()
 
-	provider := &PostgresProvider{dbURL: "sqlmock_db", sqlOpen: func(driverName, dataSourceName string) (*sql.DB, error) {
+	provider := &PostgresProvider{dbURL: "sqlmock_db", sqlOpen: func(_, _ string) (*sql.DB, error) {
 		return db, nil
 	}}
 
@@ -132,7 +203,7 @@ func TestPostgresProvider_Connect_Success(t *testing.T) {
 // TestPostgresProvider_Connect_OpenError tests database connection failure in PostgresProvider.
 // It verifies that the provider returns an error when the database connection cannot be established.
 func TestPostgresProvider_Connect_OpenError(t *testing.T) {
-	provider := &PostgresProvider{dbURL: "bad_dsn", sqlOpen: func(driverName, dataSourceName string) (*sql.DB, error) {
+	provider := &PostgresProvider{dbURL: "bad_dsn", sqlOpen: func(_, _ string) (*sql.DB, error) {
 		return nil, errors.New("open error")
 	}}
 
@@ -145,11 +216,15 @@ func TestPostgresProvider_Connect_OpenError(t *testing.T) {
 // TestPostgresProvider_Connect_PingError tests database ping failure in PostgresProvider.
 // It verifies that the provider returns an error when the database ping operation fails.
 func TestPostgresProvider_Connect_PingError(t *testing.T) {
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	db.Close() // Close the db to force ping to fail
+	mock.ExpectClose()
+	err = db.Close() // Close the db to force ping to fail
+	if err != nil {
+		t.Errorf("db.Close() failed: %v", err)
+	}
 
-	provider := &PostgresProvider{dbURL: "sqlmock_db", sqlOpen: func(driverName, dataSourceName string) (*sql.DB, error) {
+	provider := &PostgresProvider{dbURL: "sqlmock_db", sqlOpen: func(_, _ string) (*sql.DB, error) {
 		return db, nil
 	}}
 
@@ -196,7 +271,7 @@ func TestRedisProviderImpl_Connect_Success(t *testing.T) {
 		addr:      "localhost:6379",
 		username:  "",
 		password:  "",
-		newClient: func(opt *redis.Options) *redis.Client { return client },
+		newClient: func(_ *redis.Options) *redis.Client { return client },
 	}
 
 	cmdable, err := provider.Connect(context.Background())
@@ -214,7 +289,7 @@ func TestRedisProviderImpl_Connect_PingError(t *testing.T) {
 		addr:      "localhost:6379",
 		username:  "",
 		password:  "",
-		newClient: func(opt *redis.Options) *redis.Client { return client },
+		newClient: func(_ *redis.Options) *redis.Client { return client },
 	}
 
 	cmdable, err := provider.Connect(context.Background())
@@ -251,7 +326,7 @@ func TestRedisProviderImpl_Close_Error(t *testing.T) {
 func TestMongoProviderImpl_Connect_ConnectError(t *testing.T) {
 	provider := &MongoProviderImpl{
 		uri: "mongodb://localhost:27017",
-		connect: func(opts ...*options.ClientOptions) (*mongo.Client, error) {
+		connect: func(_ ...*options.ClientOptions) (*mongo.Client, error) {
 			return nil, errors.New("connect error")
 		},
 	}
@@ -268,7 +343,7 @@ func TestMongoProviderImpl_Connect_PingError(t *testing.T) {
 	mockClient := &mongo.Client{}
 	provider := &MongoProviderImpl{
 		uri: "mongodb://localhost:27017",
-		connect: func(opts ...*options.ClientOptions) (*mongo.Client, error) {
+		connect: func(_ ...*options.ClientOptions) (*mongo.Client, error) {
 			return mockClient, nil
 		},
 	}
@@ -299,7 +374,7 @@ func TestMongoProviderImpl_Close_NilClient(t *testing.T) {
 // It verifies that the provider can create an S3 client with valid configuration.
 func TestS3ProviderImpl_CreateClient_Success(t *testing.T) {
 	provider := &S3ProviderImpl{
-		loadConfig: func(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
+		loadConfig: func(_ context.Context, _ ...func(*config.LoadOptions) error) (aws.Config, error) {
 			return aws.Config{}, nil
 		},
 	}
@@ -312,7 +387,7 @@ func TestS3ProviderImpl_CreateClient_Success(t *testing.T) {
 // It verifies that the provider returns an error when S3 client configuration fails.
 func TestS3ProviderImpl_CreateClient_ConfigError(t *testing.T) {
 	provider := &S3ProviderImpl{
-		loadConfig: func(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
+		loadConfig: func(_ context.Context, _ ...func(*config.LoadOptions) error) (aws.Config, error) {
 			return aws.Config{}, errors.New("config error")
 		},
 	}
@@ -326,7 +401,7 @@ func TestS3ProviderImpl_CreateClient_ConfigError(t *testing.T) {
 func TestOAuthProviderImpl_LoadGoogleConfig_Success(t *testing.T) {
 	validJSON := `{"installed":{"client_id":"id","client_secret":"secret","redirect_uris":["http://localhost"]}}`
 	provider := &OAuthProviderImpl{
-		readFile: func(filename string) ([]byte, error) {
+		readFile: func(_ string) ([]byte, error) {
 			return []byte(validJSON), nil
 		},
 	}
@@ -340,7 +415,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_Success(t *testing.T) {
 // It verifies that the provider returns an error when the credentials file cannot be read.
 func TestOAuthProviderImpl_LoadGoogleConfig_FileError(t *testing.T) {
 	provider := &OAuthProviderImpl{
-		readFile: func(filename string) ([]byte, error) {
+		readFile: func(_ string) ([]byte, error) {
 			return nil, errors.New("file error")
 		},
 	}
@@ -353,7 +428,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_FileError(t *testing.T) {
 // It verifies that the provider returns an error when the credentials file cannot be parsed.
 func TestOAuthProviderImpl_LoadGoogleConfig_ParseError(t *testing.T) {
 	provider := &OAuthProviderImpl{
-		readFile: func(filename string) ([]byte, error) {
+		readFile: func(_ string) ([]byte, error) {
 			return []byte("not json"), nil
 		},
 	}
@@ -366,7 +441,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_ParseError(t *testing.T) {
 // It verifies that the provider returns an error when the credentials path is considered unsafe.
 func TestOAuthProviderImpl_LoadGoogleConfig_UnsafePath(t *testing.T) {
 	provider := &OAuthProviderImpl{
-		readFile: func(filename string) ([]byte, error) {
+		readFile: func(_ string) ([]byte, error) {
 			return []byte("{}"), nil
 		},
 	}

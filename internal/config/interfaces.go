@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -10,8 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-// ConfigProvider defines the interface for configuration providers
-type ConfigProvider interface {
+// interfaces.go: Interfaces for configuration, providers, and validation.
+
+// Provider provides configuration values from various sources.
+type Provider interface {
 	GetString(key string) string
 	GetStringOrDefault(key, defaultValue string) string
 	GetRequiredString(key string) (string, error)
@@ -49,18 +52,18 @@ type OAuthProvider interface {
 	LoadGoogleConfig(credsPath string) (*OAuthConfig, error)
 }
 
-// ConfigValidator defines the interface for configuration validation
-type ConfigValidator interface {
+// Validator validates configuration values and settings.
+type Validator interface {
 	Validate() error
 }
 
-// ConfigBuilder defines the interface for building configuration
-type ConfigBuilder interface {
-	WithProvider(provider ConfigProvider) ConfigBuilder
-	WithDatabase(provider DatabaseProvider) ConfigBuilder
-	WithRedis(provider RedisProvider) ConfigBuilder
-	WithMongo(provider MongoProvider) ConfigBuilder
-	WithS3(provider S3Provider) ConfigBuilder
-	WithOAuth(provider OAuthProvider) ConfigBuilder
+// Builder builds the application configuration using various providers.
+type Builder interface {
+	WithProvider(provider Provider) Builder
+	WithDatabase(provider DatabaseProvider) Builder
+	WithRedis(provider RedisProvider) Builder
+	WithMongo(provider MongoProvider) Builder
+	WithS3(provider S3Provider) Builder
+	WithOAuth(provider OAuthProvider) Builder
 	Build(ctx context.Context) (*APIConfig, error)
 }

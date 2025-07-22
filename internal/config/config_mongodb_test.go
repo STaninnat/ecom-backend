@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -7,9 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// config_mongodb_test.go: Tests for MongoDB connection helpers and error handling.
+
 // TestConnectMongoDB_Error tests MongoDB connection with error.
 // It verifies that the function returns an error when MongoDB connection cannot be established.
-func TestConnectMongoDB_Error(t *testing.T) {
+func TestConnectMongoDB_Error(_ *testing.T) {
 	// This function calls log.Fatal on error, so we can't test the error path
 	// But we can test that it doesn't panic when called with a bad URI
 	// The function will log.Fatal, but we can't catch that in a test
@@ -25,6 +28,12 @@ func TestConnectMongoDBWithError_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, client)
 	assert.Nil(t, db)
+}
+
+// TestConnectMongoDBWithError_Success tests MongoDB connection with success.
+// It verifies that the function returns a client and database when MongoDB connection is successful.
+func TestConnectMongoDBWithError_Success(t *testing.T) {
+	t.Skip("Cannot reliably test MongoDB connection success without a real MongoDB instance or further refactoring for testability.")
 }
 
 // TestDisconnectMongoDB_NilClient tests MongoDB disconnection with nil client.

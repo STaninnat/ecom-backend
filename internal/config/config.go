@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+// config.go: Main API configuration struct, loading, and environment integration.
 
 // APIConfig holds all configuration for the API, including server, JWT, database, Redis, MongoDB, S3, Stripe, upload, and OAuth settings.
 type APIConfig struct {
@@ -82,7 +85,7 @@ func LoadConfigWithError(ctx context.Context) (*APIConfig, error) {
 // Validates the configuration and returns a fully configured APIConfig instance.
 func LoadConfigWithProviders(
 	ctx context.Context,
-	provider ConfigProvider,
+	provider Provider,
 	dbProvider DatabaseProvider,
 	redisProvider RedisProvider,
 	mongoProvider MongoProvider,

@@ -1,3 +1,4 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
@@ -7,10 +8,13 @@ import (
 	"time"
 
 	"github.com/STaninnat/ecom-backend/models"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+// review.go: MongoDB repository and operations for product reviews.
 
 // ReviewMongo handles review operations in MongoDB.
 type ReviewMongo struct {
@@ -92,7 +96,11 @@ func (r *ReviewMongo) GetReviewsByProductID(ctx context.Context, productID strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reviews by product ID: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
 
 	var reviews []*models.Review
 	if err := cursor.All(ctx, &reviews); err != nil {
@@ -133,7 +141,11 @@ func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, produc
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reviews: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
 
 	var reviews []*models.Review
 	if err := cursor.All(ctx, &reviews); err != nil {
@@ -168,7 +180,11 @@ func (r *ReviewMongo) GetReviewsByUserID(ctx context.Context, userID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reviews by user ID: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
 
 	var reviews []*models.Review
 	if err := cursor.All(ctx, &reviews); err != nil {
@@ -209,7 +225,11 @@ func (r *ReviewMongo) GetReviewsByUserIDPaginated(ctx context.Context, userID st
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reviews: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
 
 	var reviews []*models.Review
 	if err := cursor.All(ctx, &reviews); err != nil {
@@ -242,7 +262,7 @@ func (r *ReviewMongo) GetReviewByID(ctx context.Context, reviewID string) (*mode
 
 	result := r.Collection.FindOne(ctx, filter)
 	if result.Err() != nil {
-		if result.Err() == mongo.ErrNoDocuments {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 			return nil, fmt.Errorf("review not found")
 		}
 		return nil, fmt.Errorf("failed to find review: %w", result.Err())
@@ -366,7 +386,11 @@ func (r *ReviewMongo) GetProductRatingStats(ctx context.Context, productID strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to aggregate rating stats: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
 
 	var results []map[string]any
 	if err := cursor.All(ctx, &results); err != nil {

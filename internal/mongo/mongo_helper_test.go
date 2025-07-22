@@ -1,3 +1,4 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
@@ -11,6 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+// mongo_helper_test.go: Tests for MongoDB connection, abstractions, and index helpers.
 
 // MockCollectionInterface for testing
 type MockCollectionInterface struct {
@@ -407,12 +410,22 @@ func TestCreateIndexes_Error(t *testing.T) {
 // It verifies that all collection operations work correctly with mocked responses.
 func TestCollectionInterfaceMethods(t *testing.T) {
 	mockCollection := &MockCollectionInterface{}
-
 	ctx := context.Background()
 	document := bson.M{"test": "data"}
 	filter := bson.M{"_id": "test"}
 	update := bson.M{"$set": bson.M{"test": "updated"}}
 
+	testCollectionInsertOperations(ctx, t, mockCollection, document)
+	testCollectionFindOperations(ctx, t, mockCollection, filter)
+	testCollectionUpdateOperations(ctx, t, mockCollection, filter, update)
+	testCollectionDeleteOperations(ctx, t, mockCollection, filter)
+	testCollectionCountAndAggregate(ctx, t, mockCollection, filter)
+	testCollectionIndexes(t, mockCollection)
+
+	mockCollection.AssertExpectations(t)
+}
+
+func testCollectionInsertOperations(ctx context.Context, t *testing.T, mockCollection *MockCollectionInterface, document bson.M) {
 	// Test InsertOne
 	mockCollection.On("InsertOne", ctx, document).Return(&mongo.InsertOneResult{}, nil)
 	result, err := mockCollection.InsertOne(ctx, document)
@@ -425,7 +438,9 @@ func TestCollectionInterfaceMethods(t *testing.T) {
 	resultMany, err := mockCollection.InsertMany(ctx, documents)
 	assert.NoError(t, err)
 	assert.NotNil(t, resultMany)
+}
 
+func testCollectionFindOperations(ctx context.Context, t *testing.T, mockCollection *MockCollectionInterface, filter bson.M) {
 	// Test Find
 	mockCursor := &MockCursorInterface{}
 	mockCollection.On("Find", ctx, filter, mock.Anything).Return(mockCursor, nil)
@@ -438,7 +453,9 @@ func TestCollectionInterfaceMethods(t *testing.T) {
 	mockCollection.On("FindOne", ctx, filter, mock.Anything).Return(mockSingleResult)
 	singleResult := mockCollection.FindOne(ctx, filter)
 	assert.NotNil(t, singleResult)
+}
 
+func testCollectionUpdateOperations(ctx context.Context, t *testing.T, mockCollection *MockCollectionInterface, filter bson.M, update bson.M) {
 	// Test UpdateOne
 	mockCollection.On("UpdateOne", ctx, filter, update, mock.Anything).Return(&mongo.UpdateResult{}, nil)
 	updateResult, err := mockCollection.UpdateOne(ctx, filter, update)
@@ -450,7 +467,9 @@ func TestCollectionInterfaceMethods(t *testing.T) {
 	updateManyResult, err := mockCollection.UpdateMany(ctx, filter, update)
 	assert.NoError(t, err)
 	assert.NotNil(t, updateManyResult)
+}
 
+func testCollectionDeleteOperations(ctx context.Context, t *testing.T, mockCollection *MockCollectionInterface, filter bson.M) {
 	// Test DeleteOne
 	mockCollection.On("DeleteOne", ctx, filter, mock.Anything).Return(&mongo.DeleteResult{}, nil)
 	deleteResult, err := mockCollection.DeleteOne(ctx, filter)
@@ -462,7 +481,9 @@ func TestCollectionInterfaceMethods(t *testing.T) {
 	deleteManyResult, err := mockCollection.DeleteMany(ctx, filter)
 	assert.NoError(t, err)
 	assert.NotNil(t, deleteManyResult)
+}
 
+func testCollectionCountAndAggregate(ctx context.Context, t *testing.T, mockCollection *MockCollectionInterface, filter bson.M) {
 	// Test CountDocuments
 	mockCollection.On("CountDocuments", ctx, filter, mock.Anything).Return(int64(10), nil)
 	count, err := mockCollection.CountDocuments(ctx, filter)
@@ -476,13 +497,13 @@ func TestCollectionInterfaceMethods(t *testing.T) {
 	aggCursor, err := mockCollection.Aggregate(ctx, pipeline)
 	assert.NoError(t, err)
 	assert.NotNil(t, aggCursor)
+}
 
+func testCollectionIndexes(t *testing.T, mockCollection *MockCollectionInterface) {
 	// Test Indexes
 	mockCollection.On("Indexes").Return(mongo.IndexView{})
 	indexes := mockCollection.Indexes()
 	assert.NotNil(t, indexes)
-
-	mockCollection.AssertExpectations(t)
 }
 
 // TestCursorInterfaceMethods tests all MockCursorInterface methods.

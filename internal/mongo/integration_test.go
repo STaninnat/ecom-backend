@@ -1,3 +1,4 @@
+// Package mongo provides MongoDB repositories and helpers for the ecom-backend project.
 package intmongo
 
 import (
@@ -17,6 +18,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+// integration_test.go: Integration tests for MongoDB repositories and adapters.
 
 // TestContainer holds MongoDB test container
 type TestContainer struct {
@@ -52,7 +55,10 @@ func setupTestContainer(t *testing.T) *TestContainer {
 	// Get connection URI
 	uri, err := container.ConnectionString(ctx)
 	if err != nil {
-		container.Terminate(ctx)
+		err := container.Terminate(ctx)
+		if err != nil {
+			t.Errorf("container.Terminate failed: %v", err)
+		}
 		t.Skipf("Failed to get container URI: %v - skipping integration tests", err)
 	}
 
@@ -62,15 +68,24 @@ func setupTestContainer(t *testing.T) *TestContainer {
 	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
-		container.Terminate(ctx)
+		err := container.Terminate(ctx)
+		if err != nil {
+			t.Errorf("container.Terminate failed: %v", err)
+		}
 		t.Skipf("Failed to connect to MongoDB: %v - skipping integration tests", err)
 	}
 
 	// Ping to verify connection
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		client.Disconnect(ctx)
-		container.Terminate(ctx)
+		err := client.Disconnect(ctx)
+		if err != nil {
+			t.Errorf("client.Disconnect failed: %v", err)
+		}
+		err = container.Terminate(ctx)
+		if err != nil {
+			t.Errorf("container.Terminate failed: %v", err)
+		}
 		t.Skipf("Failed to ping MongoDB: %v - skipping integration tests", err)
 	}
 
@@ -226,7 +241,11 @@ func TestMongoCursorAdapter_Integration(t *testing.T) {
 	// Test cursor adapter
 	cursor, err := collection.Find(ctx, bson.M{})
 	require.NoError(t, err)
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			t.Errorf("cursor.Close failed: %v", err)
+		}
+	}()
 
 	adapter := &MongoCursorAdapter{Inner: cursor}
 
@@ -251,7 +270,11 @@ func TestMongoCursorAdapter_Integration(t *testing.T) {
 	// Test All method
 	cursor2, err := collection.Find(ctx, bson.M{})
 	require.NoError(t, err)
-	defer cursor2.Close(ctx)
+	defer func() {
+		if err := cursor2.Close(ctx); err != nil {
+			t.Errorf("cursor2.Close failed: %v", err)
+		}
+	}()
 
 	adapter2 := &MongoCursorAdapter{Inner: cursor2}
 	var allResults []bson.M

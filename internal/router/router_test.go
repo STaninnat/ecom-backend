@@ -1,10 +1,10 @@
+// Package router defines HTTP routing, adapters, and related logic for the ecom-backend project.
 package router
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -14,18 +14,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// setupTestRouterConfig creates a test router configuration with mocked dependencies.
-// Returns the router config and Redis mock for testing purposes.
-func setupTestRouterConfig() (*RouterConfig, redismock.ClientMock) {
-	logger := logrus.New()
-	redisClient, redisMock := redismock.NewClientMock()
+// router_test.go: Tests for router setup, middleware, and endpoint registration.
 
-	// Set up expected Redis calls for the rate limiter
-	redisMock.ExpectTxPipeline()
-	redisMock.ExpectIncr("rate_limit:1.2.3.4:5678").SetVal(1)
-	redisMock.ExpectExpire("rate_limit:1.2.3.4:5678", 15*time.Minute).SetVal(true)
-	redisMock.ExpectTxPipelineExec()
-	redisMock.ExpectTTL("rate_limit:1.2.3.4:5678").SetVal(15 * time.Minute)
+const (
+	testRemoteAddr = "1.2.3.4:5678"
+)
+
+// setupTestRouterConfig creates a test router configuration with mocked dependencies.
+func setupTestRouterConfig() *Config {
+	logger := logrus.New()
+	redisClient, _ := redismock.NewClientMock()
 
 	apiCfg := &config.APIConfig{
 		RedisClient:         redisClient,
@@ -45,20 +43,20 @@ func setupTestRouterConfig() (*RouterConfig, redismock.ClientMock) {
 		Port:                "8080",
 	}
 
-	handlersCfg := &handlers.HandlersConfig{
+	handlersCfg := &handlers.Config{
 		APIConfig: apiCfg,
 		Logger:    logger,
-		Auth:      &auth.AuthConfig{APIConfig: apiCfg},
+		Auth:      &auth.Config{APIConfig: apiCfg},
 	}
 
-	routerCfg := &RouterConfig{HandlersConfig: handlersCfg}
-	return routerCfg, redisMock
+	routerCfg := &Config{Config: handlersCfg}
+	return routerCfg
 }
 
 // TestSetupRouter_BasicSetup verifies that the router can be created successfully.
 // It ensures the SetupRouter function returns a non-nil router instance.
 func TestSetupRouter_BasicSetup(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 
 	router := routerCfg.SetupRouter(logger)
@@ -70,12 +68,12 @@ func TestSetupRouter_BasicSetup(t *testing.T) {
 // TestSetupRouter_HealthzEndpoint tests that the health check endpoint is properly registered.
 // It verifies the endpoint responds correctly even without full database connections.
 func TestSetupRouter_HealthzEndpoint(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
-	req.RemoteAddr = "1.2.3.4:5678"
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -87,12 +85,12 @@ func TestSetupRouter_HealthzEndpoint(t *testing.T) {
 // TestSetupRouter_ErrorzEndpoint tests the error simulation endpoint functionality.
 // It verifies the endpoint returns the expected 500 status and error response.
 func TestSetupRouter_ErrorzEndpoint(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	req := httptest.NewRequest("GET", "/v1/errorz", nil)
-	req.RemoteAddr = "1.2.3.4:5678"
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -105,11 +103,12 @@ func TestSetupRouter_ErrorzEndpoint(t *testing.T) {
 // TestSetupRouter_SecurityHeaders verifies that security headers are properly set by middleware.
 // It checks for X-Content-Type-Options, X-Frame-Options, and X-XSS-Protection headers.
 func TestSetupRouter_SecurityHeaders(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -123,11 +122,12 @@ func TestSetupRouter_SecurityHeaders(t *testing.T) {
 // TestSetupRouter_RequestID tests that the request ID middleware is properly applied.
 // It verifies the middleware doesn't break request processing even if headers aren't visible.
 func TestSetupRouter_RequestID(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -140,7 +140,7 @@ func TestSetupRouter_RequestID(t *testing.T) {
 // TestSetupRouter_CORSHeaders tests CORS preflight request handling.
 // It verifies that CORS headers are properly set for cross-origin requests.
 func TestSetupRouter_CORSHeaders(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
@@ -148,6 +148,7 @@ func TestSetupRouter_CORSHeaders(t *testing.T) {
 	req := httptest.NewRequest("OPTIONS", "/v1/healthz", nil)
 	req.Header.Set("Origin", "https://example.com")
 	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -168,14 +169,14 @@ func TestSetupRouter_CORSHeaders(t *testing.T) {
 // TestSetupRouter_RateLimiting tests that rate limiting middleware is properly applied.
 // It verifies the middleware doesn't break request flow even with Redis dependencies.
 func TestSetupRouter_RateLimiting(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	// Make a request to test that rate limiting middleware is applied
 	// We don't need to verify Redis expectations since the mock is set up in setupTestRouterConfig
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
-	req.RemoteAddr = "1.2.3.4:5678"
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -190,12 +191,13 @@ func TestSetupRouter_RateLimiting(t *testing.T) {
 // TestSetupRouter_ErrorHandling tests router behavior for non-existent routes.
 // It verifies proper 404 responses or graceful handling of missing dependencies.
 func TestSetupRouter_ErrorHandling(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	// Test non-existent route - this should return 404
 	req := httptest.NewRequest("GET", "/v1/nonexistent", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -213,11 +215,12 @@ func TestSetupRouter_ErrorHandling(t *testing.T) {
 // TestSetupRouter_MiddlewareOrder verifies that middleware is applied in the correct order.
 // It checks that security headers are set regardless of handler success or failure.
 func TestSetupRouter_MiddlewareOrder(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -237,8 +240,8 @@ func TestSetupRouter_MiddlewareOrder(t *testing.T) {
 // It verifies the router works correctly with local file storage configuration.
 func TestSetupRouter_UploadBackendConfiguration(t *testing.T) {
 	// Test with local backend
-	routerCfg, _ := setupTestRouterConfig()
-	routerCfg.HandlersConfig.UploadBackend = "local"
+	routerCfg := setupTestRouterConfig()
+	routerCfg.UploadBackend = "local"
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
@@ -247,6 +250,7 @@ func TestSetupRouter_UploadBackendConfiguration(t *testing.T) {
 
 	// Test a simple endpoint to ensure it works
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -257,12 +261,13 @@ func TestSetupRouter_UploadBackendConfiguration(t *testing.T) {
 // TestSetupRouter_LoggerConfiguration tests that logging middleware is properly configured.
 // It verifies the router works with logging middleware applied.
 func TestSetupRouter_LoggerConfiguration(t *testing.T) {
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	// Test that logging middleware is properly configured
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -295,13 +300,13 @@ func TestSetupRouter_ConfigurationValidation(t *testing.T) {
 		Port:                "8080",
 	}
 
-	handlersCfg := &handlers.HandlersConfig{
+	handlersCfg := &handlers.Config{
 		APIConfig: apiCfg,
 		Logger:    logger,
-		Auth:      &auth.AuthConfig{APIConfig: apiCfg},
+		Auth:      &auth.Config{APIConfig: apiCfg},
 	}
 
-	routerCfg := &RouterConfig{HandlersConfig: handlersCfg}
+	routerCfg := &Config{Config: handlersCfg}
 
 	// This should not panic
 	assert.NotPanics(t, func() {
@@ -335,13 +340,13 @@ func TestSetupRouter_S3UploadBackend(t *testing.T) {
 		Port:                "8080",
 	}
 
-	handlersCfg := &handlers.HandlersConfig{
+	handlersCfg := &handlers.Config{
 		APIConfig: apiCfg,
 		Logger:    logger,
-		Auth:      &auth.AuthConfig{APIConfig: apiCfg},
+		Auth:      &auth.Config{APIConfig: apiCfg},
 	}
 
-	routerCfg := &RouterConfig{HandlersConfig: handlersCfg}
+	routerCfg := &Config{Config: handlersCfg}
 
 	// This should not panic even with S3 backend
 	assert.NotPanics(t, func() {
@@ -351,6 +356,7 @@ func TestSetupRouter_S3UploadBackend(t *testing.T) {
 
 	// Test that the router is functional
 	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router := routerCfg.SetupRouter(logger)
 	router.ServeHTTP(w, req)
@@ -363,12 +369,13 @@ func TestSetupRouter_S3UploadBackend(t *testing.T) {
 // It verifies the static file server endpoint is registered and accessible.
 func TestSetupRouter_StaticFileServer(t *testing.T) {
 	// Test that static file server is properly configured
-	routerCfg, _ := setupTestRouterConfig()
+	routerCfg := setupTestRouterConfig()
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
 	// Test static file server endpoint
 	req := httptest.NewRequest("GET", "/static/test.txt", nil)
+	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

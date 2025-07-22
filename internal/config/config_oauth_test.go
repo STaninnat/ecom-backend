@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+// config_oauth_test.go: Tests for Google OAuth2 configuration helpers and path validation.
 
 // TestIsSafePath tests the IsSafePath function.
 // It verifies that the function correctly identifies safe and unsafe file paths.

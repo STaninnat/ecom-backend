@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+// builder_test.go: Tests for configuration builder logic and provider integration.
 
 type mockProvider struct {
 	values map[string]string
@@ -43,26 +46,31 @@ func (m *mockProvider) GetRequiredString(key string) (string, error) {
 
 // GetInt returns the integer value for the given key from the mock provider.
 // Always returns 0 for testing purposes.
-func (m *mockProvider) GetInt(key string) int { return 0 }
+func (m *mockProvider) GetInt(_ string) int { return 0 }
 
 // GetIntOrDefault returns the integer value for the given key or the default value.
 // Always returns the default value for testing purposes.
-func (m *mockProvider) GetIntOrDefault(key string, def int) int { return def }
+func (m *mockProvider) GetIntOrDefault(_ string, def int) int { return def }
 
 // GetBool returns the boolean value for the given key from the mock provider.
 // Always returns false for testing purposes.
-func (m *mockProvider) GetBool(key string) bool { return false }
+func (m *mockProvider) GetBool(_ string) bool { return false }
 
 // GetBoolOrDefault returns the boolean value for the given key or the default value.
 // Always returns the default value for testing purposes.
-func (m *mockProvider) GetBoolOrDefault(key string, def bool) bool { return def }
+func (m *mockProvider) GetBoolOrDefault(key string, def bool) bool {
+	if v := m.values[key]; v != "" {
+		return v == "true" // Mock provider returns "true" for true, empty for false
+	}
+	return def
+}
 
 // Mock providers for testing service connections
 type mockDatabaseProvider struct{}
 
 // Connect mocks the database connection for testing.
 // Returns nil values to simulate successful connection without actual database.
-func (m *mockDatabaseProvider) Connect(ctx context.Context) (*sql.DB, *database.Queries, error) {
+func (m *mockDatabaseProvider) Connect(_ context.Context) (*sql.DB, *database.Queries, error) {
 	return nil, nil, nil
 }
 
@@ -76,7 +84,7 @@ type mockRedisProvider struct{}
 
 // Connect mocks the Redis connection for testing.
 // Returns nil values to simulate successful connection without actual Redis.
-func (m *mockRedisProvider) Connect(ctx context.Context) (redis.Cmdable, error) {
+func (m *mockRedisProvider) Connect(_ context.Context) (redis.Cmdable, error) {
 	return nil, nil
 }
 
@@ -90,13 +98,13 @@ type mockMongoProvider struct{}
 
 // Connect mocks the MongoDB connection for testing.
 // Returns nil values to simulate successful connection without actual MongoDB.
-func (m *mockMongoProvider) Connect(ctx context.Context) (*mongo.Client, *mongo.Database, error) {
+func (m *mockMongoProvider) Connect(_ context.Context) (*mongo.Client, *mongo.Database, error) {
 	return nil, nil, nil
 }
 
 // Close mocks the MongoDB close operation for testing.
 // Returns nil to simulate successful closure.
-func (m *mockMongoProvider) Close(ctx context.Context) error {
+func (m *mockMongoProvider) Close(_ context.Context) error {
 	return nil
 }
 
@@ -104,7 +112,7 @@ type mockS3Provider struct{}
 
 // CreateClient mocks the S3 client creation for testing.
 // Returns nil values to simulate successful client creation without actual AWS.
-func (m *mockS3Provider) CreateClient(ctx context.Context, region string) (*s3.Client, error) {
+func (m *mockS3Provider) CreateClient(_ context.Context, _ string) (*s3.Client, error) {
 	return nil, nil
 }
 
@@ -112,7 +120,7 @@ type mockOAuthProvider struct{}
 
 // LoadGoogleConfig mocks the OAuth configuration loading for testing.
 // Returns an empty OAuthConfig to simulate successful loading.
-func (m *mockOAuthProvider) LoadGoogleConfig(credsPath string) (*OAuthConfig, error) {
+func (m *mockOAuthProvider) LoadGoogleConfig(_ string) (*OAuthConfig, error) {
 	return &OAuthConfig{}, nil
 }
 
@@ -346,19 +354,175 @@ func TestBuilder_IndividualRequiredStringFailures(t *testing.T) {
 	}
 }
 
-// Mock providers for error testing
+// mockS3ProviderWithError providers for error testing
 type mockS3ProviderWithError struct{}
 
 // CreateClient mocks S3 client creation that returns an error for testing.
 // Returns an error to simulate S3 client creation failure.
-func (m *mockS3ProviderWithError) CreateClient(ctx context.Context, region string) (*s3.Client, error) {
+func (m *mockS3ProviderWithError) CreateClient(_ context.Context, _ string) (*s3.Client, error) {
 	return nil, fmt.Errorf("S3 client creation failed")
 }
 
+// mockOAuthProviderWithError is a mock implementation of an OAuth provider that always returns an error.
 type mockOAuthProviderWithError struct{}
 
 // LoadGoogleConfig mocks OAuth config loading that returns an error for testing.
 // Returns an error to simulate OAuth configuration loading failure.
-func (m *mockOAuthProviderWithError) LoadGoogleConfig(credsPath string) (*OAuthConfig, error) {
+func (m *mockOAuthProviderWithError) LoadGoogleConfig(_ string) (*OAuthConfig, error) {
 	return nil, fmt.Errorf("OAuth config loading failed")
+}
+
+// errorS3Provider is a mock S3 provider that simulates a client creation failure.
+type errorS3Provider struct{}
+
+// CreateClient simulates the failure of creating an S3 client by always returning an error.
+func (e *errorS3Provider) CreateClient(ctx context.Context, region string) (*s3.Client, error) {
+	return nil, errors.New("s3 error")
+}
+
+// TestBuilder_Build_S3ProviderError verifies that the builder returns an error when the S3 client creation fails.
+func TestBuilder_Build_S3ProviderError(t *testing.T) {
+	provider := &mockProvider{values: map[string]string{
+		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+	}}
+	builder := NewConfigBuilder().
+		WithProvider(provider).
+		WithS3(&errorS3Provider{})
+	cfg, err := builder.Build(context.Background())
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+	assert.Contains(t, err.Error(), "failed to create S3 client")
+}
+
+// TestBuilder_connectRedis_NoAddress tests that Redis is not connected when no address is provided.
+func TestBuilder_connectRedis_NoAddress(t *testing.T) {
+	b := &BuilderImpl{
+		provider: &mockProvider{values: map[string]string{
+			"REDIS_ADDR": "",
+		}},
+		redis: nil, // not needed for this test
+	}
+	config := &APIConfig{}
+	err := b.connectRedis(context.Background(), config)
+	assert.NoError(t, err)
+	assert.Nil(t, config.RedisClient)
+}
+
+// errorRedisProvider is a mock Redis provider that simulates a connection error.
+type errorRedisProvider struct{}
+
+// Connect simulates a Redis connection failure by always returning an error.
+func (e *errorRedisProvider) Connect(ctx context.Context) (redis.Cmdable, error) {
+	return nil, errors.New("connection error")
+}
+
+// Close is a no-op close method for errorRedisProvider.
+func (e *errorRedisProvider) Close() error { return nil }
+
+// TestBuilder_connectRedis_Error verifies that an error is returned when Redis connection fails.
+func TestBuilder_connectRedis_Error(t *testing.T) {
+	b := &BuilderImpl{
+		provider: &mockProvider{values: map[string]string{
+			"REDIS_ADDR": "localhost:6379",
+		}},
+		redis: &errorRedisProvider{},
+	}
+	config := &APIConfig{}
+	err := b.connectRedis(context.Background(), config)
+	assert.Error(t, err)
+	assert.Nil(t, config.RedisClient)
+}
+
+// errorMongoProvider is a mock MongoDB provider that simulates a connection failure.
+type errorMongoProvider struct{}
+
+// Connect simulates a MongoDB connection failure by always returning an error.
+func (e *errorMongoProvider) Connect(ctx context.Context) (*mongo.Client, *mongo.Database, error) {
+	return nil, nil, errors.New("mongo connection error")
+}
+
+// Close is a no-op close method for errorMongoProvider.
+func (e *errorMongoProvider) Close(ctx context.Context) error { return nil }
+
+// TestBuilder_connectMongo_Error verifies that an error is returned when MongoDB connection fails.
+func TestBuilder_connectMongo_Error(t *testing.T) {
+	b := &BuilderImpl{
+		provider: &mockProvider{values: map[string]string{}},
+		mongo:    &errorMongoProvider{},
+	}
+	config := &APIConfig{}
+	err := b.connectMongo(context.Background(), config, "mongodb://localhost:27017")
+	assert.Error(t, err)
+	assert.Nil(t, config.MongoClient)
+	assert.Nil(t, config.MongoDB)
+}
+
+// successMongoProvider is a mock MongoDB provider that simulates a successful connection.
+type successMongoProvider struct {
+	client *mongo.Client
+	db     *mongo.Database
+}
+
+// Connect simulates a successful MongoDB connection by returning the preconfigured client and database.
+func (s *successMongoProvider) Connect(ctx context.Context) (*mongo.Client, *mongo.Database, error) {
+	return s.client, s.db, nil
+}
+
+// Close is a no-op close method for successMongoProvider.
+func (s *successMongoProvider) Close(ctx context.Context) error { return nil }
+
+// TestBuilder_connectMongo_Success verifies that the builder correctly connects to MongoDB.
+func TestBuilder_connectMongo_Success(t *testing.T) {
+	client := &mongo.Client{}
+	db := &mongo.Database{}
+	b := &BuilderImpl{
+		provider: &mockProvider{values: map[string]string{}},
+		mongo:    &successMongoProvider{client: client, db: db},
+	}
+	config := &APIConfig{}
+	err := b.connectMongo(context.Background(), config, "mongodb://localhost:27017")
+	assert.NoError(t, err)
+	assert.Equal(t, client, config.MongoClient)
+	assert.Equal(t, db, config.MongoDB)
+}
+
+// errorOAuthProvider is a mock OAuth provider that simulates a failure to load config.
+type errorOAuthProvider struct{}
+
+// LoadGoogleConfig simulates a failure when loading OAuth config.
+func (e *errorOAuthProvider) LoadGoogleConfig(credsPath string) (*OAuthConfig, error) {
+	return nil, errors.New("oauth error")
+}
+
+// TestBuilder_Build_OAuthProviderError verifies that the builder returns an error when loading the OAuth config fails.
+func TestBuilder_Build_OAuthProviderError(t *testing.T) {
+	provider := &mockProvider{values: map[string]string{
+		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+	}}
+	builder := NewConfigBuilder().
+		WithProvider(provider).
+		WithOAuth(&errorOAuthProvider{})
+	cfg, err := builder.Build(context.Background())
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+	assert.Contains(t, err.Error(), "failed to load OAuth config")
+}
+
+// TestBuilder_Build_ValidatorError verifies that the builder returns an error when required environment variables are missing.
+func TestBuilder_Build_ValidatorError(t *testing.T) {
+	provider := &mockProvider{values: map[string]string{
+		// Intentionally omit "PORT" to trigger validator error
+		"JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+	}}
+	builder := NewConfigBuilder().WithProvider(provider)
+	cfg, err := builder.Build(context.Background())
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+	assert.Contains(t, err.Error(), "failed to get PORT")
 }

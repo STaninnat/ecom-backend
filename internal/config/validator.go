@@ -1,3 +1,4 @@
+// Package config provides configuration management, validation, and provider logic for the ecom-backend project.
 package config
 
 import (
@@ -5,19 +6,26 @@ import (
 	"strings"
 )
 
-// ConfigValidatorImpl implements configuration validation logic for APIConfig.
-type ConfigValidatorImpl struct{}
+// validator.go: Configuration validation logic and helpers.
+
+const (
+	uploadBackendLocal = "local"
+	uploadBackendS3    = "s3"
+)
+
+// ValidatorImpl implements the Validator interface for configuration validation.
+type ValidatorImpl struct{}
 
 // NewConfigValidator creates and returns a new ConfigValidatorImpl instance.
 // Ensures all required configuration values are present and valid before the application starts.
-func NewConfigValidator() *ConfigValidatorImpl {
-	return &ConfigValidatorImpl{}
+func NewConfigValidator() *ValidatorImpl {
+	return &ValidatorImpl{}
 }
 
 // Validate performs comprehensive validation of the entire APIConfig.
 // Checks all required fields, validates upload backend configuration, and ensures all necessary service clients are configured.
 // Returns an error if any validation fails, with detailed error messages.
-func (v *ConfigValidatorImpl) Validate(config *APIConfig) error {
+func (v *ValidatorImpl) Validate(config *APIConfig) error {
 	if config == nil {
 		return fmt.Errorf("config cannot be nil")
 	}
@@ -66,17 +74,17 @@ func (v *ConfigValidatorImpl) Validate(config *APIConfig) error {
 	}
 
 	// Validate upload backend
-	if config.UploadBackend != "" && config.UploadBackend != "s3" && config.UploadBackend != "local" {
+	if config.UploadBackend != "" && config.UploadBackend != uploadBackendS3 && config.UploadBackend != uploadBackendLocal {
 		errors = append(errors, "UPLOAD_BACKEND must be either 's3' or 'local'")
 	}
 
 	// Validate upload path for local backend
-	if config.UploadBackend == "local" && config.UploadPath == "" {
+	if config.UploadBackend == uploadBackendLocal && config.UploadPath == "" {
 		errors = append(errors, "UPLOAD_PATH is required when using local upload backend")
 	}
 
 	// Validate S3 client when using S3 backend
-	if config.UploadBackend == "s3" && config.S3Client == nil {
+	if config.UploadBackend == uploadBackendS3 && config.S3Client == nil {
 		errors = append(errors, "S3_CLIENT is required when using S3 upload backend")
 	}
 
@@ -105,7 +113,7 @@ func (v *ConfigValidatorImpl) Validate(config *APIConfig) error {
 // ValidatePartial performs validation on specific configuration fields without requiring all fields.
 // Useful for testing individual components or when only certain configuration sections need to be validated.
 // Provides more granular error reporting for specific validation failures.
-func (v *ConfigValidatorImpl) ValidatePartial(config *APIConfig) error {
+func (v *ValidatorImpl) ValidatePartial(config *APIConfig) error {
 	if config == nil {
 		return fmt.Errorf("config cannot be nil")
 	}
@@ -154,7 +162,7 @@ func (v *ConfigValidatorImpl) ValidatePartial(config *APIConfig) error {
 	}
 
 	// Validate upload backend
-	if config.UploadBackend != "" && config.UploadBackend != "s3" && config.UploadBackend != "local" {
+	if config.UploadBackend != "" && config.UploadBackend != uploadBackendS3 && config.UploadBackend != uploadBackendLocal {
 		errors = append(errors, "UPLOAD_BACKEND must be either 's3' or 'local'")
 	}
 
