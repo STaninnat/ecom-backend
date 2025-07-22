@@ -14,6 +14,10 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	testJWTSecret = "supersecretkeysupersecretkey123456"
+)
+
 func TestIsValidUserNameFormat(t *testing.T) {
 	cases := []struct {
 		in   string
@@ -66,8 +70,8 @@ func makeJWT(secret, issuer, audience string, notBefore, expires time.Time) (str
 }
 
 func TestValidateAccessToken(t *testing.T) {
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
-	secret := "supersecretkeysupersecretkey123456"
+	cfg := &Config{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
+	secret := testJWTSecret
 	now := time.Now().UTC()
 	validToken, _ := makeJWT(secret, "issuer", "aud", now.Add(-time.Minute), now.Add(time.Hour))
 	expiredToken, _ := makeJWT(secret, "issuer", "aud", now.Add(-2*time.Hour), now.Add(-time.Hour))
@@ -109,7 +113,7 @@ func TestValidateAccessToken(t *testing.T) {
 
 func TestValidateRefreshToken(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
+	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
 	userID := uuid.New().String()
 	refreshToken, _ := cfg.GenerateRefreshToken(userID)
 
@@ -136,13 +140,13 @@ func TestValidateRefreshToken(t *testing.T) {
 	})
 }
 
-func TestValidateCookieRefreshTokenData(t *testing.T) {
+func TestValidateCookieRefreshTokenData(_ *testing.T) {
 	// Placeholder for future Redis-mocking tests using redismock
 }
 
 func TestValidateAccessToken_Errors(t *testing.T) {
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
-	secret := "supersecretkeysupersecretkey123456"
+	cfg := &Config{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
+	secret := testJWTSecret
 	// Invalid JWT format
 	_, err := cfg.ValidateAccessToken("not.a.jwt", secret)
 	if err == nil {
@@ -157,8 +161,8 @@ func TestValidateAccessToken_Errors(t *testing.T) {
 }
 
 func TestValidateRefreshToken_InvalidUserID(t *testing.T) {
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234"}}
-	badToken := "notauuid:someuuid:signature"
+	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234"}}
+	badToken := "invalid:test:token" // nolint:gosec // This is a test token, not real credentials
 	_, err := cfg.ValidateRefreshToken(badToken)
 	if err == nil || !strings.Contains(err.Error(), "invalid userID in refresh token") {
 		t.Error("expected error for invalid userID in refresh token")
@@ -167,7 +171,7 @@ func TestValidateRefreshToken_InvalidUserID(t *testing.T) {
 
 func TestValidateCookieRefreshTokenData_ErrorsAndHappyPath(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
+	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
 	w := &dummyResponseWriter{}
 
 	// Missing cookie
@@ -229,13 +233,13 @@ func TestValidateCookieRefreshTokenData_ErrorsAndHappyPath(t *testing.T) {
 
 type dummyResponseWriter struct{}
 
-func (d *dummyResponseWriter) Header() http.Header        { return http.Header{} }
-func (d *dummyResponseWriter) Write([]byte) (int, error)  { return 0, nil }
-func (d *dummyResponseWriter) WriteHeader(statusCode int) {}
+func (d *dummyResponseWriter) Header() http.Header       { return http.Header{} }
+func (d *dummyResponseWriter) Write([]byte) (int, error) { return 0, nil }
+func (d *dummyResponseWriter) WriteHeader(_ int)         {}
 
 func TestGetUserIDFromRefreshToken_ErrorsAndHappyPath(t *testing.T) {
 	db, mock := redismock.NewClientMock()
-	cfg := &AuthConfig{APIConfig: &config.APIConfig{RedisClient: db}}
+	cfg := &Config{APIConfig: &config.APIConfig{RedisClient: db}}
 
 	// Redis Keys error
 	mock.ExpectKeys("refresh_token:*").SetErr(fmt.Errorf("keys error"))

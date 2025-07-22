@@ -6,6 +6,10 @@ import (
 	"io"
 )
 
+const (
+	defaultStateValue = "default_state"
+)
+
 // RandomReader is the source of randomness for session state generation. It can be overridden for testing.
 var RandomReader io.Reader = rand.Reader
 
@@ -16,7 +20,7 @@ func GenerateState() string {
 
 	if _, err := io.ReadFull(RandomReader, b); err != nil {
 		// Only log unexpected errors if needed; otherwise, just return a default value.
-		return "default_state"
+		return defaultStateValue
 	}
 
 	return base64.URLEncoding.EncodeToString(b)

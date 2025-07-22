@@ -1,3 +1,4 @@
+// Package auth provides authentication logic and configuration for the ecom-backend application.
 package auth
 
 import (
@@ -7,8 +8,8 @@ import (
 
 // NOTE: This file only contains type definitions and imports. No performance improvements needed.
 
-// AuthConfig wraps the APIConfig for authentication-related configuration.
-type AuthConfig struct {
+// Config wraps the APIConfig for authentication-related configuration.
+type Config struct {
 	*config.APIConfig
 }
 

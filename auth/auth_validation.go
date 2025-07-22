@@ -36,10 +36,10 @@ func IsValidEmailFormat(email string) bool {
 }
 
 // ValidateAccessToken validates a JWT access token string using the provided secret and returns the claims if valid.
-func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*Claims, error) {
+func (cfg *Config) ValidateAccessToken(tokenString string, secret string) (*Claims, error) {
 	claims := &Claims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(_ *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
@@ -58,11 +58,11 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 	}
 
 	timeNow := time.Now().UTC()
-	if claims.ExpiresAt.Time.Before(timeNow) {
+	if claims.ExpiresAt.Before(timeNow) {
 		return nil, fmt.Errorf("token expired")
 	}
 
-	if claims.NotBefore.Time.After(timeNow) {
+	if claims.NotBefore.After(timeNow) {
 		return nil, fmt.Errorf("token is not valid yet")
 	}
 
@@ -70,7 +70,7 @@ func (cfg *AuthConfig) ValidateAccessToken(tokenString string, secret string) (*
 }
 
 // ValidateRefreshToken validates the format and signature of a refresh token and returns the associated user UUID.
-func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, error) {
+func (cfg *Config) ValidateRefreshToken(refreshToken string) (uuid.UUID, error) {
 	parts := strings.Split(refreshToken, ":")
 	if len(parts) != 3 {
 		userID, err := cfg.GetUserIDFromRefreshToken(refreshToken)
@@ -99,7 +99,7 @@ func (cfg *AuthConfig) ValidateRefreshToken(refreshToken string) (uuid.UUID, err
 }
 
 // ValidateCookieRefreshTokenData validates the refresh token stored in a cookie and returns the user UUID and token data if valid.
-func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *http.Request) (uuid.UUID, *RefreshTokenData, error) {
+func (cfg *Config) ValidateCookieRefreshTokenData(_ http.ResponseWriter, r *http.Request) (uuid.UUID, *RefreshTokenData, error) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		return uuid.Nil, nil, err
@@ -128,12 +128,12 @@ func (cfg *AuthConfig) ValidateCookieRefreshTokenData(w http.ResponseWriter, r *
 	return userID, &storedData, nil
 }
 
-// WARNING: GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
+// GetUserIDFromRefreshToken uses Redis KEYS, which is slow for large datasets. Avoid in hot paths.
 // GetUserIDFromRefreshToken retrieves the user UUID associated with a given refresh token by scanning Redis keys. Avoid in hot paths.
-func (cfg *AuthConfig) GetUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
+func (cfg *Config) GetUserIDFromRefreshToken(refreshToken string) (uuid.UUID, error) {
 	keys, err := cfg.RedisClient.Keys(context.Background(), "refresh_token:*").Result()
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error fetching keys from Redis: %v", err)
+		return uuid.Nil, fmt.Errorf("error fetching keys from Redis: %w", err)
 	}
 
 	for _, key := range keys {
