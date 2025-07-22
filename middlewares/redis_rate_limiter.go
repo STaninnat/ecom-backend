@@ -35,7 +35,7 @@ func RedisRateLimiter(redisClient redis.Cmdable, limit int, window time.Duration
 			// Execute pipeline
 			_, err := pipe.Exec(ctx)
 			if err != nil {
-				http.Error(w, "Rate limit error", http.StatusInternalServerError)
+				http.Error(w, `{"error":"Internal server error","code":"INTERNAL_ERROR","message":"An unexpected error occurred. Please try again later."}`, http.StatusInternalServerError)
 				return
 			}
 
