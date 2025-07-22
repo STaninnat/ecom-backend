@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -16,6 +17,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+// auth_validation.go: Validation logic for tokens, usernames, emails, and refresh sessions.
 
 var (
 	userNameRegex = regexp.MustCompile(`^[a-zA-Z0-9]+([-._]?[a-zA-Z0-9]+)*$`)

@@ -1,9 +1,13 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
 	"testing"
 )
 
+// password_test.go: Tests for password hashing and verification using HashPassword and CheckPasswordHash.
+
+// TestHashPassword verifies password hashing behavior, including error on short input.
 func TestHashPassword(t *testing.T) {
 	t.Run("valid password", func(t *testing.T) {
 		hash, err := HashPassword("longenoughpassword")
@@ -23,6 +27,8 @@ func TestHashPassword(t *testing.T) {
 	})
 }
 
+// TestCheckPasswordHash verifies that password hashes can be correctly validated,
+// including failure cases like wrong password or invalid hash format.
 func TestCheckPasswordHash(t *testing.T) {
 	password := "longenoughpassword"
 	hash, err := HashPassword(password)

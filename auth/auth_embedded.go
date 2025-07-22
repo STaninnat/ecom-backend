@@ -1,4 +1,4 @@
-// Package auth provides authentication logic and configuration for the ecom-backend application.
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -6,7 +6,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// NOTE: This file only contains type definitions and imports. No performance improvements needed.
+// auth_embedded.go: Embedded authentication configuration and helpers.
 
 // Config wraps the APIConfig for authentication-related configuration.
 type Config struct {

@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -13,12 +14,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// token_manager_test.go: Tests for token generation, storage in Redis, and config validation.
+
 const (
 	shortSecret = "short"
 )
 
 // Use the mockRedisClient from auth_validation_test.go for Redis mocking in tests.
 
+// TestGenerateAccessToken verifies access token generation with valid, expired, short secret, and nil config cases.
 func TestGenerateAccessToken(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", Issuer: "issuer", Audience: "aud"}}
 	expires := time.Now().Add(time.Hour)
@@ -48,6 +52,7 @@ func TestGenerateAccessToken(t *testing.T) {
 	})
 }
 
+// TestGenerateRefreshToken verifies refresh token generation with valid, short secret, and nil config cases.
 func TestGenerateRefreshToken(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234"}}
 	t.Run("valid", func(t *testing.T) {
@@ -70,6 +75,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 	})
 }
 
+// TestGenerateTokens verifies generation of both access and refresh tokens and error cases with short secrets and nil config.
 func TestGenerateTokens(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	access, refresh, err := cfg.GenerateTokens("user1", time.Now().Add(time.Hour))
@@ -96,6 +102,7 @@ func TestGenerateTokens(t *testing.T) {
 	}
 }
 
+// TestStoreRefreshTokenInRedis tests storing refresh tokens in Redis with various scenarios including errors.
 func TestStoreRefreshTokenInRedis(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RedisClient: db}}
@@ -146,6 +153,7 @@ func TestStoreRefreshTokenInRedis(t *testing.T) {
 	}
 }
 
+// TestStoreRefreshTokenInRedis_GoogleProvider tests storing refresh tokens with Google provider in Redis.
 func TestStoreRefreshTokenInRedis_GoogleProvider(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RedisClient: db}}
@@ -162,6 +170,7 @@ func TestStoreRefreshTokenInRedis_GoogleProvider(t *testing.T) {
 	}
 }
 
+// TestParseRefreshTokenData tests parsing of refresh token data JSON with valid and error cases.
 func TestParseRefreshTokenData(t *testing.T) {
 	data := RefreshTokenData{Token: "tok", Provider: "local"}
 	b, _ := json.Marshal(data)
@@ -192,6 +201,7 @@ func TestParseRefreshTokenData(t *testing.T) {
 	}
 }
 
+// TestValidateConfig tests secret validation logic with empty, short, and valid secrets.
 func TestValidateConfig(t *testing.T) {
 	err := ValidateConfig("", "test")
 	if err == nil {
@@ -207,6 +217,7 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+// TestGetUserIDByRefreshToken tests retrieval of userID by refresh token from Redis with success and error scenarios.
 func TestGetUserIDByRefreshToken(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RedisClient: db}}

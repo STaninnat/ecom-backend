@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -6,6 +7,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// password.go: Password hashing and comparison using bcrypt.
 
 // HashPassword hashes the given password using bcrypt and returns the resulting hash string.
 // Returns an error if the password is too short or hashing fails.

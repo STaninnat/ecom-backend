@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -5,6 +6,8 @@ import (
 	"encoding/base64"
 	"io"
 )
+
+// session.go: Session state generation and random state helpers.
 
 const (
 	defaultStateValue = "default_state"

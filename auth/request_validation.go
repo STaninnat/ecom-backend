@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -8,6 +9,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 )
+
+// request_validation.go: Request decoding and struct validation helpers.
 
 var validate = validator.New()
 

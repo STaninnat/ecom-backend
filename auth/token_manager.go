@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+// token_manager.go: JWT access/refresh token generation, storage, and validation.
 
 // RedisRefreshTokenPrefix is the prefix used for refresh token keys in Redis.
 const RedisRefreshTokenPrefix = "refresh_token:"

@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -6,6 +7,9 @@ import (
 	"time"
 )
 
+// cookies_test.go: Tests for setting access and refresh tokens as secure HTTP cookies.
+
+// TestSetTokensAsCookies verifies that SetTokensAsCookies sets both tokens with correct values and attributes.
 func TestSetTokensAsCookies(t *testing.T) {
 	w := httptest.NewRecorder()
 	accessToken := "access123"
@@ -59,6 +63,7 @@ func TestSetTokensAsCookies(t *testing.T) {
 	}
 }
 
+// TestSetTokensAsCookies_EmptyAndZero verifies behavior when tokens and expirations are empty or zero.
 func TestSetTokensAsCookies_EmptyAndZero(t *testing.T) {
 	w := httptest.NewRecorder()
 	SetTokensAsCookies(w, "", "", time.Time{}, time.Time{})

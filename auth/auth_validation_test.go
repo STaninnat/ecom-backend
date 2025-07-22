@@ -1,3 +1,4 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
@@ -14,10 +15,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// auth_validation_test.go: Tests for authentication-related utilities, including token validation, format checks, and Redis-backed refresh token handling.
+
 const (
 	testJWTSecret = "supersecretkeysupersecretkey123456"
 )
 
+// TestIsValidUserNameFormat tests the validation logic for allowed username formats.
 func TestIsValidUserNameFormat(t *testing.T) {
 	cases := []struct {
 		in   string
@@ -36,6 +40,7 @@ func TestIsValidUserNameFormat(t *testing.T) {
 	}
 }
 
+// TestIsValidEmailFormat tests the validation logic for email format correctness.
 func TestIsValidEmailFormat(t *testing.T) {
 	cases := []struct {
 		in   string
@@ -54,6 +59,7 @@ func TestIsValidEmailFormat(t *testing.T) {
 	}
 }
 
+// makeJWT generates a signed JWT token with given claims and timing constraints.
 func makeJWT(secret, issuer, audience string, notBefore, expires time.Time) (string, error) {
 	claims := Claims{
 		UserID: "user1",
@@ -69,6 +75,7 @@ func makeJWT(secret, issuer, audience string, notBefore, expires time.Time) (str
 	return token.SignedString([]byte(secret))
 }
 
+// TestValidateAccessToken tests validation of access tokens under various conditions.
 func TestValidateAccessToken(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
 	secret := testJWTSecret
@@ -111,6 +118,7 @@ func TestValidateAccessToken(t *testing.T) {
 	})
 }
 
+// TestValidateRefreshToken tests refresh token validation including format and signature.
 func TestValidateRefreshToken(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
@@ -140,10 +148,12 @@ func TestValidateRefreshToken(t *testing.T) {
 	})
 }
 
+// TestValidateCookieRefreshTokenData is a placeholder for cookie+Redis-based refresh token validation tests.
 func TestValidateCookieRefreshTokenData(_ *testing.T) {
 	// Placeholder for future Redis-mocking tests using redismock
 }
 
+// TestValidateAccessToken_Errors tests edge cases for token parsing and invalid secrets.
 func TestValidateAccessToken_Errors(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{Issuer: "issuer", Audience: "aud"}}
 	secret := testJWTSecret
@@ -160,6 +170,7 @@ func TestValidateAccessToken_Errors(t *testing.T) {
 	}
 }
 
+// TestValidateRefreshToken_InvalidUserID ensures invalid userID formats are rejected.
 func TestValidateRefreshToken_InvalidUserID(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234"}}
 	badToken := "invalid:test:token" // nolint:gosec // This is a test token, not real credentials
@@ -169,6 +180,7 @@ func TestValidateRefreshToken_InvalidUserID(t *testing.T) {
 	}
 }
 
+// TestValidateCookieRefreshTokenData_ErrorsAndHappyPath tests cookie-based refresh token flow with Redis.
 func TestValidateCookieRefreshTokenData_ErrorsAndHappyPath(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
@@ -231,12 +243,14 @@ func TestValidateCookieRefreshTokenData_ErrorsAndHappyPath(t *testing.T) {
 	}
 }
 
+// dummyResponseWriter is a stub for http.ResponseWriter used in tests.
 type dummyResponseWriter struct{}
 
 func (d *dummyResponseWriter) Header() http.Header       { return http.Header{} }
 func (d *dummyResponseWriter) Write([]byte) (int, error) { return 0, nil }
 func (d *dummyResponseWriter) WriteHeader(_ int)         {}
 
+// TestGetUserIDFromRefreshToken_ErrorsAndHappyPath tests mapping refresh tokens back to user IDs via Redis.
 func TestGetUserIDFromRefreshToken_ErrorsAndHappyPath(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RedisClient: db}}
