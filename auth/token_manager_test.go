@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/utils"
 	redismock "github.com/go-redis/redismock/v9"
-	"github.com/google/uuid"
 )
 
 // token_manager_test.go: Tests for token generation, storage in Redis, and config validation.
@@ -56,13 +56,13 @@ func TestGenerateAccessToken(t *testing.T) {
 func TestGenerateRefreshToken(t *testing.T) {
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234"}}
 	t.Run("valid", func(t *testing.T) {
-		tok, err := cfg.GenerateRefreshToken(uuid.New().String())
+		tok, err := cfg.GenerateRefreshToken(utils.NewUUIDString())
 		if err != nil || tok == "" {
 			t.Errorf("expected token, got err: %v", err)
 		}
 	})
 	cfg.RefreshSecret = shortSecret
-	_, err := cfg.GenerateRefreshToken(uuid.New().String())
+	_, err := cfg.GenerateRefreshToken(utils.NewUUIDString())
 	if err == nil {
 		t.Error("expected error for short secret")
 	}

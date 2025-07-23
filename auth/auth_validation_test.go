@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/utils"
 	redismock "github.com/go-redis/redismock/v9"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 // auth_validation_test.go: Tests for authentication-related utilities, including token validation, format checks, and Redis-backed refresh token handling.
@@ -122,7 +122,7 @@ func TestValidateAccessToken(t *testing.T) {
 func TestValidateRefreshToken(t *testing.T) {
 	db, mock := redismock.NewClientMock()
 	cfg := &Config{APIConfig: &config.APIConfig{RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", RedisClient: db}}
-	userID := uuid.New().String()
+	userID := utils.NewUUIDString()
 	refreshToken, _ := cfg.GenerateRefreshToken(userID)
 
 	t.Run("valid", func(t *testing.T) {
@@ -203,7 +203,7 @@ func TestValidateCookieRefreshTokenData_ErrorsAndHappyPath(t *testing.T) {
 	}
 
 	// Redis Get error
-	userID := uuid.New().String()
+	userID := utils.NewUUIDString()
 	refreshToken, _ := cfg.GenerateRefreshToken(userID)
 	r3, _ := http.NewRequest("GET", "/", nil)
 	r3.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
@@ -296,7 +296,7 @@ func TestGetUserIDFromRefreshToken_ErrorsAndHappyPath(t *testing.T) {
 	}
 
 	// Happy path (provider == "google")
-	uid := uuid.New().String()
+	uid := utils.NewUUIDString()
 	stored, _ = json.Marshal(RefreshTokenData{Token: "token", Provider: "google"})
 	mock.ExpectKeys("refresh_token:*").SetVal([]string{"refresh_token:" + uid})
 	mock.ExpectGet("refresh_token:" + uid).SetVal(string(stored))
