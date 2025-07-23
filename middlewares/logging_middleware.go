@@ -41,7 +41,7 @@ func LoggingMiddleware(logger *logrus.Logger, includePaths, excludePaths map[str
 				return
 			}
 
-			start := time.Now()
+			start := time.Now().UTC()
 			sw := &statusResponseWriter{ResponseWriter: w, status: http.StatusOK}
 
 			next.ServeHTTP(sw, r)

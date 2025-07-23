@@ -28,7 +28,7 @@ func RateLimiter(config RateLimiterConfig) func(http.Handler) http.Handler {
 			ip := r.RemoteAddr // Note: For production, extract real client IP from headers if behind a proxy.
 			mu.Lock()
 			data, exists := clients[ip]
-			now := time.Now()
+			now := time.Now().UTC()
 			if !exists || now.After(data.Expires) {
 				clients[ip] = &clientData{Requests: 1, Expires: now.Add(config.Window)}
 				mu.Unlock()
