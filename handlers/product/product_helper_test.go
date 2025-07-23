@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/mock"
 )
+
+// product_helper_test.go: Provides testify-based mocks for ProductService, Logger, and database queries to support unit testing without real dependencies.
 
 // MockProductService is a testify-based mock implementation of the ProductService interface.
 // It allows tests to set up expected method calls and return values for testing handlers without a real service.

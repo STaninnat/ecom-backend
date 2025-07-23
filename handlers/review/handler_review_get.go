@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_review_get.go: Handlers and helpers for fetching reviews with support for pagination, filtering, sorting, and error handling.
 
 // parsePagination extracts and validates pagination parameters from the HTTP request query string.
 // Parses the 'page' and 'pageSize' query parameters, providing default values (page=1, pageSize=10)

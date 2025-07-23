@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -13,8 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// order_service_test.go: Tests for the OrderService implementation, focusing on order creation logic and error handling.
+
 // TestOrderServiceInterface ensures the OrderService interface is properly defined and implemented.
-func TestOrderServiceInterface(t *testing.T) {
+func TestOrderServiceInterface(_ *testing.T) {
 	var _ OrderService = (*orderServiceImpl)(nil)
 }
 
@@ -28,7 +31,7 @@ func TestNewOrderService(t *testing.T) {
 	assert.NotNil(t, service)
 
 	// Test that the service implements the interface
-	var _ OrderService = service
+	var _ = service
 }
 
 // TestCreateOrder_Success tests successful order creation.
@@ -56,7 +59,8 @@ func TestCreateOrder_Success(t *testing.T) {
 	// Expect an error due to transaction issues with sqlmock
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -77,7 +81,8 @@ func TestCreateOrder_EmptyItems(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 	assert.Equal(t, "Order must contain at least one item", appErr.Message)
@@ -101,7 +106,8 @@ func TestCreateOrder_InvalidQuantity(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 	assert.Equal(t, "Quantity must be greater than 0", appErr.Message)
@@ -125,7 +131,8 @@ func TestCreateOrder_NegativePrice(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 	assert.Equal(t, "Price cannot be negative", appErr.Message)
@@ -149,7 +156,8 @@ func TestCreateOrder_QuantityOverflow(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -175,7 +183,8 @@ func TestCreateOrder_TransactionError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -203,7 +212,8 @@ func TestCreateOrder_CreateOrderError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_error", appErr.Code)
 }
@@ -232,7 +242,8 @@ func TestCreateOrder_CommitError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_error", appErr.Code)
 }
@@ -260,7 +271,8 @@ func TestCreateOrder_CreateOrderItemError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_error", appErr.Code)
 }
@@ -280,7 +292,8 @@ func TestCreateOrder_NilDBConnection(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 	assert.Equal(t, "DB connection is nil", appErr.Message)
@@ -307,7 +320,8 @@ func TestCreateOrder_TransactionBeginError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -341,7 +355,8 @@ func TestCreateOrder_WithAllOptionalFields(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	// The error should be related to transaction issues, not validation
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Contains(t, []string{"transaction_error", "create_order_error"}, appErr.Code)
 }
@@ -388,7 +403,8 @@ func TestGetAllOrders_DatabaseError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, orders)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 }
@@ -444,7 +460,8 @@ func TestGetUserOrders_DatabaseError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, orders)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Failed to get orders", appErr.Message)
@@ -477,7 +494,8 @@ func TestGetUserOrders_OrderItemsError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, orders)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Failed to get order items", appErr.Message)
@@ -492,7 +510,8 @@ func TestGetUserOrders_NilDatabase(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, orders)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Database not initialized", appErr.Message)
@@ -560,7 +579,8 @@ func TestGetOrderByID_Unauthorized(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, order)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "unauthorized", appErr.Code)
 }
@@ -628,7 +648,8 @@ func TestGetOrderByID_OrderItemsError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, order)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Failed to fetch order items", appErr.Message)
@@ -643,7 +664,8 @@ func TestGetOrderByID_NilDatabase(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, order)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Database not initialized", appErr.Message)
@@ -676,7 +698,8 @@ func TestUpdateOrderStatus_InvalidStatus(t *testing.T) {
 	err := service.UpdateOrderStatus(context.Background(), "order123", "invalid_status")
 
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_status", appErr.Code)
 	assert.Equal(t, "Invalid order status", appErr.Message)
@@ -697,7 +720,8 @@ func TestUpdateOrderStatus_CommitError(t *testing.T) {
 	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
 
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "commit_error", appErr.Code)
 }
@@ -709,7 +733,8 @@ func TestUpdateOrderStatus_NilDBConnection(t *testing.T) {
 	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
 
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 	assert.Equal(t, "DB connection is nil", appErr.Message)
@@ -747,7 +772,8 @@ func TestDeleteOrder_CommitError(t *testing.T) {
 	err := service.DeleteOrder(context.Background(), "order123")
 
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "commit_error", appErr.Code)
 }
@@ -759,7 +785,8 @@ func TestDeleteOrder_NilDBConnection(t *testing.T) {
 	err := service.DeleteOrder(context.Background(), "order123")
 
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 	assert.Equal(t, "DB connection is nil", appErr.Message)
@@ -780,7 +807,8 @@ func TestOrderService_NilDependencies(t *testing.T) {
 	result, err := service.CreateOrder(context.Background(), user, params)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 
@@ -788,7 +816,8 @@ func TestOrderService_NilDependencies(t *testing.T) {
 	orders, err := service.GetAllOrders(context.Background())
 	assert.Error(t, err)
 	assert.Nil(t, orders)
-	appErr, ok = err.(*handlers.AppError)
+	appErr = &handlers.AppError{}
+	ok = errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 }
@@ -836,7 +865,8 @@ func TestGetOrderItemsByOrderID_DatabaseError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, items)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Failed to fetch order items", appErr.Message)
@@ -850,7 +880,8 @@ func TestGetOrderItemsByOrderID_NilDatabase(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, items)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "database_error", appErr.Code)
 	assert.Equal(t, "Database not initialized", appErr.Message)

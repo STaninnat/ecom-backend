@@ -1,19 +1,21 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
 )
 
-// --- Interfaces for DB and Transaction ---
-// CategoryDBQueries defines the interface for category-related database operations.
+// category_service.go: Defines category DB query interfaces, adapters, and business logic service with transaction handling.
+
+// CategoryDBQueries defines the interface for category database queries and transactions.
 type CategoryDBQueries interface {
 	WithTx(tx CategoryDBTx) CategoryDBQueries
 	CreateCategory(ctx context.Context, params database.CreateCategoryParams) error
@@ -33,28 +35,36 @@ type CategoryDBTx interface {
 	Rollback() error
 }
 
-// --- Adapters for sqlc-generated types ---
-// CategoryDBQueriesAdapter adapts sqlc-generated Queries to the CategoryDBQueries interface.
+// CategoryDBQueriesAdapter adapts sqlc-generated types for category database queries.
 type CategoryDBQueriesAdapter struct {
 	*database.Queries
 }
 
+// WithTx returns a new CategoryDBQueries that uses the provided transaction.
 func (a *CategoryDBQueriesAdapter) WithTx(tx CategoryDBTx) CategoryDBQueries {
+	if tx == nil {
+		return nil
+	}
+
 	return &CategoryDBQueriesAdapter{a.Queries.WithTx(tx.(*sql.Tx))}
 }
 
+// CreateCategory creates a new category in the database.
 func (a *CategoryDBQueriesAdapter) CreateCategory(ctx context.Context, params database.CreateCategoryParams) error {
 	return a.Queries.CreateCategory(ctx, params)
 }
 
+// UpdateCategories updates an existing category in the database.
 func (a *CategoryDBQueriesAdapter) UpdateCategories(ctx context.Context, params database.UpdateCategoriesParams) error {
 	return a.Queries.UpdateCategories(ctx, params)
 }
 
+// DeleteCategory deletes a category from the database by its ID.
 func (a *CategoryDBQueriesAdapter) DeleteCategory(ctx context.Context, id string) error {
 	return a.Queries.DeleteCategory(ctx, id)
 }
 
+// GetAllCategories retrieves all categories from the database.
 func (a *CategoryDBQueriesAdapter) GetAllCategories(ctx context.Context) ([]database.Category, error) {
 	return a.Queries.GetAllCategories(ctx)
 }
@@ -64,6 +74,7 @@ type CategoryDBConnAdapter struct {
 	*sql.DB
 }
 
+// BeginTx begins a new database transaction.
 func (a *CategoryDBConnAdapter) BeginTx(ctx context.Context, opts *sql.TxOptions) (CategoryDBTx, error) {
 	tx, err := a.DB.BeginTx(ctx, opts)
 	return tx, err
@@ -135,14 +146,20 @@ func (s *categoryServiceImpl) CreateCategory(ctx context.Context, params Categor
 		return "", &handlers.AppError{Code: "invalid_request", Message: "Category description too long (max 500 characters)"}
 	}
 
-	id := uuid.New().String()
+	id := utils.NewUUIDString()
 	timeNow := time.Now().UTC()
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return "", &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if tx != nil {
+			if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+				fmt.Printf("failed to rollback transaction: %v\n", err)
+			}
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -187,7 +204,13 @@ func (s *categoryServiceImpl) UpdateCategory(ctx context.Context, params Categor
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if tx != nil {
+			if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+				fmt.Printf("failed to rollback transaction: %v\n", err)
+			}
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -222,7 +245,13 @@ func (s *categoryServiceImpl) DeleteCategory(ctx context.Context, categoryID str
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if tx != nil {
+			if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+				fmt.Printf("failed to rollback transaction: %v\n", err)
+			}
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 

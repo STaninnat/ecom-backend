@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_category_update.go: Provides HTTP handler for updating categories.
 
 // HandlerUpdateCategory handles HTTP PUT requests to update a category.
 // Parses the request body for category parameters, validates them, and delegates update to the category service.

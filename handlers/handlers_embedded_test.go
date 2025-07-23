@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )
+
+// handlers_embedded_test.go: Tests for handler configuration, initialization, validation, and related data structures.
 
 // TestNewHandlerConfig tests the NewHandlerConfig function for proper initialization.
 // It checks that all fields are set as expected and not nil.
@@ -33,7 +36,7 @@ func TestNewHandlerConfig(t *testing.T) {
 		},
 	}
 
-	customTokenSource := func(ctx context.Context, refreshToken string) oauth2.TokenSource {
+	customTokenSource := func(_ context.Context, _ string) oauth2.TokenSource {
 		return nil
 	}
 
@@ -63,29 +66,29 @@ func TestNewHandlerConfig(t *testing.T) {
 	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
-// TestHandlersConfig_ValidateConfig tests the ValidateConfig method of HandlersConfig.
+// TestHandlersConfig_ValidateConfig tests the ValidateConfig method of Config.
 // It checks that the method returns errors for missing required fields and passes for valid configs.
 func TestHandlersConfig_ValidateConfig(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *HandlersConfig
+		config      *Config
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid config",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
-				Auth:      &auth.AuthConfig{},
+				Auth:      &auth.Config{},
 				APIConfig: &config.APIConfig{},
 			},
 			expectError: false,
 		},
 		{
 			name: "nil logger",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    nil,
-				Auth:      &auth.AuthConfig{},
+				Auth:      &auth.Config{},
 				APIConfig: &config.APIConfig{},
 			},
 			expectError: true,
@@ -93,7 +96,7 @@ func TestHandlersConfig_ValidateConfig(t *testing.T) {
 		},
 		{
 			name: "nil auth",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
 				Auth:      nil,
 				APIConfig: &config.APIConfig{},
@@ -103,9 +106,9 @@ func TestHandlersConfig_ValidateConfig(t *testing.T) {
 		},
 		{
 			name: "nil API config",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
-				Auth:      &auth.AuthConfig{},
+				Auth:      &auth.Config{},
 				APIConfig: nil,
 			},
 			expectError: true,
@@ -258,7 +261,7 @@ func TestNewHandlerConfig_EdgeCases(t *testing.T) {
 			issuer:                 "",
 			audience:               "",
 			oauth:                  &OAuthConfig{},
-			customTokenSource:      func(ctx context.Context, refreshToken string) oauth2.TokenSource { return nil },
+			customTokenSource:      func(_ context.Context, _ string) oauth2.TokenSource { return nil },
 			expectNil:              false,
 		},
 		{
@@ -286,7 +289,7 @@ func TestNewHandlerConfig_EdgeCases(t *testing.T) {
 			issuer:                 "issuer",
 			audience:               "audience",
 			oauth:                  nil,
-			customTokenSource:      func(ctx context.Context, refreshToken string) oauth2.TokenSource { return nil },
+			customTokenSource:      func(_ context.Context, _ string) oauth2.TokenSource { return nil },
 			expectNil:              false,
 		},
 	}
@@ -330,7 +333,7 @@ func TestNewHandlerConfig_EdgeCases(t *testing.T) {
 func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *HandlersConfig
+		config      *Config
 		expectError bool
 		errorMsg    string
 	}{
@@ -342,7 +345,7 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "all fields nil",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    nil,
 				Auth:      nil,
 				APIConfig: nil,
@@ -353,7 +356,7 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "only logger set",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
 				Auth:      nil,
 				APIConfig: nil,
@@ -363,9 +366,9 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "logger and auth set, api config nil",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
-				Auth:      &auth.AuthConfig{},
+				Auth:      &auth.Config{},
 				APIConfig: nil,
 			},
 			expectError: true,
@@ -373,7 +376,7 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "logger and api config set, auth nil",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    logrus.New(),
 				Auth:      nil,
 				APIConfig: &config.APIConfig{},
@@ -383,9 +386,9 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "auth and api config set, logger nil",
-			config: &HandlersConfig{
+			config: &Config{
 				Logger:    nil,
-				Auth:      &auth.AuthConfig{},
+				Auth:      &auth.Config{},
 				APIConfig: &config.APIConfig{},
 			},
 			expectError: true,
@@ -398,7 +401,7 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 			if tt.config == nil {
 				// Test nil config panic
 				assert.Panics(t, func() {
-					tt.config.ValidateConfig()
+					_ = tt.config.ValidateConfig()
 				})
 			} else {
 				err := tt.config.ValidateConfig()
@@ -645,10 +648,10 @@ func TestHandlerTypes_EdgeCases(t *testing.T) {
 	assert.Nil(t, optionalHandler)
 
 	// Test that handler types can be assigned functions
-	authHandler = func(w http.ResponseWriter, r *http.Request, user database.User) {
+	authHandler = func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		// Empty function
 	}
-	optionalHandler = func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	optionalHandler = func(_ http.ResponseWriter, _ *http.Request, _ *database.User) {
 		// Empty function
 	}
 

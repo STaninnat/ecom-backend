@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_category_delete.go: Provides HTTP handler for deleting categories by ID.
 
 // HandlerDeleteCategory handles HTTP DELETE requests to delete a category.
 // Extracts the category ID from the URL parameters, validates it, and delegates deletion to the category service.

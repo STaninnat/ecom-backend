@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -11,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_delete_test.go: Tests for HandlerDeleteCategory with various scenarios and input validations
 
 // TestHandlerDeleteCategory tests the delete category handler with mock service and logger.
 // Covers successful deletion, missing parameters, and service errors.
@@ -34,7 +37,7 @@ func TestHandlerDeleteCategory(t *testing.T) {
 		{
 			name:           "missing category ID",
 			categoryID:     "",
-			setupMocks:     func(mockService *MockCategoryService) {},
+			setupMocks:     func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category ID is required"}`,
 		},
@@ -137,8 +140,8 @@ func TestHandlerDeleteCategory_EdgeCases(t *testing.T) {
 		{
 			name:       "URL parameter not set",
 			categoryID: "",
-			setupMocks: func(mockService *MockCategoryService) {},
-			setupRequest: func(req *http.Request) {
+			setupMocks: func(_ *MockCategoryService) {},
+			setupRequest: func(_ *http.Request) {
 				// Don't set the path value, simulating missing URL parameter
 			},
 			expectedStatus: http.StatusBadRequest,

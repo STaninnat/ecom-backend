@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
+
+// handler_payment_webhook.go: Stripe webhook handler for payment event processing and validation.
 
 // HandlerStripeWebhook handles HTTP POST requests from Stripe webhooks.
 // Validates the webhook signature, processes the payload, and delegates handling to the payment service.

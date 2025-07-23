@@ -1,19 +1,21 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
 )
 
-// --- Interfaces for DB and Transaction ---
-// ProductDBQueries defines the interface for product-related database operations.
+// product_service.go: Implements product service with database transaction management, validation, and business logic for CRUD and filtering operations.
+
+// ProductDBQueries defines the interface for product database queries and transactions.
 type ProductDBQueries interface {
 	WithTx(tx ProductDBTx) ProductDBQueries
 	CreateProduct(ctx context.Context, params database.CreateProductParams) error
@@ -37,36 +39,56 @@ type ProductDBTx interface {
 	Rollback() error
 }
 
-// --- Adapters for sqlc-generated types ---
-// ProductDBQueriesAdapter adapts sqlc-generated Queries to the ProductDBQueries interface.
+// ProductDBQueriesAdapter adapts sqlc-generated types for product database queries.
 type ProductDBQueriesAdapter struct {
 	*database.Queries
 }
 
+// WithTx returns a new ProductDBQueries using the provided transaction.
 func (a *ProductDBQueriesAdapter) WithTx(tx ProductDBTx) ProductDBQueries {
+	if tx == nil {
+		return nil
+	}
+
 	return &ProductDBQueriesAdapter{a.Queries.WithTx(tx.(*sql.Tx))}
 }
+
+// CreateProduct creates a new product in the database.
 func (a *ProductDBQueriesAdapter) CreateProduct(ctx context.Context, params database.CreateProductParams) error {
 	return a.Queries.CreateProduct(ctx, params)
 }
+
+// UpdateProduct updates an existing product in the database.
 func (a *ProductDBQueriesAdapter) UpdateProduct(ctx context.Context, params database.UpdateProductParams) error {
 	return a.Queries.UpdateProduct(ctx, params)
 }
+
+// DeleteProductByID deletes a product from the database by its ID.
 func (a *ProductDBQueriesAdapter) DeleteProductByID(ctx context.Context, id string) error {
 	return a.Queries.DeleteProductByID(ctx, id)
 }
+
+// GetAllProducts retrieves all products from the database.
 func (a *ProductDBQueriesAdapter) GetAllProducts(ctx context.Context) ([]database.Product, error) {
 	return a.Queries.GetAllProducts(ctx)
 }
+
+// GetAllActiveProducts retrieves all active products from the database.
 func (a *ProductDBQueriesAdapter) GetAllActiveProducts(ctx context.Context) ([]database.Product, error) {
 	return a.Queries.GetAllActiveProducts(ctx)
 }
+
+// GetProductByID retrieves a product by its ID from the database.
 func (a *ProductDBQueriesAdapter) GetProductByID(ctx context.Context, id string) (database.Product, error) {
 	return a.Queries.GetProductByID(ctx, id)
 }
+
+// GetActiveProductByID retrieves an active product by its ID from the database.
 func (a *ProductDBQueriesAdapter) GetActiveProductByID(ctx context.Context, id string) (database.Product, error) {
 	return a.Queries.GetActiveProductByID(ctx, id)
 }
+
+// FilterProducts filters products based on the provided parameters.
 func (a *ProductDBQueriesAdapter) FilterProducts(ctx context.Context, params database.FilterProductsParams) ([]database.Product, error) {
 	return a.Queries.FilterProducts(ctx, params)
 }
@@ -76,6 +98,7 @@ type ProductDBConnAdapter struct {
 	*sql.DB
 }
 
+// BeginTx begins a new database transaction.
 func (a *ProductDBConnAdapter) BeginTx(ctx context.Context, opts *sql.TxOptions) (ProductDBTx, error) {
 	tx, err := a.DB.BeginTx(ctx, opts)
 	return tx, err
@@ -116,7 +139,7 @@ func (s *productServiceImpl) CreateProduct(ctx context.Context, params ProductRe
 	if params.CategoryID == "" || params.Name == "" || params.Price <= 0 || params.Stock < 0 {
 		return "", &handlers.AppError{Code: "invalid_request", Message: "Missing or invalid required fields"}
 	}
-	id := uuid.New().String()
+	id := utils.NewUUIDString()
 	timeNow := time.Now().UTC()
 	isActive := true
 	if params.IsActive != nil {
@@ -126,7 +149,12 @@ func (s *productServiceImpl) CreateProduct(ctx context.Context, params ProductRe
 	if err != nil {
 		return "", &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			// Log or handle the error as appropriate
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 	queries := s.db.WithTx(tx)
 	err = queries.CreateProduct(ctx, database.CreateProductParams{
 		ID:          id,
@@ -166,7 +194,12 @@ func (s *productServiceImpl) UpdateProduct(ctx context.Context, params ProductRe
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			// Log or handle the error as appropriate
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 	queries := s.db.WithTx(tx)
 	err = queries.UpdateProduct(ctx, database.UpdateProductParams{
 		ID:          params.ID,
@@ -201,7 +234,12 @@ func (s *productServiceImpl) DeleteProduct(ctx context.Context, productID string
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			// Log or handle the error as appropriate
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 	queries := s.db.WithTx(tx)
 	_, err = queries.GetProductByID(ctx, productID)
 	if err != nil {

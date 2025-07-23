@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
+
+// interfaces.go: Defines core service interfaces, data structures, and handler types for authentication, user management, logging, and request metadata.
 
 // AuthService defines the interface for authentication operations.
 type AuthService interface {

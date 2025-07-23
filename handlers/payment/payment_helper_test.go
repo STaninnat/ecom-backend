@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stripe/stripe-go/v82"
 )
+
+// payment_helper_test.go: Mock implementations for payment service, DB, Stripe, and logger interfaces used in tests.
 
 // MockPaymentService is a testify-based mock implementation of the PaymentService interface.
 // It allows tests to set up expected method calls and return values for testing handlers without a real service.
@@ -199,7 +202,7 @@ type MockPaymentServiceForConfirm struct {
 	mock.Mock
 }
 
-func (m *MockPaymentServiceForConfirm) CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error) {
+func (m *MockPaymentServiceForConfirm) CreatePayment(_ context.Context, _ CreatePaymentParams) (*CreatePaymentResult, error) {
 	return nil, nil
 }
 func (m *MockPaymentServiceForConfirm) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
@@ -209,19 +212,19 @@ func (m *MockPaymentServiceForConfirm) ConfirmPayment(ctx context.Context, param
 	}
 	return args.Get(0).(*ConfirmPaymentResult), args.Error(1)
 }
-func (m *MockPaymentServiceForConfirm) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
+func (m *MockPaymentServiceForConfirm) GetPayment(_ context.Context, _ string, _ string) (*GetPaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForConfirm) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForConfirm) GetPaymentHistory(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForConfirm) GetAllPayments(ctx context.Context, status string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForConfirm) GetAllPayments(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForConfirm) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
+func (m *MockPaymentServiceForConfirm) RefundPayment(_ context.Context, _ RefundPaymentParams) error {
 	return nil
 }
-func (m *MockPaymentServiceForConfirm) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {
+func (m *MockPaymentServiceForConfirm) HandleWebhook(_ context.Context, _ []byte, _ string, _ string) error {
 	return nil
 }
 
@@ -251,27 +254,27 @@ func (m *MockPaymentServiceForCreate) CreatePayment(ctx context.Context, params 
 	return args.Get(0).(*CreatePaymentResult), args.Error(1)
 }
 
-func (m *MockPaymentServiceForCreate) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
+func (m *MockPaymentServiceForCreate) ConfirmPayment(_ context.Context, _ ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
 	return nil, nil // not used in create tests
 }
 
-func (m *MockPaymentServiceForCreate) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
+func (m *MockPaymentServiceForCreate) GetPayment(_ context.Context, _ string, _ string) (*GetPaymentResult, error) {
 	return nil, nil // not used in create tests
 }
 
-func (m *MockPaymentServiceForCreate) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForCreate) GetPaymentHistory(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil // not used in create tests
 }
 
-func (m *MockPaymentServiceForCreate) GetAllPayments(ctx context.Context, status string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForCreate) GetAllPayments(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil // not used in create tests
 }
 
-func (m *MockPaymentServiceForCreate) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
+func (m *MockPaymentServiceForCreate) RefundPayment(_ context.Context, _ RefundPaymentParams) error {
 	return nil // not used in create tests
 }
 
-func (m *MockPaymentServiceForCreate) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {
+func (m *MockPaymentServiceForCreate) HandleWebhook(_ context.Context, _ []byte, _ string, _ string) error {
 	return nil // not used in create tests
 }
 
@@ -295,10 +298,10 @@ type MockPaymentServiceForGet struct {
 	mock.Mock
 }
 
-func (m *MockPaymentServiceForGet) CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error) {
+func (m *MockPaymentServiceForGet) CreatePayment(_ context.Context, _ CreatePaymentParams) (*CreatePaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForGet) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
+func (m *MockPaymentServiceForGet) ConfirmPayment(_ context.Context, _ ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
 	return nil, nil
 }
 func (m *MockPaymentServiceForGet) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
@@ -322,10 +325,10 @@ func (m *MockPaymentServiceForGet) GetAllPayments(ctx context.Context, status st
 	}
 	return args.Get(0).([]PaymentHistoryItem), args.Error(1)
 }
-func (m *MockPaymentServiceForGet) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
+func (m *MockPaymentServiceForGet) RefundPayment(_ context.Context, _ RefundPaymentParams) error {
 	return nil
 }
-func (m *MockPaymentServiceForGet) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {
+func (m *MockPaymentServiceForGet) HandleWebhook(_ context.Context, _ []byte, _ string, _ string) error {
 	return nil
 }
 
@@ -347,26 +350,26 @@ type MockPaymentServiceForRefund struct {
 	mock.Mock
 }
 
-func (m *MockPaymentServiceForRefund) CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error) {
+func (m *MockPaymentServiceForRefund) CreatePayment(_ context.Context, _ CreatePaymentParams) (*CreatePaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForRefund) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
+func (m *MockPaymentServiceForRefund) ConfirmPayment(_ context.Context, _ ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForRefund) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
+func (m *MockPaymentServiceForRefund) GetPayment(_ context.Context, _ string, _ string) (*GetPaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForRefund) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForRefund) GetPaymentHistory(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForRefund) GetAllPayments(ctx context.Context, status string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForRefund) GetAllPayments(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
 func (m *MockPaymentServiceForRefund) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
 	args := m.Called(ctx, params)
 	return args.Error(0)
 }
-func (m *MockPaymentServiceForRefund) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {
+func (m *MockPaymentServiceForRefund) HandleWebhook(_ context.Context, _ []byte, _, _ string) error {
 	return nil
 }
 
@@ -388,22 +391,22 @@ type MockPaymentServiceForWebhook struct {
 	mock.Mock
 }
 
-func (m *MockPaymentServiceForWebhook) CreatePayment(ctx context.Context, params CreatePaymentParams) (*CreatePaymentResult, error) {
+func (m *MockPaymentServiceForWebhook) CreatePayment(_ context.Context, _ CreatePaymentParams) (*CreatePaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForWebhook) ConfirmPayment(ctx context.Context, params ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
+func (m *MockPaymentServiceForWebhook) ConfirmPayment(_ context.Context, _ ConfirmPaymentParams) (*ConfirmPaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForWebhook) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
+func (m *MockPaymentServiceForWebhook) GetPayment(_ context.Context, _ string, _ string) (*GetPaymentResult, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForWebhook) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForWebhook) GetPaymentHistory(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForWebhook) GetAllPayments(ctx context.Context, status string) ([]PaymentHistoryItem, error) {
+func (m *MockPaymentServiceForWebhook) GetAllPayments(_ context.Context, _ string) ([]PaymentHistoryItem, error) {
 	return nil, nil
 }
-func (m *MockPaymentServiceForWebhook) RefundPayment(ctx context.Context, params RefundPaymentParams) error {
+func (m *MockPaymentServiceForWebhook) RefundPayment(_ context.Context, _ RefundPaymentParams) error {
 	return nil
 }
 func (m *MockPaymentServiceForWebhook) HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error {

@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -11,14 +12,16 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
+// user_wrapper.go: Provides thread-safe user service setup, error handling, user extraction middleware, and auth handlers.
+
 // HandlersUserConfig contains configuration and dependencies for user handlers.
-// Embeds HandlersConfig, provides logger, userService, and thread safety.
+// Embeds Config, provides logger, userService, and thread safety.
 // Manages the lifecycle of user service instances with proper synchronization.
 type HandlersUserConfig struct {
-	HandlersConfig *handlers.HandlersConfig // for DB, etc.
-	Logger         handlers.HandlerLogger   // for logging
-	userService    UserService
-	userMutex      sync.RWMutex
+	Config      *handlers.Config       // for DB, etc.
+	Logger      handlers.HandlerLogger // for logging
+	userService UserService
+	userMutex   sync.RWMutex
 }
 
 // InitUserService initializes the user service with the current configuration.
@@ -27,15 +30,15 @@ type HandlersUserConfig struct {
 // Returns:
 //   - error: nil on success, error if handlers config or database is not initialized
 func (cfg *HandlersUserConfig) InitUserService() error {
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
-	if cfg.HandlersConfig.DB == nil {
+	if cfg.Config.DB == nil {
 		return errors.New("database not initialized")
 	}
 	cfg.userMutex.Lock()
 	defer cfg.userMutex.Unlock()
-	cfg.userService = NewUserService(cfg.HandlersConfig.DB, cfg.HandlersConfig.DBConn)
+	cfg.userService = NewUserService(cfg.Config.DB, cfg.Config.DBConn)
 	return nil
 }
 
@@ -54,10 +57,10 @@ func (cfg *HandlersUserConfig) GetUserService() UserService {
 	cfg.userMutex.Lock()
 	defer cfg.userMutex.Unlock()
 	if cfg.userService == nil {
-		if cfg.HandlersConfig == nil || cfg.HandlersConfig.DB == nil {
+		if cfg.Config == nil || cfg.Config.DB == nil {
 			cfg.userService = NewUserService(nil, nil)
 		} else {
-			cfg.userService = NewUserService(cfg.HandlersConfig.DB, cfg.HandlersConfig.DBConn)
+			cfg.userService = NewUserService(cfg.Config.DB, cfg.Config.DBConn)
 		}
 	}
 	return cfg.userService
@@ -75,7 +78,8 @@ func (cfg *HandlersUserConfig) GetUserService() UserService {
 func (cfg *HandlersUserConfig) handleUserError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "transaction_error", "update_failed", "commit_error":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
@@ -136,7 +140,7 @@ func (cfg *HandlersUserConfig) extractUserFromRequest(r *http.Request) (user dat
 	token := header[7:]
 
 	// Validate JWT and extract claims
-	claims, err := cfg.HandlersConfig.Auth.ValidateAccessToken(token, cfg.HandlersConfig.JWTSecret)
+	claims, err := cfg.Config.Auth.ValidateAccessToken(token, cfg.Config.JWTSecret)
 	if err != nil {
 		return database.User{}, errors.New("invalid token")
 	}
@@ -161,11 +165,13 @@ func (cfg *HandlersUserConfig) AuthHandlerGetUser(w http.ResponseWriter, r *http
 	cfg.HandlerGetUser(w, r.WithContext(ctx))
 }
 
+// AuthHandlerUpdateUser updates user information for the authenticated user.
 func (cfg *HandlersUserConfig) AuthHandlerUpdateUser(w http.ResponseWriter, r *http.Request, user database.User) {
 	ctx := context.WithValue(r.Context(), contextKeyUser, user)
 	cfg.HandlerUpdateUser(w, r.WithContext(ctx))
 }
 
+// AuthHandlerPromoteUserToAdmin promotes a user to admin status for the authenticated user.
 func (cfg *HandlersUserConfig) AuthHandlerPromoteUserToAdmin(w http.ResponseWriter, r *http.Request, user database.User) {
 	ctx := context.WithValue(r.Context(), contextKeyUser, user)
 	cfg.HandlerPromoteUserToAdmin(w, r.WithContext(ctx))

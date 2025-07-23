@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_update_user.go: Handles authenticated user update requests by validating input, updating via service, and responding with status.
 
 // HandlerUpdateUser handles HTTP PUT requests to update user information.
 // Extracts user from request context, validates update parameters, delegates to user service,

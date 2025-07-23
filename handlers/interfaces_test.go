@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )
+
+// interfaces_test.go: Tests for HandlerConfig, related interfaces, and config validation to ensure proper setup and functionality.
 
 // TestNewHandlerConfig_Interfaces tests NewHandlerConfig with interface mocks.
 // It checks that all fields are set as expected and not nil.
@@ -31,7 +34,7 @@ func TestNewHandlerConfig_Interfaces(t *testing.T) {
 			ClientSecret: "test-client-secret",
 		},
 	}
-	customTokenSource := func(ctx context.Context, refreshToken string) oauth2.TokenSource {
+	customTokenSource := func(_ context.Context, _ string) oauth2.TokenSource {
 		return nil
 	}
 
@@ -80,7 +83,7 @@ func TestHandlerConfig_Complete(t *testing.T) {
 				ClientSecret: "test-client-secret",
 			},
 		},
-		CustomTokenSource: func(ctx context.Context, refreshToken string) oauth2.TokenSource {
+		CustomTokenSource: func(_ context.Context, _ string) oauth2.TokenSource {
 			return nil
 		},
 	}
@@ -154,7 +157,7 @@ func TestRefreshTokenData_Complete(t *testing.T) {
 // It checks that a function can be assigned to AuthHandler and is not nil.
 func TestAuthHandler_Type(t *testing.T) {
 	// Test that AuthHandler is a valid function type
-	handler := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		// Test implementation
 	}
 
@@ -165,21 +168,21 @@ func TestAuthHandler_Type(t *testing.T) {
 // It checks that a function can be assigned to OptionalHandler and is not nil.
 func TestOptionalHandler_Type(t *testing.T) {
 	// Test that OptionalHandler is a valid function type
-	handler := func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ *database.User) {
 		// Test implementation
 	}
 
 	assert.NotNil(t, handler)
 }
 
-// TestHandlersConfig_ValidateConfig_Success tests successful validation of HandlersConfig.
+// TestHandlersConfig_ValidateConfig_Success tests successful validation of Config.
 // It checks that no error is returned for a valid config.
 func TestHandlersConfig_ValidateConfig_Success(t *testing.T) {
 	// Test successful validation
 	logger := logrus.New()
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		Logger: logger,
-		Auth:   &auth.AuthConfig{},
+		Auth:   &auth.Config{},
 		APIConfig: &config.APIConfig{
 			JWTSecret: "test-secret",
 		},
@@ -193,8 +196,8 @@ func TestHandlersConfig_ValidateConfig_Success(t *testing.T) {
 // It checks that an error is returned and contains the expected message.
 func TestHandlersConfig_ValidateConfig_MissingLogger(t *testing.T) {
 	// Test validation failure with missing logger
-	cfg := &HandlersConfig{
-		Auth: &auth.AuthConfig{},
+	cfg := &Config{
+		Auth: &auth.Config{},
 		APIConfig: &config.APIConfig{
 			JWTSecret: "test-secret",
 		},
@@ -210,7 +213,7 @@ func TestHandlersConfig_ValidateConfig_MissingLogger(t *testing.T) {
 func TestHandlersConfig_ValidateConfig_MissingAuth(t *testing.T) {
 	// Test validation failure with missing auth
 	logger := logrus.New()
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		Logger: logger,
 		APIConfig: &config.APIConfig{
 			JWTSecret: "test-secret",
@@ -227,9 +230,9 @@ func TestHandlersConfig_ValidateConfig_MissingAuth(t *testing.T) {
 func TestHandlersConfig_ValidateConfig_MissingAPIConfig(t *testing.T) {
 	// Test validation failure with missing API config
 	logger := logrus.New()
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		Logger: logger,
-		Auth:   &auth.AuthConfig{},
+		Auth:   &auth.Config{},
 	}
 
 	err := cfg.ValidateConfig()

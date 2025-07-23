@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// user_service.go: Implements user business logic including retrieval, updates, role promotion, and transaction management.
 
 // UserService defines the business logic interface for user operations.
 // Provides methods for user retrieval, updates, and role management with proper error handling.
@@ -71,7 +74,7 @@ func NewUserService(db *database.Queries, dbConn *sql.DB) UserService {
 // Returns:
 //   - *UserResponse: formatted user data for client consumption
 //   - error: nil on success, error on failure
-func (s *userServiceImpl) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
+func (s *userServiceImpl) GetUser(_ context.Context, user database.User) (*UserResponse, error) {
 	return &UserResponse{
 		ID:      user.ID,
 		Name:    user.Name,
@@ -98,7 +101,10 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, user database.User, pa
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -141,7 +147,10 @@ func (s *userServiceImpl) PromoteUserToAdmin(ctx context.Context, adminUser data
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 	targetUser, err := queries.GetUserByID(ctx, targetUserID)

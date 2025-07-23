@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_get_test.go: Tests for the GetAllCategories HTTP handler covering success and error cases.
 
 // TestHandlerGetAllCategories tests the get all categories handler with mock service and logger.
 // Covers successful retrieval with and without user, and service errors.

@@ -1,16 +1,20 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
+
+// handler_ready.go: Provides basic HTTP handlers for service readiness, health status, and error responses.
 
 // HandlerReadiness handles health check requests and returns a simple status response.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
-func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
+func HandlerReadiness(w http.ResponseWriter, _ *http.Request) {
 	// Use a more efficient response structure
 	response := map[string]any{
 		"status":  "ok",
@@ -23,7 +27,7 @@ func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
-func HandlerError(w http.ResponseWriter, r *http.Request) {
+func HandlerError(w http.ResponseWriter, _ *http.Request) {
 	response := map[string]any{
 		"error":   "Internal server error",
 		"code":    "INTERNAL_ERROR",
@@ -36,12 +40,12 @@ func HandlerError(w http.ResponseWriter, r *http.Request) {
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
-func HandlerHealth(w http.ResponseWriter, r *http.Request) {
+func HandlerHealth(w http.ResponseWriter, _ *http.Request) {
 	response := map[string]any{
 		"status":    "healthy",
 		"service":   "ecom-backend",
-		"version":   "1.0.0",                // TODO: Get from build info
-		"timestamp": "2024-01-01T00:00:00Z", // TODO: Get current timestamp
+		"version":   "1.0.0",
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
 	middlewares.RespondWithJSON(w, http.StatusOK, response)
 }

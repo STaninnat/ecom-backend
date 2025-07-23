@@ -1,9 +1,11 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -14,6 +16,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/mock"
 )
+
+// category_helper_test.go: Implements category CRUD HTTP handlers with supporting mocks for unit and integration testing.
 
 // MockHandlersConfig is a mock implementation of handlers.HandlerLogger for testing
 // and can be embedded in test configs for handler tests.
@@ -156,16 +160,14 @@ func (cfg *TestHandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWrit
 }
 
 // HandlerGetAllCategories handles category retrieval requests
-func (cfg *TestHandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWriter, r *http.Request, user *database.User) {
+func (cfg *TestHandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWriter, r *http.Request, _ *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
 	categoryService := cfg.GetCategoryService()
 	categories, err := categoryService.GetAllCategories(ctx)
 	if err != nil {
-		cfg.Logger.LogHandlerError(ctx, "get_all_categories", "database_error", err.Error(), ip, userAgent, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Something went wrong, please try again later"}`))
+		cfg.handleCategoryError(w, r, err, "get_all_categories", ip, userAgent)
 		return
 	}
 
@@ -189,15 +191,18 @@ func (cfg *TestHandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWr
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(responseCategories)
+	err = json.NewEncoder(w).Encode(responseCategories)
+	if err != nil {
+		println("json.Encode failed:", err.Error())
+	}
 }
 
 // handleCategoryError handles category-specific errors with proper logging and responses
 func (cfg *TestHandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	appErr := &handlers.AppError{}
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "invalid_request":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)

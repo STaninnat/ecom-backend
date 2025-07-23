@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -13,14 +14,23 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// adapters_test.go: Tests for adapter implementations that integrate services with handler middleware, including legacy support.
+
+const (
+	testTokenString       = "test-token"
+	testSecret            = "test-secret"
+	testIPAddress         = "192.168.1.1"
+	testUserAgentAdapters = "test-user-agent"
+)
+
 // TestHandlerConfigAuthAdapter_ValidateAccessToken_Success tests successful validation of an access token.
 // It checks that the adapter returns the expected claims and no error.
 func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 	mockAuthService := &MockAuthService{}
 	adapter := &handlerConfigAuthAdapter{authService: mockAuthService}
 
-	tokenString := "test-token"
-	secret := "test-secret"
+	tokenString := testTokenString
+	secret := testSecret
 	expectedClaims := &Claims{UserID: "user123"}
 
 	mockAuthService.On("ValidateAccessToken", tokenString, secret).Return(expectedClaims, nil)
@@ -40,7 +50,7 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Error(t *testing.T) {
 	adapter := &handlerConfigAuthAdapter{authService: mockAuthService}
 
 	tokenString := "invalid-token"
-	secret := "test-secret"
+	secret := testSecret
 	expectedError := assert.AnError
 
 	mockAuthService.On("ValidateAccessToken", tokenString, secret).Return(nil, expectedError)
@@ -130,7 +140,7 @@ func TestHandlerConfigMetadataAdapter_GetIPAddress(t *testing.T) {
 	adapter := &handlerConfigMetadataAdapter{metadataService: mockMetadataService}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	expectedIP := "192.168.1.1"
+	expectedIP := testIPAddress
 
 	mockMetadataService.On("GetIPAddress", req).Return(expectedIP)
 
@@ -147,7 +157,7 @@ func TestHandlerConfigMetadataAdapter_GetUserAgent(t *testing.T) {
 	adapter := &handlerConfigMetadataAdapter{metadataService: mockMetadataService}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	expectedUA := "test-user-agent"
+	expectedUA := testUserAgentAdapters
 
 	mockMetadataService.On("GetUserAgent", req).Return(expectedUA)
 
@@ -180,8 +190,8 @@ func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 	mockAuth := &MockLegacyAuth{}
 	adapter := &legacyAuthService{auth: mockAuth}
 
-	tokenString := "test-token"
-	secret := "test-secret"
+	tokenString := testTokenString
+	secret := testSecret
 	expectedAuthClaims := &auth.Claims{UserID: "user123"}
 
 	mockAuth.On("ValidateAccessToken", tokenString, secret).Return(expectedAuthClaims, nil)
@@ -201,7 +211,7 @@ func TestLegacyAuthService_ValidateAccessToken_Error(t *testing.T) {
 	adapter := &legacyAuthService{auth: mockAuth}
 
 	tokenString := "invalid-token"
-	secret := "test-secret"
+	secret := testSecret
 	expectedError := assert.AnError
 
 	mockAuth.On("ValidateAccessToken", tokenString, secret).Return(nil, expectedError)
@@ -225,7 +235,12 @@ func TestLegacyUserService_GetUserByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create sqlmock: %v", err)
 	}
-	defer db.Close()
+
+	// defer func() {
+	// 	if err := db.Close(); err != nil {
+	// 		t.Errorf("db.Close() failed: %v", err)
+	// 	}
+	// }()
 
 	queries := database.New(db)
 	adapter := &legacyUserService{db: queries}
@@ -297,7 +312,7 @@ func TestLegacyMetadataService_GetIPAddress(t *testing.T) {
 	adapter := &legacyMetadataService{}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-Forwarded-For", "192.168.1.1")
+	req.Header.Set("X-Forwarded-For", testIPAddress)
 
 	ip := adapter.GetIPAddress(req)
 
@@ -310,11 +325,11 @@ func TestLegacyMetadataService_GetUserAgent(t *testing.T) {
 	adapter := &legacyMetadataService{}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("User-Agent", "test-user-agent")
+	req.Header.Set("User-Agent", testUserAgentAdapters)
 
 	ua := adapter.GetUserAgent(req)
 
-	assert.Equal(t, "test-user-agent", ua)
+	assert.Equal(t, testUserAgentAdapters, ua)
 }
 
 // TestLegacyMetadataService_GetUserAgent_Empty tests retrieval of the user agent when the header is missing.

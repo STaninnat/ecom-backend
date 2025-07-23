@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -14,6 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// upload_helper_test.go: Mocks for logger, upload service, storage (local and S3), product DB, and helpers for multipart file requests,
+// supporting unit tests with controlled inputs and behavior simulation.
 
 // --- Mock Handler Local ---
 type contextKey string
@@ -67,23 +71,23 @@ type mockS3Client struct {
 	deleteCalled bool
 }
 
-func (m *mockS3Client) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+func (m *mockS3Client) PutObject(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	m.putCalled = true
 	return &s3.PutObjectOutput{}, m.putErr
 }
-func (m *mockS3Client) DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+func (m *mockS3Client) DeleteObject(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 	m.deleteCalled = true
 	return &s3.DeleteObjectOutput{}, m.deleteErr
 }
 
 // PutObjectS3 satisfies the S3Client interface for PutObject using s3 types.
-func (m *mockS3Client) PutObjectS3(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+func (m *mockS3Client) PutObjectS3(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	m.putCalled = true
 	return &s3.PutObjectOutput{}, m.putErr
 }
 
 // DeleteObjectS3 satisfies the S3Client interface for DeleteObject using s3 types.
-func (m *mockS3Client) DeleteObjectS3(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+func (m *mockS3Client) DeleteObjectS3(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 	m.deleteCalled = true
 	return &s3.DeleteObjectOutput{}, m.deleteErr
 }
@@ -157,14 +161,17 @@ func (m *mockFileStorage) Delete(imageURL, uploadPath string) error {
 }
 
 // --- Helper to create a multipart request with an image file ---
-func newMultipartImageRequest(t *testing.T, fieldName, fileName string, fileContent []byte) (*http.Request, *multipart.FileHeader) {
+// fieldName is always 'image' in tests, so we use _
+func newMultipartImageRequest(t *testing.T, _ string, fileName string, fileContent []byte) (*http.Request, *multipart.FileHeader) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
-	fw, err := w.CreateFormFile(fieldName, fileName)
+	fw, err := w.CreateFormFile("image", fileName)
 	assert.NoError(t, err)
 	_, err = fw.Write(fileContent)
 	assert.NoError(t, err)
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Errorf("Failed to close multipart writer: %v", err)
+	}
 
 	req := httptest.NewRequest("POST", "/upload", &b)
 	req.Header.Set("Content-Type", w.FormDataContentType())
@@ -172,7 +179,7 @@ func newMultipartImageRequest(t *testing.T, fieldName, fileName string, fileCont
 	// Parse to get the file header for mocking
 	err = req.ParseMultipartForm(10 << 20)
 	assert.NoError(t, err)
-	_, fileHeader, err := req.FormFile(fieldName)
+	_, fileHeader, err := req.FormFile("image")
 	assert.NoError(t, err)
 	return req, fileHeader
 }
@@ -184,6 +191,6 @@ type MockLogger struct{ mock.Mock }
 func (m *MockLogger) LogHandlerError(ctx context.Context, operation, code, message, ip, userAgent string, err error) {
 	m.Called(ctx, operation, code, message, ip, userAgent, err)
 }
-func (m *MockLogger) LogHandlerSuccess(ctx context.Context, operation, message, ip, userAgent string) {
+func (m *MockLogger) LogHandlerSuccess(_ context.Context, _, _, _, _ string) {
 	// not used in these tests
 }

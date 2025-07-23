@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -15,13 +16,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_order_create_test.go: Tests for HandlerCreateOrder covering success, validation errors, service errors, and full request scenarios.
+
 // TestHandlerCreateOrder_Success verifies successful order creation with valid input.
 func TestHandlerCreateOrder_Success(t *testing.T) {
 	mockOrderService := new(MockOrderService)
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -71,7 +74,7 @@ func TestHandlerCreateOrder_InvalidRequest(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -104,7 +107,7 @@ func TestHandlerCreateOrder_EmptyItems(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -143,7 +146,7 @@ func TestHandlerCreateOrder_InvalidQuantity(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -184,7 +187,7 @@ func TestHandlerCreateOrder_QuantityOverflow(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -225,7 +228,7 @@ func TestHandlerCreateOrder_TransactionError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -266,7 +269,7 @@ func TestHandlerCreateOrder_CreateOrderError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -307,7 +310,7 @@ func TestHandlerCreateOrder_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -348,7 +351,7 @@ func TestHandlerCreateOrder_CompleteRequest(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,

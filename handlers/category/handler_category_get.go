@@ -1,7 +1,9 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -9,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_category_get.go: Provides HTTP handler to retrieve all categories.
 
 // HandlerGetAllCategories handles HTTP GET requests to retrieve all categories.
 // Delegates the retrieval to the category service and returns the categories as JSON.
@@ -27,6 +31,7 @@ func (cfg *HandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWriter
 	// Call the service to get all categories
 	categories, err := categoryService.GetAllCategories(ctx)
 	if err != nil {
+		log.Printf("HandlerGetAllCategories: error from service: %+v", err)
 		cfg.handleCategoryError(w, r, err, "get_all_categories", ip, userAgent)
 		return
 	}

@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -18,10 +19,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// user_wrapper_test.go: Tests for thread-safe user service initialization, error handling, user extraction middleware, and auth handlers.
+
 // TestInitUserService_MissingHandlersConfig tests that InitUserService returns an error
-// when the HandlersConfig is nil
+// when the Config is nil
 func TestInitUserService_MissingHandlersConfig(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: nil}
+	cfg := &HandlersUserConfig{Config: nil}
 	err := cfg.InitUserService()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "handlers config not initialized")
@@ -30,7 +33,7 @@ func TestInitUserService_MissingHandlersConfig(t *testing.T) {
 // TestInitUserService_MissingDB tests that InitUserService returns an error
 // when the database is nil
 func TestInitUserService_MissingDB(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{DB: nil}}}
+	cfg := &HandlersUserConfig{Config: &handlers.Config{APIConfig: &config.APIConfig{DB: nil}}}
 	err := cfg.InitUserService()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
@@ -41,19 +44,19 @@ func TestInitUserService_MissingDB(t *testing.T) {
 func TestGetUserService_AlreadyInitialized(t *testing.T) {
 	mockService := new(MockUserService)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		userService:    mockService,
+		Config:      &handlers.Config{},
+		userService: mockService,
 	}
 	service := cfg.GetUserService()
 	assert.Equal(t, mockService, service)
 }
 
 // TestGetUserService_InitializesWithNilConfig tests that GetUserService
-// initializes a new service even when HandlersConfig is nil
+// initializes a new service even when Config is nil
 func TestGetUserService_InitializesWithNilConfig(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: nil,
-		userService:    nil,
+		Config:      nil,
+		userService: nil,
 	}
 	service := cfg.GetUserService()
 	assert.NotNil(t, service)
@@ -63,8 +66,8 @@ func TestGetUserService_InitializesWithNilConfig(t *testing.T) {
 // initializes a new service even when database is nil
 func TestGetUserService_InitializesWithNilDB(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{DB: nil}},
-		userService:    nil,
+		Config:      &handlers.Config{APIConfig: &config.APIConfig{DB: nil}},
+		userService: nil,
 	}
 	service := cfg.GetUserService()
 	assert.NotNil(t, service)
@@ -74,7 +77,7 @@ func TestGetUserService_InitializesWithNilDB(t *testing.T) {
 // initializes a new service with valid configuration
 func TestGetUserService_InitializesWithValidConfig(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{DB: &database.Queries{}},
 		},
 		userService: nil,
@@ -90,7 +93,7 @@ func TestGetUserService_InitializesWithValidConfig(t *testing.T) {
 func TestHandleUserError_KnownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -112,7 +115,7 @@ func TestHandleUserError_KnownError(t *testing.T) {
 func TestHandleUserError_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -134,7 +137,7 @@ func TestHandleUserError_UnknownError(t *testing.T) {
 func TestHandleUserError_CommitError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -156,7 +159,7 @@ func TestHandleUserError_CommitError(t *testing.T) {
 func TestHandleUserError_TransactionError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -177,7 +180,7 @@ func TestHandleUserError_TransactionError(t *testing.T) {
 // the userService with valid configuration
 func TestInitUserService_Success(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{DB: &database.Queries{}},
 		},
 		Logger: new(mockHandlerLogger),
@@ -192,7 +195,7 @@ func TestInitUserService_Success(t *testing.T) {
 func TestHandleUserError_DefaultCase(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -214,7 +217,7 @@ func TestHandleUserError_DefaultCase(t *testing.T) {
 func TestHandleUserError_NonUserError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -236,7 +239,7 @@ func TestHandleUserError_NonUserError(t *testing.T) {
 func TestHandleUserError_UserNotFound(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -258,7 +261,7 @@ func TestHandleUserError_UserNotFound(t *testing.T) {
 func TestHandleUserError_InvalidRequest(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -280,7 +283,7 @@ func TestHandleUserError_InvalidRequest(t *testing.T) {
 func TestHandleUserError_UpdateFailed(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -302,7 +305,7 @@ func TestHandleUserError_UpdateFailed(t *testing.T) {
 func TestHandleUserError_DefaultAppError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -320,11 +323,11 @@ func TestHandleUserError_DefaultAppError(t *testing.T) {
 }
 
 // TestInitUserService_NilHandlersConfig tests that InitUserService returns an error
-// when HandlersConfig is nil
+// when Config is nil
 func TestInitUserService_NilHandlersConfig(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: nil,
-		Logger:         new(mockHandlerLogger),
+		Config: nil,
+		Logger: new(mockHandlerLogger),
 	}
 	err := cfg.InitUserService()
 	assert.Error(t, err)
@@ -335,8 +338,8 @@ func TestInitUserService_NilHandlersConfig(t *testing.T) {
 // when database is nil
 func TestInitUserService_NilDB(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{DB: nil}},
-		Logger:         new(mockHandlerLogger),
+		Config: &handlers.Config{APIConfig: &config.APIConfig{DB: nil}},
+		Logger: new(mockHandlerLogger),
 	}
 	err := cfg.InitUserService()
 	assert.Error(t, err)
@@ -349,7 +352,7 @@ func TestExtractUserFromRequest_NoAuthHeader(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		userService: mockUserService,
@@ -370,7 +373,7 @@ func TestExtractUserFromRequest_EmptyAuthHeader(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		userService: mockUserService,
@@ -392,7 +395,7 @@ func TestExtractUserFromRequest_ShortAuthHeader(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		userService: mockUserService,
@@ -414,7 +417,7 @@ func TestExtractUserFromRequest_InvalidBearerPrefix(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		userService: mockUserService,
@@ -437,7 +440,7 @@ func TestUserExtractionMiddleware_Behavior(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -446,7 +449,7 @@ func TestUserExtractionMiddleware_Behavior(t *testing.T) {
 	}
 
 	// Test that the middleware returns a handler function
-	middleware := cfg.UserExtractionMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	middleware := cfg.UserExtractionMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	assert.NotNil(t, middleware)
 
 	// Test that it's callable
@@ -462,7 +465,7 @@ func TestExtractUserFromRequest_SimpleScenarios(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		userService: mockUserService,
@@ -554,10 +557,10 @@ func TestAuthHandlerPromoteUserToAdmin_CallsUnderlyingHandlerWithUserInContext(t
 func TestUserExtractionMiddleware_HappyPath(t *testing.T) {
 	// Setup real AuthConfig with a valid JWT
 	apiCfg := &config.APIConfig{JWTSecret: "testsecret", Issuer: "test-issuer", Audience: "test-audience"}
-	authCfg := &authpkg.AuthConfig{APIConfig: apiCfg}
+	authCfg := &authpkg.Config{APIConfig: apiCfg}
 	mockDB := new(MockUserServiceForMiddleware)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 			Auth:      authCfg,
 		},
@@ -581,7 +584,7 @@ func TestUserExtractionMiddleware_HappyPath(t *testing.T) {
 	mockDB.On("GetUserByID", mock.Anything, "u1").Return(database.User{ID: "u1"}, nil)
 
 	called := false
-	h := cfg.UserExtractionMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := cfg.UserExtractionMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		user, ok := r.Context().Value(contextKeyUser).(database.User)
 		assert.True(t, ok)
 		assert.Equal(t, "u1", user.ID)
@@ -600,9 +603,9 @@ func TestUserExtractionMiddleware_HappyPath(t *testing.T) {
 func TestExtractUserFromRequest_InvalidToken(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 	apiCfg := &config.APIConfig{JWTSecret: "secret", Issuer: "issuer", Audience: "aud"}
-	authCfg := &authpkg.AuthConfig{APIConfig: apiCfg}
+	authCfg := &authpkg.Config{APIConfig: apiCfg}
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 			Auth:      authCfg,
 		},
@@ -637,9 +640,9 @@ func TestExtractUserFromRequest_InvalidToken(t *testing.T) {
 func TestExtractUserFromRequest_ExpiredToken(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 	apiCfg := &config.APIConfig{JWTSecret: "secret", Issuer: "issuer", Audience: "aud"}
-	authCfg := &authpkg.AuthConfig{APIConfig: apiCfg}
+	authCfg := &authpkg.Config{APIConfig: apiCfg}
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 			Auth:      authCfg,
 		},
@@ -674,9 +677,9 @@ func TestExtractUserFromRequest_ExpiredToken(t *testing.T) {
 func TestExtractUserFromRequest_UserNotFound(t *testing.T) {
 	mockUserService := new(MockUserServiceForMiddleware)
 	apiCfg := &config.APIConfig{JWTSecret: "secret", Issuer: "issuer", Audience: "aud"}
-	authCfg := &authpkg.AuthConfig{APIConfig: apiCfg}
+	authCfg := &authpkg.Config{APIConfig: apiCfg}
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 			Auth:      authCfg,
 		},
@@ -713,8 +716,8 @@ func TestExtractUserFromRequest_UserNotFound(t *testing.T) {
 // and always returns the same instance under concurrent access
 func TestGetUserService_ConcurrentAccess(t *testing.T) {
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{}},
-		userService:    nil,
+		Config:      &handlers.Config{APIConfig: &config.APIConfig{}},
+		userService: nil,
 	}
 	var wg sync.WaitGroup
 	serviceSet := make(map[UserService]struct{})
@@ -753,7 +756,7 @@ func TestHandleUserError_AllAppErrorCodes(t *testing.T) {
 		t.Run(tc.code, func(t *testing.T) {
 			mockLogger := new(mockHandlerLogger)
 			cfg := &HandlersUserConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger:    logrus.New(),
 					APIConfig: &config.APIConfig{},
 				},
@@ -776,7 +779,7 @@ func TestHandleUserError_AllAppErrorCodes(t *testing.T) {
 func TestHandleUserError_UnknownErrorType(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger:    logrus.New(),
 			APIConfig: &config.APIConfig{},
 		},
@@ -797,7 +800,7 @@ func TestHandleUserError_UnknownErrorType(t *testing.T) {
 func TestUserExtractionMiddleware_ErrorPath(t *testing.T) {
 	cfg := &testUserExtractionConfig{}
 	called := false
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		_, ok := r.Context().Value(contextKeyUser).(database.User)
 		assert.False(t, ok, "User should not be set in context on error")
 		called = true
@@ -812,7 +815,7 @@ func TestUserExtractionMiddleware_ErrorPath(t *testing.T) {
 // TestInitUserService_DirectCall tests InitUserService with a direct call
 // to ensure the function is covered
 func TestInitUserService_DirectCall(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{DB: &database.Queries{}}}}
+	cfg := &HandlersUserConfig{Config: &handlers.Config{APIConfig: &config.APIConfig{DB: &database.Queries{}}}}
 	err := cfg.InitUserService()
 	assert.NoError(t, err)
 }
@@ -820,7 +823,7 @@ func TestInitUserService_DirectCall(t *testing.T) {
 // TestGetUserService_DirectCall tests GetUserService with a direct call
 // to ensure the function is covered
 func TestGetUserService_DirectCall(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{DB: &database.Queries{}}}}
+	cfg := &HandlersUserConfig{Config: &handlers.Config{APIConfig: &config.APIConfig{DB: &database.Queries{}}}}
 	svc := cfg.GetUserService()
 	assert.NotNil(t, svc)
 }
@@ -828,7 +831,7 @@ func TestGetUserService_DirectCall(t *testing.T) {
 // TestHandleUserError_DirectCall tests handleUserError with a direct call
 // to ensure the function is covered
 func TestHandleUserError_DirectCall(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New(), APIConfig: &config.APIConfig{}}, Logger: &dummyHandlerLogger{}}
+	cfg := &HandlersUserConfig{Config: &handlers.Config{Logger: logrus.New(), APIConfig: &config.APIConfig{}}, Logger: &dummyHandlerLogger{}}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
 	err := errors.New("test error")
@@ -839,8 +842,8 @@ func TestHandleUserError_DirectCall(t *testing.T) {
 // TestUserExtractionMiddleware_DirectCall tests UserExtractionMiddleware with a direct call
 // to ensure the function is covered
 func TestUserExtractionMiddleware_DirectCall(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{}}}
-	h := cfg.UserExtractionMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	cfg := &HandlersUserConfig{Config: &handlers.Config{APIConfig: &config.APIConfig{}}}
+	h := cfg.UserExtractionMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -852,7 +855,7 @@ func TestUserExtractionMiddleware_DirectCall(t *testing.T) {
 // TestExtractUserFromRequest_DirectCall tests extractUserFromRequest with a direct call
 // to ensure the function is covered
 func TestExtractUserFromRequest_DirectCall(t *testing.T) {
-	cfg := &HandlersUserConfig{HandlersConfig: &handlers.HandlersConfig{APIConfig: &config.APIConfig{}}}
+	cfg := &HandlersUserConfig{Config: &handlers.Config{APIConfig: &config.APIConfig{}}}
 	r := httptest.NewRequest("GET", "/", nil)
 	user, err := cfg.extractUserFromRequest(r)
 	assert.Error(t, err)

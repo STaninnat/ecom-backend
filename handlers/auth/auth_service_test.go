@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -22,8 +23,19 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// auth_service_test.go: Tests for authentication service with local and Google OAuth, token management, user registration, and session/cart merging.
+
+const (
+	testUserID       = "user123"
+	testProvider     = "local"
+	testUUID         = "123e4567-e89b-12d3-a456-426614174000"
+	testPassword     = "longenoughpassword"
+	testUserID2      = "test-user-id"
+	testRefreshToken = "test-refresh-token"
+)
+
 // TestAuthServiceInterface ensures the AuthService interface is properly defined and implemented.
-func TestAuthServiceInterface(t *testing.T) {
+func TestAuthServiceInterface(_ *testing.T) {
 	// This test ensures that the AuthService interface is properly defined
 	// and that all required methods are present
 	var _ AuthService = (*AuthServiceImpl)(nil)
@@ -127,7 +139,7 @@ func TestAuthServiceImpl_RefreshToken(t *testing.T) {
 			dbConn:      nil,
 			auth:        &mockServiceAuthConfig{},
 		}
-		result, err := svc.RefreshToken(context.Background(), "user123", "local", "token")
+		result, err := svc.RefreshToken(context.Background(), testUserID, testProvider, testRefreshToken)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 	})
@@ -139,7 +151,7 @@ func TestAuthServiceImpl_RefreshToken(t *testing.T) {
 			dbConn:      nil,
 			auth:        &mockServiceAuthConfig{},
 		}
-		result, err := svc.RefreshToken(context.Background(), "user123", "local", "token")
+		result, err := svc.RefreshToken(context.Background(), testUserID, testProvider, testRefreshToken)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 	})
@@ -151,7 +163,7 @@ func TestAuthServiceImpl_refreshGoogleToken_Error(t *testing.T) {
 		oauth: &oauth2.Config{},
 	}
 	// Use an empty token, which will cause the TokenSource to fail
-	result, err := svc.refreshGoogleToken(context.Background(), "user123", "", time.Now())
+	result, err := svc.refreshGoogleToken(context.Background(), testUserID, "", time.Now())
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -163,10 +175,9 @@ func TestAuthServiceImpl_generateAndStoreTokens(t *testing.T) {
 			auth: &mockServiceAuthConfig{},
 		}
 		ctx := context.Background()
-		userID := "user123"
-		provider := "local"
+		userID := testUserID
 		timeNow := time.Now()
-		result, err := svc.generateAndStoreTokens(ctx, userID, provider, timeNow, true)
+		result, err := svc.generateAndStoreTokens(ctx, userID, timeNow, true)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, userID, result.UserID)
@@ -177,13 +188,13 @@ func TestAuthServiceImpl_generateAndStoreTokens(t *testing.T) {
 			auth: &mockAuthConfigWithTokenError{},
 		}
 		ctx := context.Background()
-		userID := "user123"
-		provider := "local"
+		userID := testUserID
 		timeNow := time.Now()
-		result, err := svc.generateAndStoreTokens(ctx, userID, provider, timeNow, true)
+		result, err := svc.generateAndStoreTokens(ctx, userID, timeNow, true)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		appErr, ok := err.(*handlers.AppError)
+		appErr := &handlers.AppError{}
+		ok := errors.As(err, &appErr)
 		assert.True(t, ok)
 		assert.Equal(t, "token_generation_error", appErr.Code)
 	})
@@ -193,13 +204,13 @@ func TestAuthServiceImpl_generateAndStoreTokens(t *testing.T) {
 			auth: &mockAuthConfigWithStoreError{},
 		}
 		ctx := context.Background()
-		userID := "user123"
-		provider := "local"
+		userID := testUserID
 		timeNow := time.Now()
-		result, err := svc.generateAndStoreTokens(ctx, userID, provider, timeNow, true)
+		result, err := svc.generateAndStoreTokens(ctx, userID, timeNow, true)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		appErr, ok := err.(*handlers.AppError)
+		appErr := &handlers.AppError{}
+		ok := errors.As(err, &appErr)
 		assert.True(t, ok)
 		assert.Equal(t, "redis_error", appErr.Code)
 	})
@@ -213,13 +224,13 @@ func TestAuthServiceImpl_generateAndStoreTokens(t *testing.T) {
 func TestAuthServiceImpl_SignUp_Success_WithMinimalRedis(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
-		CreateUserFunc:             func(ctx context.Context, params database.CreateUserParams) error { return nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CreateUserFunc:             func(_ context.Context, _ database.CreateUserParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
 	mockConn := &MockDBConn{
-		beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil },
+		beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil },
 	}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
@@ -228,7 +239,7 @@ func TestAuthServiceImpl_SignUp_Success_WithMinimalRedis(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -239,11 +250,11 @@ func TestAuthServiceImpl_SignUp_Success_WithMinimalRedis(t *testing.T) {
 func TestAuthServiceImpl_SignUp_DuplicateEmail_Template(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return true, nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return true, nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -262,18 +273,18 @@ func TestAuthServiceImpl_SignUp_DuplicateEmail_Template(t *testing.T) {
 // TestAuthServiceImpl_SignIn_Success_Template tests successful SignIn with valid credentials.
 func TestAuthServiceImpl_SignIn_Success_Template(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	// The hash must match what CheckPasswordHash expects
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error { return nil },
+		UpdateUserStatusByIDFunc: func(_ context.Context, _ database.UpdateUserStatusByIDParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -296,11 +307,11 @@ func TestAuthServiceImpl_SignIn_Success_Template(t *testing.T) {
 func TestAuthServiceImpl_SignUp_CheckNameExistsError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
+		CheckUserExistsByNameFunc: func(_ context.Context, _ string) (bool, error) {
 			return false, assert.AnError
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -308,7 +319,7 @@ func TestAuthServiceImpl_SignUp_CheckNameExistsError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -319,12 +330,12 @@ func TestAuthServiceImpl_SignUp_CheckNameExistsError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_CheckEmailExistsError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc: func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) {
+		CheckUserExistsByNameFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) {
 			return false, assert.AnError
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -332,7 +343,7 @@ func TestAuthServiceImpl_SignUp_CheckEmailExistsError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -343,10 +354,10 @@ func TestAuthServiceImpl_SignUp_CheckEmailExistsError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_HashPasswordError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithHashError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -354,7 +365,7 @@ func TestAuthServiceImpl_SignUp_HashPasswordError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -365,10 +376,10 @@ func TestAuthServiceImpl_SignUp_HashPasswordError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_BeginTxError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) {
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) {
 		return nil, assert.AnError
 	}}
 	mockAuth := &mockServiceAuthConfig{}
@@ -378,7 +389,7 @@ func TestAuthServiceImpl_SignUp_BeginTxError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -389,12 +400,12 @@ func TestAuthServiceImpl_SignUp_BeginTxError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_CreateUserError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
-		CreateUserFunc:             func(ctx context.Context, params database.CreateUserParams) error { return assert.AnError },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CreateUserFunc:             func(_ context.Context, _ database.CreateUserParams) error { return assert.AnError },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -402,7 +413,7 @@ func TestAuthServiceImpl_SignUp_CreateUserError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -413,12 +424,12 @@ func TestAuthServiceImpl_SignUp_CreateUserError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_TokenGenerationError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
-		CreateUserFunc:             func(ctx context.Context, params database.CreateUserParams) error { return nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CreateUserFunc:             func(_ context.Context, _ database.CreateUserParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithTokenError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -426,7 +437,7 @@ func TestAuthServiceImpl_SignUp_TokenGenerationError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -437,12 +448,12 @@ func TestAuthServiceImpl_SignUp_TokenGenerationError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_StoreTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
-		CreateUserFunc:             func(ctx context.Context, params database.CreateUserParams) error { return nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CreateUserFunc:             func(_ context.Context, _ database.CreateUserParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithStoreError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -450,7 +461,7 @@ func TestAuthServiceImpl_SignUp_StoreTokenError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -461,13 +472,13 @@ func TestAuthServiceImpl_SignUp_StoreTokenError(t *testing.T) {
 func TestAuthServiceImpl_SignUp_CommitError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckUserExistsByNameFunc:  func(ctx context.Context, name string) (bool, error) { return false, nil },
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) { return false, nil },
-		CreateUserFunc:             func(ctx context.Context, params database.CreateUserParams) error { return nil },
+		CheckUserExistsByNameFunc:  func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CheckUserExistsByEmailFunc: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		CreateUserFunc:             func(_ context.Context, _ database.CreateUserParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
 	mockTx := &MockDBTx{commitFunc: func() error { return assert.AnError }}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -475,7 +486,7 @@ func TestAuthServiceImpl_SignUp_CommitError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignUpParams{Name: "user", Email: "user@example.com", Password: "longenoughpassword"}
+	params := SignUpParams{Name: "user", Email: "user@example.com", Password: testPassword}
 	result, err := service.SignUp(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -488,11 +499,11 @@ func TestAuthServiceImpl_SignUp_CommitError(t *testing.T) {
 func TestAuthServiceImpl_SignIn_GetUserByEmailError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{}, assert.AnError
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -500,7 +511,7 @@ func TestAuthServiceImpl_SignIn_GetUserByEmailError(t *testing.T) {
 		auth:        mockAuth,
 		redisClient: &FakeRedis{},
 	}
-	params := SignInParams{Email: "user@example.com", Password: "password"}
+	params := SignInParams{Email: "user@example.com", Password: testPassword}
 	result, err := service.SignIn(ctx, params)
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -510,15 +521,15 @@ func TestAuthServiceImpl_SignIn_GetUserByEmailError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_InvalidPassword tests SignIn for invalid password error.
 func TestAuthServiceImpl_SignIn_InvalidPassword(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -536,14 +547,14 @@ func TestAuthServiceImpl_SignIn_InvalidPassword(t *testing.T) {
 // TestAuthServiceImpl_SignIn_UUIDParseError tests SignIn for error when parsing user UUID.
 func TestAuthServiceImpl_SignIn_UUIDParseError(t *testing.T) {
 	ctx := context.Background()
-	password := "longenoughpassword"
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: "invalid-uuid", Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -561,15 +572,15 @@ func TestAuthServiceImpl_SignIn_UUIDParseError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_BeginTxError tests SignIn for error when starting a transaction.
 func TestAuthServiceImpl_SignIn_BeginTxError(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) {
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) {
 		return nil, assert.AnError
 	}}
 	mockAuth := &mockServiceAuthConfig{}
@@ -589,19 +600,19 @@ func TestAuthServiceImpl_SignIn_BeginTxError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_UpdateUserStatusError tests SignIn for error during user status update.
 func TestAuthServiceImpl_SignIn_UpdateUserStatusError(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error {
+		UpdateUserStatusByIDFunc: func(_ context.Context, _ database.UpdateUserStatusByIDParams) error {
 			return assert.AnError
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -619,17 +630,17 @@ func TestAuthServiceImpl_SignIn_UpdateUserStatusError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_TokenGenerationError tests SignIn for error during token generation.
 func TestAuthServiceImpl_SignIn_TokenGenerationError(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error { return nil },
+		UpdateUserStatusByIDFunc: func(_ context.Context, _ database.UpdateUserStatusByIDParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithTokenError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -647,17 +658,17 @@ func TestAuthServiceImpl_SignIn_TokenGenerationError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_StoreTokenError tests SignIn for error during refresh token storage.
 func TestAuthServiceImpl_SignIn_StoreTokenError(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error { return nil },
+		UpdateUserStatusByIDFunc: func(_ context.Context, _ database.UpdateUserStatusByIDParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithStoreError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -675,18 +686,18 @@ func TestAuthServiceImpl_SignIn_StoreTokenError(t *testing.T) {
 // TestAuthServiceImpl_SignIn_CommitError tests SignIn for error during transaction commit.
 func TestAuthServiceImpl_SignIn_CommitError(t *testing.T) {
 	ctx := context.Background()
-	userID := "123e4567-e89b-12d3-a456-426614174000"
-	password := "longenoughpassword"
+	userID := testUUID
+	password := testPassword
 	hash, _ := auth.HashPassword(password)
 	mockDB := &MockDBQueries{
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, _ string) (database.User, error) {
 			return database.User{ID: userID, Password: sql.NullString{String: hash, Valid: true}}, nil
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error { return nil },
+		UpdateUserStatusByIDFunc: func(_ context.Context, _ database.UpdateUserStatusByIDParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
 	mockTx := &MockDBTx{commitFunc: func() error { return assert.AnError }}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -705,7 +716,7 @@ func TestAuthServiceImpl_SignIn_CommitError(t *testing.T) {
 func TestAuthServiceImpl_getUserInfoFromGoogle(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		user := &UserGoogleInfo{ID: "id", Name: "name", Email: "email@example.com"}
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_ = json.NewEncoder(w).Encode(user)
 		}))
 		defer ts.Close()
@@ -727,8 +738,10 @@ func TestAuthServiceImpl_getUserInfoFromGoogle(t *testing.T) {
 	})
 
 	t.Run("json decode error", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("not json"))
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if _, err := w.Write([]byte("not json")); err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
 		}))
 		defer ts.Close()
 		client := ts.Client()
@@ -751,7 +764,9 @@ func Test_getUserInfoFromGoogle_withCustomURL(t *testing.T) {
 		if r.URL.Path == "/userinfo" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"id":"123","email":"test@example.com","name":"Test User"}`))
+			if _, err := w.Write([]byte(`{"id":"123","email":"test@example.com","name":"Test User"}`)); err != nil {
+				t.Errorf("Failed to write response: %v", err)
+			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -768,10 +783,12 @@ func Test_getUserInfoFromGoogle_withCustomURL(t *testing.T) {
 	assert.Equal(t, "Test User", user.Name)
 
 	// Error case: invalid JSON
-	tsErr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tsErr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":`)) // malformed JSON
+		if _, err := w.Write([]byte(`{"id":`)); err != nil { // malformed JSON
+			t.Errorf("Failed to write response: %v", err)
+		}
 	}))
 	defer tsErr.Close()
 
@@ -782,10 +799,12 @@ func Test_getUserInfoFromGoogle_withCustomURL(t *testing.T) {
 // Test_getUserInfoFromGoogle_NoCustomClient tests getUserInfoFromGoogle with no custom client provided.
 func Test_getUserInfoFromGoogle_NoCustomClient(t *testing.T) {
 	// Test when no custom client is provided - should use s.oauth.Client
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"123","email":"test@example.com","name":"Test User"}`))
+		if _, err := w.Write([]byte(`{"id":"123","email":"test@example.com","name":"Test User"}`)); err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -807,10 +826,12 @@ func Test_getUserInfoFromGoogle_NoCustomClient(t *testing.T) {
 // Test_getUserInfoFromGoogle_DefaultClient tests getUserInfoFromGoogle with the default client.
 func Test_getUserInfoFromGoogle_DefaultClient(t *testing.T) {
 	// Test when no custom client is provided - should use s.oauth.Client
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"456","email":"default@example.com","name":"Default Client"}`))
+		if _, err := w.Write([]byte(`{"id":"456","email":"default@example.com","name":"Default Client"}`)); err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -837,14 +858,14 @@ func TestAuthServiceImpl_HandleGoogleAuth(t *testing.T) {
 		ctx := context.Background()
 		redis := &FakeRedis{getResult: "valid"}
 		mockDB := &MockDBQueries{
-			CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+			CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 				return database.CheckExistsAndGetIDByEmailRow{}, sql.ErrNoRows
 			},
-			CreateUserFunc:                    func(ctx context.Context, params database.CreateUserParams) error { return nil },
-			UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error { return nil },
+			CreateUserFunc:                    func(_ context.Context, _ database.CreateUserParams) error { return nil },
+			UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error { return nil },
 		}
-		mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-		mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+		mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+		mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 		mockAuth := &mockServiceAuthConfig{}
 		mockOAuth := &mockOAuth2Config{
 			Config:        oauth2.Config{},
@@ -908,25 +929,26 @@ type testAuthServiceImpl struct {
 func TestAuthServiceImpl_SignOut(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mockRedis := &mockRedisClient{
-			DelFunc: func(ctx context.Context, keys ...string) *redis.IntCmd {
+			DelFunc: func(_ context.Context, keys ...string) *redis.IntCmd {
 				assert.Contains(t, keys[0], "refresh_token:")
 				return redis.NewIntResult(1, nil)
 			},
 		}
 		svc := &AuthServiceImpl{redisClient: mockRedis}
-		err := svc.SignOut(context.Background(), "user123", "local")
+		err := svc.SignOut(context.Background(), testUserID, testProvider)
 		assert.NoError(t, err)
 	})
 	t.Run("redis error", func(t *testing.T) {
 		mockRedis := &mockRedisClient{
-			DelFunc: func(ctx context.Context, keys ...string) *redis.IntCmd {
+			DelFunc: func(_ context.Context, _ ...string) *redis.IntCmd {
 				return redis.NewIntResult(0, assert.AnError)
 			},
 		}
 		svc := &AuthServiceImpl{redisClient: mockRedis}
-		err := svc.SignOut(context.Background(), "user123", "local")
+		err := svc.SignOut(context.Background(), testUserID, testProvider)
 		assert.Error(t, err)
-		appErr, ok := err.(*handlers.AppError)
+		appErr := &handlers.AppError{}
+		ok := errors.As(err, &appErr)
 		assert.True(t, ok)
 		assert.Equal(t, "redis_error", appErr.Code)
 	})
@@ -938,15 +960,15 @@ func TestAuthServiceImpl_SignOut(t *testing.T) {
 func TestAuthServiceImpl_GenerateGoogleAuthURL(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mockRedis := &mockRedisClient{
-			SetFunc: func(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+			SetFunc: func(_ context.Context, key string, value any, _ time.Duration) *redis.StatusCmd {
 				assert.Contains(t, key, "oauth_state:")
 				assert.Equal(t, "valid", value)
 				return redis.NewStatusResult("OK", nil)
 			},
 		}
 		mockOAuth := &mockOAuth2Exchanger{
-			AuthCodeURLFunc: func(state string, opts ...oauth2.AuthCodeOption) string {
-				return "https://accounts.google.com/o/oauth2/auth?state=" + state
+			AuthCodeURLFunc: func(_ string, _ ...oauth2.AuthCodeOption) string {
+				return "https://accounts.google.com/o/oauth2/auth?state=" + "xyz123"
 			},
 		}
 		svc := &AuthServiceImpl{redisClient: mockRedis, oauth: mockOAuth}
@@ -956,12 +978,12 @@ func TestAuthServiceImpl_GenerateGoogleAuthURL(t *testing.T) {
 	})
 	t.Run("redis error", func(t *testing.T) {
 		mockRedis := &mockRedisClient{
-			SetFunc: func(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+			SetFunc: func(_ context.Context, _ string, _ any, _ time.Duration) *redis.StatusCmd {
 				return redis.NewStatusResult("", assert.AnError)
 			},
 		}
 		mockOAuth := &mockOAuth2Exchanger{
-			AuthCodeURLFunc: func(state string, opts ...oauth2.AuthCodeOption) string {
+			AuthCodeURLFunc: func(_ string, _ ...oauth2.AuthCodeOption) string {
 				return ""
 			},
 		}
@@ -969,7 +991,8 @@ func TestAuthServiceImpl_GenerateGoogleAuthURL(t *testing.T) {
 		url, err := svc.GenerateGoogleAuthURL("failstate")
 		assert.Error(t, err)
 		assert.Empty(t, url)
-		appErr, ok := err.(*handlers.AppError)
+		appErr := &handlers.AppError{}
+		ok := errors.As(err, &appErr)
 		assert.True(t, ok)
 		assert.Equal(t, "redis_error", appErr.Code)
 	})
@@ -984,8 +1007,8 @@ func TestMergeCart_NoSessionID(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart:       func(ctx context.Context, sessionID string) (*models.Cart, error) { return nil, nil },
-		DeleteGuestCart:    func(ctx context.Context, sessionID string) error { return nil },
+		GetGuestCart:       func(_ context.Context, _ string) (*models.Cart, error) { return nil, nil },
+		DeleteGuestCart:    func(_ context.Context, _ string) error { return nil },
 	}
 
 	// Create request without session ID
@@ -993,10 +1016,10 @@ func TestMergeCart_NoSessionID(t *testing.T) {
 	ctx := context.Background()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify no methods were called since session ID is empty
-	cfg.MockHandlersConfig.AssertNotCalled(t, "LogHandlerError")
+	cfg.AssertNotCalled(t, "LogHandlerError")
 }
 
 // TestMergeCart_GetGuestCartError tests MergeCart for error when getting the guest cart.
@@ -1006,10 +1029,10 @@ func TestMergeCart_GetGuestCartError(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return nil, errors.New("redis error")
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return nil },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return nil },
 	}
 
 	// Create request with session ID cookie
@@ -1021,10 +1044,10 @@ func TestMergeCart_GetGuestCartError(t *testing.T) {
 	cfg.MockHandlersConfig.On("LogHandlerError", ctx, "merge_cart", "get_guest_cart_failed", "Failed to get guest cart", "", "", mock.Anything).Return()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertExpectations(t)
+	cfg.AssertExpectations(t)
 }
 
 // TestMergeCart_EmptyGuestCart tests MergeCart for the case when the guest cart is empty.
@@ -1034,10 +1057,10 @@ func TestMergeCart_EmptyGuestCart(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return &models.Cart{Items: []models.CartItem{}}, nil
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return nil },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return nil },
 	}
 
 	// Create request with session ID cookie
@@ -1046,10 +1069,10 @@ func TestMergeCart_EmptyGuestCart(t *testing.T) {
 	ctx := context.Background()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertNotCalled(t, "LogHandlerError")
+	cfg.AssertNotCalled(t, "LogHandlerError")
 }
 
 // TestMergeCart_EmptyGuestCartDeleteError tests MergeCart for error when deleting an empty guest cart.
@@ -1059,10 +1082,10 @@ func TestMergeCart_EmptyGuestCartDeleteError(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return &models.Cart{Items: []models.CartItem{}}, nil
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return errors.New("delete error") },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return errors.New("delete error") },
 	}
 
 	// Create request with session ID cookie
@@ -1074,10 +1097,10 @@ func TestMergeCart_EmptyGuestCartDeleteError(t *testing.T) {
 	cfg.MockHandlersConfig.On("LogHandlerError", ctx, "merge_cart", "delete_guest_cart_failed", "Failed to delete empty guest cart", "", "", mock.Anything).Return()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertExpectations(t)
+	cfg.AssertExpectations(t)
 }
 
 // TestMergeCart_MergeError tests MergeCart for error during merging guest cart to user cart.
@@ -1087,7 +1110,7 @@ func TestMergeCart_MergeError(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return &models.Cart{
 				Items: []models.CartItem{
 					{ProductID: "prod1", Quantity: 2},
@@ -1095,11 +1118,11 @@ func TestMergeCart_MergeError(t *testing.T) {
 				},
 			}, nil
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return nil },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return nil },
 	}
 
 	// Mock CartMG to fail
-	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, "user123", mock.Anything).Return(errors.New("merge error"))
+	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, testUserID, mock.Anything).Return(errors.New("merge error"))
 
 	// Create request with session ID cookie
 	req := httptest.NewRequest("POST", "/signin", nil)
@@ -1110,10 +1133,10 @@ func TestMergeCart_MergeError(t *testing.T) {
 	cfg.MockHandlersConfig.On("LogHandlerError", ctx, "merge_cart", "merge_cart_failed", "Failed to merge guest cart to user", "", "", mock.Anything).Return()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertExpectations(t)
+	cfg.AssertExpectations(t)
 	cfg.CartMG.AssertExpectations(t)
 }
 
@@ -1124,7 +1147,7 @@ func TestMergeCart_Success(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return &models.Cart{
 				Items: []models.CartItem{
 					{ProductID: "prod1", Quantity: 2},
@@ -1132,11 +1155,11 @@ func TestMergeCart_Success(t *testing.T) {
 				},
 			}, nil
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return nil },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return nil },
 	}
 
 	// Mock CartMG to succeed
-	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, "user123", mock.Anything).Return(nil)
+	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, testUserID, mock.Anything).Return(nil)
 
 	// Create request with session ID cookie
 	req := httptest.NewRequest("POST", "/signin", nil)
@@ -1144,10 +1167,10 @@ func TestMergeCart_Success(t *testing.T) {
 	ctx := context.Background()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertNotCalled(t, "LogHandlerError")
+	cfg.AssertNotCalled(t, "LogHandlerError")
 	cfg.CartMG.AssertExpectations(t)
 }
 
@@ -1158,7 +1181,7 @@ func TestMergeCart_SuccessWithDeleteError(t *testing.T) {
 		Auth:               &mockAuthConfig{},
 		authService:        &MockAuthService{},
 		CartMG:             &MockCartManager{},
-		GetGuestCart: func(ctx context.Context, sessionID string) (*models.Cart, error) {
+		GetGuestCart: func(_ context.Context, _ string) (*models.Cart, error) {
 			return &models.Cart{
 				Items: []models.CartItem{
 					{ProductID: "prod1", Quantity: 2},
@@ -1166,11 +1189,11 @@ func TestMergeCart_SuccessWithDeleteError(t *testing.T) {
 				},
 			}, nil
 		},
-		DeleteGuestCart: func(ctx context.Context, sessionID string) error { return errors.New("delete error") },
+		DeleteGuestCart: func(_ context.Context, _ string) error { return errors.New("delete error") },
 	}
 
 	// Mock CartMG to succeed
-	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, "user123", mock.Anything).Return(nil)
+	cfg.CartMG.On("MergeGuestCartToUser", mock.Anything, testUserID, mock.Anything).Return(nil)
 
 	// Create request with session ID cookie
 	req := httptest.NewRequest("POST", "/signin", nil)
@@ -1181,10 +1204,10 @@ func TestMergeCart_SuccessWithDeleteError(t *testing.T) {
 	cfg.MockHandlersConfig.On("LogHandlerError", ctx, "merge_cart", "delete_guest_cart_failed", "Failed to delete guest cart after merge", "", "", mock.Anything).Return()
 
 	// Execute
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify expectations
-	cfg.MockHandlersConfig.AssertExpectations(t)
+	cfg.AssertExpectations(t)
 	cfg.CartMG.AssertExpectations(t)
 }
 
@@ -1194,11 +1217,11 @@ func TestMergeCart_SuccessWithDeleteError(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_DBError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{}, assert.AnError
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1218,11 +1241,11 @@ func TestAuthServiceImpl_handleGoogleUserAuth_DBError(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_BeginTxError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
 	}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return nil, assert.AnError }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return nil, assert.AnError }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1242,15 +1265,15 @@ func TestAuthServiceImpl_handleGoogleUserAuth_BeginTxError(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_CreateUserError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{}, sql.ErrNoRows
 		},
-		CreateUserFunc: func(ctx context.Context, params database.CreateUserParams) error {
+		CreateUserFunc: func(_ context.Context, _ database.CreateUserParams) error {
 			return assert.AnError
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1270,13 +1293,13 @@ func TestAuthServiceImpl_handleGoogleUserAuth_CreateUserError(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_GenerateAccessTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error { return nil },
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithTokenError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1296,13 +1319,13 @@ func TestAuthServiceImpl_handleGoogleUserAuth_GenerateAccessTokenError(t *testin
 func TestAuthServiceImpl_handleGoogleUserAuth_NoRefreshToken(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error { return nil },
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1322,13 +1345,13 @@ func TestAuthServiceImpl_handleGoogleUserAuth_NoRefreshToken(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_StoreRefreshTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error { return nil },
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error { return nil },
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockAuthConfigWithStoreError{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1348,15 +1371,15 @@ func TestAuthServiceImpl_handleGoogleUserAuth_StoreRefreshTokenError(t *testing.
 func TestAuthServiceImpl_handleGoogleUserAuth_UpdateUserSigninStatusError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error {
 			return assert.AnError
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1376,16 +1399,16 @@ func TestAuthServiceImpl_handleGoogleUserAuth_UpdateUserSigninStatusError(t *tes
 func TestAuthServiceImpl_handleGoogleUserAuth_CommitError(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error {
 			return nil
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
 	mockTx := &MockDBTx{commitFunc: func() error { return assert.AnError }}
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return mockTx, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1405,18 +1428,18 @@ func TestAuthServiceImpl_handleGoogleUserAuth_CommitError(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_HappyPath_NewUser(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{}, sql.ErrNoRows
 		},
-		CreateUserFunc: func(ctx context.Context, params database.CreateUserParams) error {
+		CreateUserFunc: func(_ context.Context, _ database.CreateUserParams) error {
 			return nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error {
 			return nil
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1436,15 +1459,15 @@ func TestAuthServiceImpl_handleGoogleUserAuth_HappyPath_NewUser(t *testing.T) {
 func TestAuthServiceImpl_handleGoogleUserAuth_HappyPath_ExistingUser(t *testing.T) {
 	ctx := context.Background()
 	mockDB := &MockDBQueries{
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, _ string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "uid"}, nil
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, _ database.UpdateUserSigninStatusByEmailParams) error {
 			return nil
 		},
 	}
-	mockDB.WithTxFunc = func(tx DBTx) DBQueries { return mockDB }
-	mockConn := &MockDBConn{beginTxFunc: func(ctx context.Context, opts *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
+	mockDB.WithTxFunc = func(_ DBTx) DBQueries { return mockDB }
+	mockConn := &MockDBConn{beginTxFunc: func(_ context.Context, _ *sql.TxOptions) (DBTx, error) { return &MockDBTx{}, nil }}
 	mockAuth := &mockServiceAuthConfig{}
 	service := &AuthServiceImpl{
 		db:          mockDB,
@@ -1463,8 +1486,8 @@ func TestAuthServiceImpl_handleGoogleUserAuth_HappyPath_ExistingUser(t *testing.
 // TestAuthServiceImpl_refreshGoogleToken_Success verifies that a new access token is correctly generated using a valid Google refresh token.
 func TestAuthServiceImpl_refreshGoogleToken_Success(t *testing.T) {
 	ctx := context.Background()
-	userID := "test-user-id"
-	refreshToken := "test-refresh-token"
+	userID := testUserID2
+	refreshToken := testRefreshToken
 	timeNow := time.Now().UTC()
 
 	// Mock successful token refresh
@@ -1498,8 +1521,8 @@ func TestAuthServiceImpl_refreshGoogleToken_Success(t *testing.T) {
 // TestAuthServiceImpl_refreshGoogleToken_TokenError verifies that an error is returned when refreshing the Google token fails.
 func TestAuthServiceImpl_refreshGoogleToken_TokenError(t *testing.T) {
 	ctx := context.Background()
-	userID := "test-user-id"
-	refreshToken := "test-refresh-token"
+	userID := testUserID2
+	refreshToken := testRefreshToken
 	timeNow := time.Now().UTC()
 
 	// Mock failed token refresh
@@ -1524,10 +1547,10 @@ func TestAuthServiceImpl_refreshGoogleToken_TokenError(t *testing.T) {
 // TestRealMergeCart_NoSessionID verifies that MergeCart exits early and does not log an error when the session ID is missing from the request.
 func TestRealMergeCart_NoSessionID(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger: mockHandlersConfig,
@@ -1538,7 +1561,7 @@ func TestRealMergeCart_NoSessionID(t *testing.T) {
 	ctx := context.Background()
 
 	// Execute - should return early without calling any methods
-	cfg.MergeCart(ctx, req, "user123")
+	cfg.MergeCart(ctx, req, testUserID)
 
 	// Verify no error logging was called since session ID is empty
 	mockHandlersConfig.AssertNotCalled(t, "LogHandlerError")

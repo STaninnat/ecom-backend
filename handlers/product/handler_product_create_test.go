@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_product_create_test.go: Tests the product creation handler for success, invalid input, and service error scenarios with proper responses and logging.
 
 // TestHandlerCreateProduct_Success tests the successful creation of a product via the handler.
 // It verifies that the handler returns HTTP 201, the correct response message, and product ID when the service succeeds.
@@ -37,7 +40,8 @@ func TestHandlerCreateProduct_Success(t *testing.T) {
 	cfg.HandlerCreateProduct(w, req, user)
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var resp productResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "Product created successfully", resp.Message)
 	assert.Equal(t, "pid1", resp.ProductID)
 	mockService.AssertExpectations(t)

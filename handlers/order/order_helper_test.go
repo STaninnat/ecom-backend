@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/mock"
 )
+
+// order_helper_test.go: Provides mock implementations of database queries, transaction, service, and logger interfaces for unit testing.
 
 // MockDBQueries is a mock implementation of database queries for testing
 type MockDBQueries struct {

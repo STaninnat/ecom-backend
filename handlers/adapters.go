@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/sirupsen/logrus"
 )
+
+// adapters.go: Provides adapter implementations to integrate various services with handler middleware, including both current and legacy systems.
 
 // Adapters for HandlerConfig
 // --------------------------

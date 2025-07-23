@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -13,6 +14,12 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
+)
+
+// user_service_test.go: Tests for user business logic including retrieval, updates, role promotion, and transaction management.
+
+const (
+	testTargetUserID = "user2"
 )
 
 // TestUserService_GetUser tests that GetUser correctly converts a database User
@@ -264,7 +271,7 @@ func TestUserService_UpdateUser_CommitError_WithRollback(t *testing.T) {
 	assert.Contains(t, err.Error(), "Error committing transaction")
 }
 
-// TODO: For full transaction and update tests, use sqlmock or a real *sql.DB with a test database.
+// Note: This test file uses sqlmock for database mocking as recommended for unit tests.
 
 // TestUserService_PromoteUserToAdmin_Success tests that PromoteUserToAdmin successfully
 // promotes a user to admin role
@@ -273,7 +280,7 @@ func TestUserService_PromoteUserToAdmin_Success(t *testing.T) {
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
 	adminUser := database.User{ID: "admin1", Role: "admin"}
-	targetUserID := "user2"
+	targetUserID := testTargetUserID
 	targetUser := database.User{ID: targetUserID, Role: "user"}
 
 	mock.ExpectBegin()
@@ -305,7 +312,7 @@ func TestUserService_PromoteUserToAdmin_AlreadyAdmin(t *testing.T) {
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
 	adminUser := database.User{ID: "admin1", Role: "admin"}
-	targetUserID := "user2"
+	targetUserID := testTargetUserID
 	targetUser := database.User{ID: targetUserID, Role: "admin"}
 
 	mock.ExpectBegin()
@@ -327,7 +334,7 @@ func TestUserService_PromoteUserToAdmin_UserNotFound(t *testing.T) {
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
 	adminUser := database.User{ID: "admin1", Role: "admin"}
-	targetUserID := "user2"
+	targetUserID := testTargetUserID
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs(targetUserID).WillReturnError(errors.New("not found"))
@@ -355,7 +362,7 @@ func TestUserService_PromoteUserToAdmin_UpdateError(t *testing.T) {
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
 	adminUser := database.User{ID: "admin1", Role: "admin"}
-	targetUserID := "user2"
+	targetUserID := testTargetUserID
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs(targetUserID).WillReturnRows(

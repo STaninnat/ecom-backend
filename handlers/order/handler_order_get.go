@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_order_get.go: HTTP handlers for fetching orders and order items, with service calls and structured logging.
 
 // HandlerGetAllOrders handles HTTP GET requests to retrieve all orders (admin only).
 // Calls the business logic service, logs the event, and responds with the complete order list or error.
@@ -111,7 +114,7 @@ func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *ht
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
 //   - user: database.User representing the authenticated user
-func (cfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request, user database.User) {
+func (cfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request, _ database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

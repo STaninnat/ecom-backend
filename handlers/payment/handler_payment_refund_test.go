@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -15,12 +16,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_payment_refund_test.go: Tests for refund payment HTTP handler including success, missing params, and service errors.
+
 // TestHandlerRefundPayment_Success tests successful refund
 func TestHandlerRefundPayment_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForRefund)
 	mockLog := new(MockLoggerForRefund)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -38,7 +41,9 @@ func TestHandlerRefundPayment_Success(t *testing.T) {
 	cfg.HandlerRefundPayment(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "Refund processed", resp["message"])
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
@@ -49,7 +54,7 @@ func TestHandlerRefundPayment_MissingOrderID(t *testing.T) {
 	mockService := new(MockPaymentServiceForRefund)
 	mockLog := new(MockLoggerForRefund)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -71,7 +76,7 @@ func TestHandlerRefundPayment_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForRefund)
 	mockLog := new(MockLoggerForRefund)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -98,7 +103,7 @@ func TestHandlerRefundPayment_NotFound(t *testing.T) {
 	mockService := new(MockPaymentServiceForRefund)
 	mockLog := new(MockLoggerForRefund)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -125,7 +130,7 @@ func TestHandlerRefundPayment_ValidationError(t *testing.T) {
 	mockService := new(MockPaymentServiceForRefund)
 	mockLog := new(MockLoggerForRefund)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}

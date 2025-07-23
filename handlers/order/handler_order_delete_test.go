@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -16,6 +17,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_order_delete_test.go: Tests for HandlerDeleteOrder covering all typical and edge cases.
+
+const (
+	testOrderID     = "order123"
+	testNonexistent = "nonexistent"
+)
+
 // Helper to set chi URL param in request context
 func setChiURLParam(r *http.Request, key, value string) *http.Request {
 	rctx := chi.NewRouteContext()
@@ -30,7 +38,7 @@ func TestHandlerDeleteOrder_Success(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -38,7 +46,7 @@ func TestHandlerDeleteOrder_Success(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "delete_order", "Deleted order successful", mock.Anything, mock.Anything).Return()
@@ -65,7 +73,7 @@ func TestHandlerDeleteOrder_MissingOrderID(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -97,7 +105,7 @@ func TestHandlerDeleteOrder_OrderNotFound(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -105,7 +113,7 @@ func TestHandlerDeleteOrder_OrderNotFound(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "nonexistent"
+	orderID := testNonexistent
 
 	appError := &handlers.AppError{Code: "order_not_found", Message: "Order not found"}
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(appError)
@@ -133,7 +141,7 @@ func TestHandlerDeleteOrder_DeleteFailed(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -141,7 +149,7 @@ func TestHandlerDeleteOrder_DeleteFailed(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 
 	appError := &handlers.AppError{Code: "delete_order_error", Message: "Failed to delete order"}
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(appError)
@@ -169,7 +177,7 @@ func TestHandlerDeleteOrder_Unauthorized(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -177,7 +185,7 @@ func TestHandlerDeleteOrder_Unauthorized(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 
 	appError := &handlers.AppError{Code: "unauthorized", Message: "User is not authorized to delete this order"}
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(appError)
@@ -205,7 +213,7 @@ func TestHandlerDeleteOrder_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -213,7 +221,7 @@ func TestHandlerDeleteOrder_UnknownError(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 
 	unknownError := errors.New("unknown database error")
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(unknownError)
@@ -241,7 +249,7 @@ func TestHandlerDeleteOrder_CompleteRequest(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -249,7 +257,7 @@ func TestHandlerDeleteOrder_CompleteRequest(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 
 	mockOrderService.On("DeleteOrder", mock.Anything, orderID).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "delete_order", "Deleted order successful", mock.Anything, mock.Anything).Return()

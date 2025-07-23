@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_product_update.go: Handles updating a product: parses input, calls service, logs result, and returns success or error response.
 
 // HandlerUpdateProduct handles HTTP PUT requests to update an existing product.
 // Parses the request body for product parameters, validates them, and delegates the update to the product service.

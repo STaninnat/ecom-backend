@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration
 package authhandlers
 
 import (
@@ -14,6 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// auth_adapters_test.go: Tests for covering DBQueriesAdapter, DBConnAdapter, and AuthConfigAdapter methods,
+// verifying functionality, error handling, and integration with mocks (sqlmock, context).
+
 // TestDBQueriesAdapter_Instantiation verifies that a DBQueriesAdapter can be instantiated and is not nil.
 func TestDBQueriesAdapter_Instantiation(t *testing.T) {
 	adapter := &DBQueriesAdapter{Queries: nil}
@@ -22,7 +26,7 @@ func TestDBQueriesAdapter_Instantiation(t *testing.T) {
 
 // TestAuthConfigAdapter_HashPassword tests the HashPassword method for both short and valid passwords, checking for correct error handling and hash generation.
 func TestAuthConfigAdapter_HashPassword(t *testing.T) {
-	adapter := &AuthConfigAdapter{AuthConfig: &auth.AuthConfig{}}
+	adapter := &AuthConfigAdapter{AuthConfig: &auth.Config{}}
 	hash, err := adapter.HashPassword("short")
 	assert.Error(t, err)
 	assert.Empty(t, hash)
@@ -35,7 +39,7 @@ func TestAuthConfigAdapter_HashPassword(t *testing.T) {
 // TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases tests StoreRefreshTokenInRedis for various context and config error cases.
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 	// Create adapter with properly initialized AuthConfig
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		// APIConfig is intentionally nil for this test
 	}
 	adapter := &AuthConfigAdapter{AuthConfig: authConfig}
@@ -51,7 +55,7 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 
 	// With httpRequest in context, but nil APIConfig
 	r, _ := http.NewRequest("GET", "/", nil)
-	ctx2 := context.WithValue(ctx, HttpRequestKey, r)
+	ctx2 := context.WithValue(ctx, HTTPRequestKey, r)
 	err = adapter.StoreRefreshTokenInRedis(ctx2, "u1", "rt", "local", time.Minute)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "APIConfig is nil")
@@ -67,40 +71,40 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 func TestDBQueriesAdapter_Methods(t *testing.T) {
 	ctx := context.Background()
 	fq := &fakeQueries{
-		CheckUserExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
+		CheckUserExistsByNameFunc: func(_ context.Context, name string) (bool, error) {
 			return name == "exists", nil
 		},
-		CheckUserExistsByEmailFunc: func(ctx context.Context, email string) (bool, error) {
+		CheckUserExistsByEmailFunc: func(_ context.Context, email string) (bool, error) {
 			return email == "exists@example.com", nil
 		},
-		CreateUserFunc: func(ctx context.Context, params database.CreateUserParams) error {
+		CreateUserFunc: func(_ context.Context, params database.CreateUserParams) error {
 			if params.ID == "" {
 				return assert.AnError
 			}
 			return nil
 		},
-		GetUserByEmailFunc: func(ctx context.Context, email string) (database.User, error) {
+		GetUserByEmailFunc: func(_ context.Context, email string) (database.User, error) {
 			if email == "found@example.com" {
 				return database.User{ID: "id1"}, nil
 			}
 			return database.User{}, assert.AnError
 		},
-		UpdateUserStatusByIDFunc: func(ctx context.Context, params database.UpdateUserStatusByIDParams) error {
+		UpdateUserStatusByIDFunc: func(_ context.Context, params database.UpdateUserStatusByIDParams) error {
 			if params.ID == "" {
 				return assert.AnError
 			}
 			return nil
 		},
-		WithTxFunc: func(tx interface{}) *fakeQueries {
+		WithTxFunc: func(_ any) *fakeQueries {
 			return &fakeQueries{}
 		},
-		CheckExistsAndGetIDByEmailFunc: func(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
+		CheckExistsAndGetIDByEmailFunc: func(_ context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {
 			if email == "exists@example.com" {
 				return database.CheckExistsAndGetIDByEmailRow{Exists: true, ID: "id2"}, nil
 			}
 			return database.CheckExistsAndGetIDByEmailRow{}, assert.AnError
 		},
-		UpdateUserSigninStatusByEmailFunc: func(ctx context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
+		UpdateUserSigninStatusByEmailFunc: func(_ context.Context, params database.UpdateUserSigninStatusByEmailParams) error {
 			if params.Email == "" {
 				return assert.AnError
 			}
@@ -150,7 +154,11 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Create queries with the mock database
 	queries := database.New(db)
@@ -242,7 +250,11 @@ func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("Failed to close database: %v", err)
+		}
+	}()
 
 	adapter := &DBConnAdapter{DB: db}
 	ctx := context.Background()
@@ -272,7 +284,7 @@ func TestAuthConfigAdapter_WithRedisMock(t *testing.T) {
 	redisClient, mock := redismock.NewClientMock()
 
 	// Create AuthConfig with Redis client
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		APIConfig: &config.APIConfig{
 			RedisClient: redisClient,
 		},
@@ -291,7 +303,7 @@ func TestAuthConfigAdapter_WithRedisMock(t *testing.T) {
 
 // TestAuthConfigAdapter_GenerateTokens tests the GenerateTokens method for correct access and refresh token generation.
 func TestAuthConfigAdapter_GenerateTokens(t *testing.T) {
-	authCfg := &auth.AuthConfig{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
+	authCfg := &auth.Config{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
 	expiresAt := time.Now().Add(time.Hour)
 	access, refresh, err := adapter.GenerateTokens("user-id", expiresAt)
@@ -302,7 +314,7 @@ func TestAuthConfigAdapter_GenerateTokens(t *testing.T) {
 
 // TestAuthConfigAdapter_GenerateAccessToken tests the GenerateAccessToken method for correct token generation.
 func TestAuthConfigAdapter_GenerateAccessToken(t *testing.T) {
-	authCfg := &auth.AuthConfig{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
+	authCfg := &auth.Config{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
 	expiresAt := time.Now().Add(time.Hour)
 	token, err := adapter.GenerateAccessToken("user-id", expiresAt)
@@ -313,7 +325,7 @@ func TestAuthConfigAdapter_GenerateAccessToken(t *testing.T) {
 // TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithValidConfig tests StoreRefreshTokenInRedis with valid configuration
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithValidConfig(t *testing.T) {
 	// Create a mock AuthConfig with APIConfig
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		APIConfig: &config.APIConfig{
 			RedisClient: nil, // Will be nil in tests
 		},
@@ -322,7 +334,7 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithValidConfig(t *testing.T
 
 	// Create a request and add it to context
 	r, _ := http.NewRequest("GET", "/", nil)
-	ctx := context.WithValue(context.Background(), HttpRequestKey, r)
+	ctx := context.WithValue(context.Background(), HTTPRequestKey, r)
 
 	// This will fail because we don't have a real Redis connection, but it tests the adapter method
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
@@ -332,14 +344,14 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithValidConfig(t *testing.T
 // TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilAPIConfig tests StoreRefreshTokenInRedis with nil APIConfig
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilAPIConfig(t *testing.T) {
 	// Create AuthConfig with nil APIConfig
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		APIConfig: nil,
 	}
 	adapter := &AuthConfigAdapter{AuthConfig: authConfig}
 
 	// Create a request and add it to context
 	r, _ := http.NewRequest("GET", "/", nil)
-	ctx := context.WithValue(context.Background(), HttpRequestKey, r)
+	ctx := context.WithValue(context.Background(), HTTPRequestKey, r)
 
 	// This should fail because APIConfig is nil
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
@@ -349,13 +361,13 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilAPIConfig(t *testing.
 
 // TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithWrongContextType tests StoreRefreshTokenInRedis with wrong context type
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithWrongContextType(t *testing.T) {
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		APIConfig: &config.APIConfig{},
 	}
 	adapter := &AuthConfigAdapter{AuthConfig: authConfig}
 
 	// Add wrong type to context
-	ctx := context.WithValue(context.Background(), HttpRequestKey, "not-a-request")
+	ctx := context.WithValue(context.Background(), HTTPRequestKey, "not-a-request")
 
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
 	assert.Error(t, err)
@@ -364,13 +376,13 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithWrongContextType(t *test
 
 // TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilRequest tests StoreRefreshTokenInRedis with nil request
 func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilRequest(t *testing.T) {
-	authConfig := &auth.AuthConfig{
+	authConfig := &auth.Config{
 		APIConfig: &config.APIConfig{},
 	}
 	adapter := &AuthConfigAdapter{AuthConfig: authConfig}
 
 	// Add nil request to context
-	ctx := context.WithValue(context.Background(), HttpRequestKey, (*http.Request)(nil))
+	ctx := context.WithValue(context.Background(), HTTPRequestKey, (*http.Request)(nil))
 
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
 	assert.Error(t, err)

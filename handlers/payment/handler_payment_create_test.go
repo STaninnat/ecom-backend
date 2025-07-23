@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -14,13 +15,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_payment_create_test.go: Tests for payment creation HTTP handler behavior and error handling.
+
 // TestHandlerCreatePayment_Success tests the successful creation of a payment via the handler.
 // It verifies that the handler returns HTTP 201, the correct response message, and client secret when the service succeeds.
 func TestHandlerCreatePayment_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForCreate)
 	mockLog := new(MockLoggerForCreate)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -51,7 +54,9 @@ func TestHandlerCreatePayment_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var resp CreatePaymentIntentResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "pi_test_secret", resp.ClientSecret)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
@@ -63,7 +68,7 @@ func TestHandlerCreatePayment_InvalidPayload(t *testing.T) {
 	mockService := new(MockPaymentServiceForCreate)
 	mockLog := new(MockLoggerForCreate)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -85,7 +90,7 @@ func TestHandlerCreatePayment_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForCreate)
 	mockLog := new(MockLoggerForCreate)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -121,7 +126,7 @@ func TestHandlerCreatePayment_ValidationError(t *testing.T) {
 	mockService := new(MockPaymentServiceForCreate)
 	mockLog := new(MockLoggerForCreate)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}

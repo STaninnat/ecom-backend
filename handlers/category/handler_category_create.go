@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_category_create.go: Provides HTTP handler for creating categories.
 
 // HandlerCreateCategory handles HTTP POST requests to create a new category.
 // Parses the request body for category parameters, validates them, and delegates creation to the category service.

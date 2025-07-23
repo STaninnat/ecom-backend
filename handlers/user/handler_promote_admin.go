@@ -1,8 +1,10 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -10,6 +12,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_promote_admin.go: Handles user promotion to admin role with context extraction, validation, service delegation, error handling, and success response logging.
 
 // HandlerPromoteUserToAdmin handles HTTP POST requests to promote a user to admin role (admin only).
 // Extracts user from request context, validates the target user ID, delegates to user service,
@@ -41,7 +45,8 @@ func (cfg *HandlersUserConfig) HandlerPromoteUserToAdmin(w http.ResponseWriter, 
 
 	err := cfg.GetUserService().PromoteUserToAdmin(ctxWithUserID, user, req.UserID)
 	if err != nil {
-		if appErr, ok := err.(*handlers.AppError); ok {
+		appErr := &handlers.AppError{}
+		if errors.As(err, &appErr) {
 			switch appErr.Code {
 			case "unauthorized_user":
 				cfg.Logger.LogHandlerError(ctxWithUserID, "promote_admin", appErr.Code, appErr.Message, ip, userAgent, appErr.Err)

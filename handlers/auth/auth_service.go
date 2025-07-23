@@ -1,9 +1,12 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,26 +19,29 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// auth_service.go: Implements authentication service with local and Google OAuth, token management, user registration, and session/cart merging.
+
 const (
-	// Token TTLs
-	AccessTokenTTL  = 30 * time.Minute
+	// AccessTokenTTL is the time-to-live for access tokens.
+	AccessTokenTTL = 30 * time.Minute
+	// RefreshTokenTTL is the time-to-live for refresh tokens.
 	RefreshTokenTTL = 7 * 24 * time.Hour
 
-	// OAuth state TTL
+	// OAuthStateTTL is the time-to-live for OAuth state values.
 	OAuthStateTTL = 10 * time.Minute
 
-	// Providers
-	LocalProvider  = "local"
+	// LocalProvider is the string identifier for the local authentication provider.
+	LocalProvider = "local"
+	// GoogleProvider is the string identifier for the Google authentication provider.
 	GoogleProvider = "google"
-
-	// User roles
+	// UserRole is the string identifier for a regular user role.
 	UserRole = "user"
-
-	// Redis key prefixes
+	// RefreshTokenKeyPrefix is the prefix for refresh token keys in Redis.
 	RefreshTokenKeyPrefix = "refresh_token:"
-	OAuthStateKeyPrefix   = "oauth_state:"
+	// OAuthStateKeyPrefix is the prefix for OAuth state keys in Redis.
+	OAuthStateKeyPrefix = "oauth_state:"
 
-	// OAuth state value
+	// OAuthStateValid is the valid state value for OAuth.
 	OAuthStateValid = "valid"
 )
 
@@ -183,14 +189,16 @@ func (s *AuthServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	}
 
 	// Create user
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	timeNow := time.Now().UTC()
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -210,7 +218,7 @@ func (s *AuthServiceImpl) SignUp(ctx context.Context, params SignUpParams) (*Aut
 	}
 
 	// Generate tokens and store refresh token
-	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), LocalProvider, timeNow, true)
+	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), timeNow, true)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +257,9 @@ func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -263,7 +273,7 @@ func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 	}
 
 	// Generate tokens and store refresh token
-	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), LocalProvider, timeNow, false)
+	authResult, err := s.generateAndStoreTokens(ctx, userID.String(), timeNow, false)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +286,7 @@ func (s *AuthServiceImpl) SignIn(ctx context.Context, params SignInParams) (*Aut
 }
 
 // SignOut handles user signout, revoking tokens and cleaning up session state.
-func (s *AuthServiceImpl) SignOut(ctx context.Context, userID string, provider string) error {
+func (s *AuthServiceImpl) SignOut(ctx context.Context, userID string, _ string) error {
 	// Delete refresh token from Redis
 	err := s.redisClient.Del(ctx, RefreshTokenKeyPrefix+userID).Err()
 	if err != nil {
@@ -336,7 +346,7 @@ func (s *AuthServiceImpl) HandleGoogleAuth(ctx context.Context, code string, sta
 // Helper methods
 
 // generateAndStoreTokens generates access and refresh tokens and stores the refresh token
-func (s *AuthServiceImpl) generateAndStoreTokens(ctx context.Context, userID, provider string, timeNow time.Time, isNewUser bool) (*AuthResult, error) {
+func (s *AuthServiceImpl) generateAndStoreTokens(ctx context.Context, userID string, timeNow time.Time, isNewUser bool) (*AuthResult, error) {
 	accessTokenExpiresAt := timeNow.Add(AccessTokenTTL)
 	refreshTokenExpiresAt := timeNow.Add(RefreshTokenTTL)
 
@@ -346,7 +356,7 @@ func (s *AuthServiceImpl) generateAndStoreTokens(ctx context.Context, userID, pr
 	}
 
 	// Store refresh token
-	err = s.auth.StoreRefreshTokenInRedis(ctx, userID, refreshToken, provider, refreshTokenExpiresAt.Sub(timeNow))
+	err = s.auth.StoreRefreshTokenInRedis(ctx, userID, refreshToken, LocalProvider, refreshTokenExpiresAt.Sub(timeNow))
 	if err != nil {
 		return nil, &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token", Err: err}
 	}
@@ -390,7 +400,7 @@ func (s *AuthServiceImpl) refreshLocalToken(ctx context.Context, userID string, 
 	}
 
 	// Generate new tokens and store refresh token
-	return s.generateAndStoreTokens(ctx, userID, LocalProvider, timeNow, false)
+	return s.generateAndStoreTokens(ctx, userID, timeNow, false)
 }
 
 // getUserInfoFromGoogle retrieves user information from Google API
@@ -408,7 +418,12 @@ func (s *AuthServiceImpl) getUserInfoFromGoogle(token *oauth2.Token, userInfoURL
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log or handle the error as appropriate
+			fmt.Printf("failed to close response body: %v\n", err)
+		}
+	}()
 
 	var user UserGoogleInfo
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
@@ -420,25 +435,27 @@ func (s *AuthServiceImpl) getUserInfoFromGoogle(token *oauth2.Token, userInfoURL
 // handleGoogleUserAuth handles Google OAuth user authentication and account creation
 func (s *AuthServiceImpl) handleGoogleUserAuth(ctx context.Context, user *UserGoogleInfo, token *oauth2.Token) (*AuthResult, error) {
 	existingUser, err := s.db.CheckExistsAndGetIDByEmail(ctx, user.Email)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, &handlers.AppError{Code: "database_error", Message: "Error checking user existence", Err: err}
 	}
 
 	var userID string
 	timeNow := time.Now().UTC()
-	isNewUser := err == sql.ErrNoRows || !existingUser.Exists
+	isNewUser := errors.Is(err, sql.ErrNoRows) || !existingUser.Exists
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
 	if isNewUser {
 		// Create new user
-		userID = uuid.New().String()
+		userID = utils.NewUUIDString()
 		err = queries.CreateUser(ctx, database.CreateUserParams{
 			ID:         userID,
 			Name:       user.Name,

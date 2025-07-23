@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -16,15 +17,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_update_user_test.go: Tests for HandlerUpdateUser covering success, validation errors, service errors, and missing user context.
+
 // TestHandlerUpdateUser_Success tests that HandlerUpdateUser successfully updates
 // user information when valid parameters are provided
 func TestHandlerUpdateUser_Success(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	params := UpdateUserParams{Name: "A", Email: "a@b.com", Phone: "123", Address: "Addr"}
@@ -41,7 +44,9 @@ func TestHandlerUpdateUser_Success(t *testing.T) {
 	cfg.HandlerUpdateUser(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.HandlerResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "Updated user info successful", resp.Message)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -53,9 +58,9 @@ func TestHandlerUpdateUser_ValidationError(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Send invalid JSON that will fail auth.DecodeAndValidate
@@ -83,9 +88,9 @@ func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	invalidJSON := `{"name": "A", "email": "a@b.com"` // missing closing brace
@@ -121,9 +126,9 @@ func TestHandlerUpdateUser_ServiceError(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	params := UpdateUserParams{Name: "A", Email: "a@b.com", Phone: "123", Address: "Addr"}
@@ -149,9 +154,9 @@ func TestHandlerUpdateUser_UserNotFoundInContext(t *testing.T) {
 	mockService := new(mockUpdateUserService)
 	mockLogger := new(mockUpdateHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 
 	// Mock error logging for user not found
@@ -167,7 +172,9 @@ func TestHandlerUpdateUser_UserNotFoundInContext(t *testing.T) {
 	cfg.HandlerUpdateUser(w, r)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	var errorResp map[string]any
-	json.NewDecoder(w.Body).Decode(&errorResp)
+	if err := json.NewDecoder(w.Body).Decode(&errorResp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Contains(t, errorResp, "error")
 	mockLogger.AssertExpectations(t)
 }

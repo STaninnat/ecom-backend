@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -8,6 +9,8 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/mock"
 )
+
+// user_helper_test.go: Provides mocks, test doubles, and helpers for unit testing user handlers, services, middleware, and logging.
 
 // responseRecorder is a custom response writer that captures the status code
 // and response body for testing purposes
@@ -115,10 +118,10 @@ func (m *MockUserServiceForMiddleware) PromoteUserToAdmin(ctx context.Context, a
 	return args.Error(0)
 }
 
-// TestHandlersConfig is a test-specific configuration that embeds HandlersConfig
+// TestHandlersConfig is a test-specific configuration that embeds Config
 // and provides a mock AuthConfig for testing
 type TestHandlersConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	TestAuth *MockAuthConfig
 }
 
@@ -135,7 +138,7 @@ type testUserConfig struct {
 	gotUser            database.User
 }
 
-func (cfg *testUserConfig) HandlerGetUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *testUserConfig) HandlerGetUser(_ http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKeyUser).(database.User)
 	cfg.calledGetUser = true
 	if ok {
@@ -143,7 +146,7 @@ func (cfg *testUserConfig) HandlerGetUser(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (cfg *testUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *testUserConfig) HandlerUpdateUser(_ http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKeyUser).(database.User)
 	cfg.calledUpdateUser = true
 	if ok {
@@ -151,7 +154,7 @@ func (cfg *testUserConfig) HandlerUpdateUser(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (cfg *testUserConfig) HandlerPromoteUserToAdmin(w http.ResponseWriter, r *http.Request) {
+func (cfg *testUserConfig) HandlerPromoteUserToAdmin(_ http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKeyUser).(database.User)
 	cfg.calledPromoteAdmin = true
 	if ok {
@@ -185,9 +188,9 @@ type testUserExtractionConfig struct {
 // that don't need to verify logging behavior
 type dummyHandlerLogger struct{}
 
-func (d *dummyHandlerLogger) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+func (d *dummyHandlerLogger) LogHandlerError(_ context.Context, _, _, _, _, _ string, _ error) {
 }
-func (d *dummyHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {}
+func (d *dummyHandlerLogger) LogHandlerSuccess(_ context.Context, _, _, _, _ string) {}
 
 // --- Mock for Update User ---
 // mockUpdateUserService is a mock implementation of UserService
@@ -196,7 +199,7 @@ type mockUpdateUserService struct {
 	mock.Mock
 }
 
-func (m *mockUpdateUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
+func (m *mockUpdateUserService) GetUser(_ context.Context, _ database.User) (*UserResponse, error) {
 	return nil, nil // not used in update tests
 }
 
@@ -205,12 +208,12 @@ func (m *mockUpdateUserService) UpdateUser(ctx context.Context, user database.Us
 	return args.Error(0)
 }
 
-func (m *mockUpdateUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
+func (m *mockUpdateUserService) GetUserByID(_ context.Context, _ string) (database.User, error) {
 	return database.User{}, nil // not used in these tests
 }
 
 // Add stub for PromoteUserToAdmin to satisfy UserService interface
-func (m *mockUpdateUserService) PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error {
+func (m *mockUpdateUserService) PromoteUserToAdmin(_ context.Context, _ database.User, _ string) error {
 	return nil // not used in these tests
 }
 
@@ -237,13 +240,13 @@ func (m *mockPromoteUserService) PromoteUserToAdmin(ctx context.Context, adminUs
 	args := m.Called(ctx, adminUser, targetUserID)
 	return args.Error(0)
 }
-func (m *mockPromoteUserService) GetUser(ctx context.Context, user database.User) (*UserResponse, error) {
+func (m *mockPromoteUserService) GetUser(_ context.Context, _ database.User) (*UserResponse, error) {
 	return nil, nil
 }
-func (m *mockPromoteUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
+func (m *mockPromoteUserService) UpdateUser(_ context.Context, _ database.User, _ UpdateUserParams) error {
 	return nil
 }
-func (m *mockPromoteUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
+func (m *mockPromoteUserService) GetUserByID(_ context.Context, _ string) (database.User, error) {
 	return database.User{}, nil
 }
 
@@ -273,16 +276,16 @@ func (m *mockGetUserService) GetUser(ctx context.Context, user database.User) (*
 	return args.Get(0).(*UserResponse), args.Error(1)
 }
 
-func (m *mockGetUserService) GetUserByID(ctx context.Context, id string) (database.User, error) {
+func (m *mockGetUserService) GetUserByID(_ context.Context, _ string) (database.User, error) {
 	return database.User{}, nil // not used in these tests
 }
 
-func (m *mockGetUserService) UpdateUser(ctx context.Context, user database.User, params UpdateUserParams) error {
+func (m *mockGetUserService) UpdateUser(_ context.Context, _ database.User, _ UpdateUserParams) error {
 	return nil // not used in these tests
 }
 
 // Add stub for PromoteUserToAdmin to satisfy UserService interface
-func (m *mockGetUserService) PromoteUserToAdmin(ctx context.Context, adminUser database.User, targetUserID string) error {
+func (m *mockGetUserService) PromoteUserToAdmin(_ context.Context, _ database.User, _ string) error {
 	return nil // not used in these tests
 }
 

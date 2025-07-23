@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -16,15 +17,21 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_cart_add_test.go: Tests for AddItemToUserCart and AddItemToGuestCart handlers, validating request handling and error scenarios.
+
+const (
+	testSessionIDAdd = "sess1"
+)
+
 // TestHandlerAddItemToUserCart_Success tests adding an item to a user's cart successfully.
 // It verifies that the handler returns HTTP 200 and calls the service and logger as expected.
 func TestHandlerAddItemToUserCart_Success(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
@@ -47,9 +54,9 @@ func TestHandlerAddItemToUserCart_InvalidJSON(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	badBody := []byte(`{"bad":}`)
@@ -69,9 +76,9 @@ func TestHandlerAddItemToUserCart_MissingFields(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := CartItemRequest{ProductID: "", Quantity: 0}
@@ -92,9 +99,9 @@ func TestHandlerAddItemToUserCart_ServiceError(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
@@ -118,22 +125,22 @@ func TestHandlerAddItemToGuestCart_Success(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
-	mockService.On("AddItemToGuestCart", mock.Anything, "sess1", reqBody.ProductID, reqBody.Quantity).Return(nil)
+	mockService.On("AddItemToGuestCart", mock.Anything, testSessionIDAdd, reqBody.ProductID, reqBody.Quantity).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "add_item_guest_cart", "Added item to guest cart", mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("POST", "/cart", bytes.NewBuffer(jsonBody))
-	req = req.WithContext(context.WithValue(req.Context(), utils.ContextKey("session_id"), "sess1"))
+	req = req.WithContext(context.WithValue(req.Context(), utils.ContextKey("session_id"), testSessionIDAdd))
 	w := httptest.NewRecorder()
 
 	// Patch getSessionIDFromRequest to return "sess1"
 	orig := getSessionIDFromRequest
-	getSessionIDFromRequest = func(r *http.Request) string { return "sess1" }
+	getSessionIDFromRequest = func(_ *http.Request) string { return testSessionIDAdd }
 	defer func() { getSessionIDFromRequest = orig }()
 
 	cfg.HandlerAddItemToGuestCart(w, req)
@@ -148,9 +155,9 @@ func TestHandlerAddItemToGuestCart_MissingSessionID(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "add_item_guest_cart", "missing session ID", "Session ID not found in request", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -159,7 +166,7 @@ func TestHandlerAddItemToGuestCart_MissingSessionID(t *testing.T) {
 
 	// Patch getSessionIDFromRequest to return ""
 	orig := getSessionIDFromRequest
-	getSessionIDFromRequest = func(r *http.Request) string { return "" }
+	getSessionIDFromRequest = func(_ *http.Request) string { return "" }
 	defer func() { getSessionIDFromRequest = orig }()
 
 	cfg.HandlerAddItemToGuestCart(w, req)
@@ -173,9 +180,9 @@ func TestHandlerAddItemToGuestCart_InvalidJSON(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	badBody := []byte(`{"bad":}`)
 	mockLogger.On("LogHandlerError", mock.Anything, "add_item_guest_cart", "invalid request body", "Failed to parse body", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -185,7 +192,7 @@ func TestHandlerAddItemToGuestCart_InvalidJSON(t *testing.T) {
 
 	// Patch getSessionIDFromRequest to return "sess1"
 	orig := getSessionIDFromRequest
-	getSessionIDFromRequest = func(r *http.Request) string { return "sess1" }
+	getSessionIDFromRequest = func(_ *http.Request) string { return testSessionIDAdd }
 	defer func() { getSessionIDFromRequest = orig }()
 
 	cfg.HandlerAddItemToGuestCart(w, req)
@@ -199,9 +206,9 @@ func TestHandlerAddItemToGuestCart_MissingFields(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	reqBody := CartItemRequest{ProductID: "", Quantity: 0}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -212,7 +219,7 @@ func TestHandlerAddItemToGuestCart_MissingFields(t *testing.T) {
 
 	// Patch getSessionIDFromRequest to return "sess1"
 	orig := getSessionIDFromRequest
-	getSessionIDFromRequest = func(r *http.Request) string { return "sess1" }
+	getSessionIDFromRequest = func(_ *http.Request) string { return testSessionIDAdd }
 	defer func() { getSessionIDFromRequest = orig }()
 
 	cfg.HandlerAddItemToGuestCart(w, req)
@@ -226,14 +233,14 @@ func TestHandlerAddItemToGuestCart_ServiceError(t *testing.T) {
 	mockService := new(MockCartService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersCartConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		CartService:    mockService,
+		Config:      &handlers.Config{},
+		Logger:      mockLogger,
+		CartService: mockService,
 	}
 	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
 	err := &handlers.AppError{Code: "cart_full", Message: "full", Err: errors.New("fail")}
-	mockService.On("AddItemToGuestCart", mock.Anything, "sess1", reqBody.ProductID, reqBody.Quantity).Return(err)
+	mockService.On("AddItemToGuestCart", mock.Anything, testSessionIDAdd, reqBody.ProductID, reqBody.Quantity).Return(err)
 	mockLogger.On("LogHandlerError", mock.Anything, "add_item_guest_cart", "cart_full", "full", mock.Anything, mock.Anything, err.Err).Return()
 
 	req := httptest.NewRequest("POST", "/cart", bytes.NewBuffer(jsonBody))
@@ -241,7 +248,7 @@ func TestHandlerAddItemToGuestCart_ServiceError(t *testing.T) {
 
 	// Patch getSessionIDFromRequest to return "sess1"
 	orig := getSessionIDFromRequest
-	getSessionIDFromRequest = func(r *http.Request) string { return "sess1" }
+	getSessionIDFromRequest = func(_ *http.Request) string { return testSessionIDAdd }
 	defer func() { getSessionIDFromRequest = orig }()
 
 	cfg.HandlerAddItemToGuestCart(w, req)

@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -8,6 +9,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+// handler_log_config_test.go: Tests for logging and metadata helper functions in HandlerConfig and Config.
+
+const (
+	testAction         = "test_action"
+	testDetails        = "test_details"
+	testLogMsg         = "test_log_msg"
+	testIPAddr         = "192.168.1.1"
+	testUserAgentLogcf = "test-user-agent"
 )
 
 // MockLoggerService is a mock implementation of the LoggerService interface for testing.
@@ -95,8 +106,8 @@ func TestHandlerConfig_GetRequestMetadata(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	expectedIP := "192.168.1.1"
-	expectedUA := "test-user-agent"
+	expectedIP := testIPAddr
+	expectedUA := testUserAgentLogcf
 
 	mockRequestMetadata.On("GetIPAddress", req).Return(expectedIP)
 	mockRequestMetadata.On("GetUserAgent", req).Return(expectedUA)
@@ -118,11 +129,11 @@ func TestHandlerConfig_LogHandlerError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	action := "test_action"
-	details := "test_details"
-	logMsg := "test_log_msg"
-	ip := "192.168.1.1"
-	ua := "test-user-agent"
+	action := testAction
+	details := testDetails
+	logMsg := testLogMsg
+	ip := testIPAddr
+	ua := testUserAgentLogcf
 	err := assert.AnError
 
 	// Create a proper logrus entry
@@ -146,11 +157,11 @@ func TestHandlerConfig_LogHandlerError_NilError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	action := "test_action"
-	details := "test_details"
-	logMsg := "test_log_msg"
-	ip := "192.168.1.1"
-	ua := "test-user-agent"
+	action := testAction
+	details := testDetails
+	logMsg := testLogMsg
+	ip := testIPAddr
+	ua := testUserAgentLogcf
 
 	mockLogger.On("Error", logMsg).Return()
 
@@ -169,10 +180,10 @@ func TestHandlerConfig_LogHandlerSuccess(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	action := "test_action"
-	details := "test_details"
-	ip := "192.168.1.1"
-	ua := "test-user-agent"
+	action := testAction
+	details := testDetails
+	ip := testIPAddr
+	ua := testUserAgentLogcf
 
 	// LogHandlerSuccess currently has a TODO comment, so we'll just test that it doesn't panic
 	assert.NotPanics(t, func() {
@@ -184,29 +195,29 @@ func TestHandlerConfig_LogHandlerSuccess(t *testing.T) {
 // It checks that the correct IP address and user agent are extracted from the request headers.
 func TestGetRequestMetadata_Legacy(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("User-Agent", "test-user-agent")
-	req.Header.Set("X-Forwarded-For", "192.168.1.1")
+	req.Header.Set("User-Agent", testUserAgentLogcf)
+	req.Header.Set("X-Forwarded-For", testIPAddr)
 
 	ip, userAgent := GetRequestMetadata(req)
 
 	assert.NotEmpty(t, ip)
-	assert.Equal(t, "test-user-agent", userAgent)
+	assert.Equal(t, testUserAgentLogcf, userAgent)
 }
 
 // TestHandlersConfig_LogHandlerError_Legacy tests the legacy LogHandlerError method of HandlersConfig.
 // It checks that the method does not panic when called with an error.
 func TestHandlersConfig_LogHandlerError_Legacy(t *testing.T) {
 	logger := logrus.New()
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		Logger: logger,
 	}
 
 	ctx := context.Background()
-	action := "test_action"
-	details := "test_details"
-	logMsg := "test_log_msg"
-	ip := "192.168.1.1"
-	ua := "test-user-agent"
+	action := testAction
+	details := testDetails
+	logMsg := testLogMsg
+	ip := testIPAddr
+	ua := testUserAgentLogcf
 	err := assert.AnError
 
 	// This should not panic
@@ -219,15 +230,15 @@ func TestHandlersConfig_LogHandlerError_Legacy(t *testing.T) {
 // It checks that the method does not panic when called.
 func TestHandlersConfig_LogHandlerSuccess_Legacy(t *testing.T) {
 	logger := logrus.New()
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		Logger: logger,
 	}
 
 	ctx := context.Background()
-	action := "test_action"
-	details := "test_details"
-	ip := "192.168.1.1"
-	ua := "test-user-agent"
+	action := testAction
+	details := testDetails
+	ip := testIPAddr
+	ua := testUserAgentLogcf
 
 	// This should not panic
 	assert.NotPanics(t, func() {

@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -11,10 +12,12 @@ import (
 	"github.com/stripe/stripe-go/v82"
 )
 
+// payment_wrapper.go: Provides payment handler configuration, service initialization, and error handling.
+
 // HandlersPaymentConfig contains the configuration for payment handlers.
 // Embeds the base handlers config and provides access to the payment service for business logic operations.
 type HandlersPaymentConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	Logger         handlers.HandlerLogger
 	paymentService PaymentService
 	paymentMutex   sync.RWMutex
@@ -24,7 +27,7 @@ type HandlersPaymentConfig struct {
 // Validates required dependencies and sets up the service. This method should be called during application startup.
 func (cfg *HandlersPaymentConfig) InitPaymentService() error {
 	// Validate that the embedded config is not nil
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	if cfg.APIConfig == nil {
@@ -52,7 +55,7 @@ func (cfg *HandlersPaymentConfig) InitPaymentService() error {
 
 	// Set Logger if not already set
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 
 	return nil
@@ -75,7 +78,7 @@ func (cfg *HandlersPaymentConfig) GetPaymentService() PaymentService {
 	// Double-check pattern in case another goroutine initialized it
 	if cfg.paymentService == nil {
 		// Validate that the embedded config is not nil before accessing its fields
-		if cfg.HandlersConfig == nil || cfg.APIConfig == nil || cfg.DB == nil {
+		if cfg.Config == nil || cfg.APIConfig == nil || cfg.DB == nil {
 			// Return a default service that will fail gracefully when used
 			cfg.paymentService = NewPaymentService(nil, nil, "")
 		} else {
@@ -100,7 +103,8 @@ func (cfg *HandlersPaymentConfig) SetupStripeAPI() {
 func (cfg *HandlersPaymentConfig) handlePaymentError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "invalid_request", "missing_order_id", "missing_user_id", "invalid_currency", "payment_exists":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)

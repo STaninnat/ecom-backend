@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -15,15 +16,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_promote_admin_test.go: Tests for HandlerPromoteUserToAdmin covering success, authorization, input validation, error handling, and context user presence.
+
 // TestHandlerPromoteUserToAdmin_Success tests that HandlerPromoteUserToAdmin successfully
 // promotes a user to admin role when called by an authorized admin user
 func TestHandlerPromoteUserToAdmin_Success(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	admin := database.User{ID: "admin1", Role: "admin"}
 	params := map[string]string{"user_id": "user2"}
@@ -38,7 +41,8 @@ func TestHandlerPromoteUserToAdmin_Success(t *testing.T) {
 	cfg.HandlerPromoteUserToAdmin(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.HandlerResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "User promoted to admin", resp.Message)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -50,9 +54,9 @@ func TestHandlerPromoteUserToAdmin_NonAdminForbidden(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	nonAdmin := database.User{ID: "u1", Role: "user"}
 	params := map[string]string{"user_id": "user2"}
@@ -76,9 +80,9 @@ func TestHandlerPromoteUserToAdmin_AlreadyAdmin(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	admin := database.User{ID: "admin1", Role: "admin"}
 	params := map[string]string{"user_id": "user2"}
@@ -102,9 +106,9 @@ func TestHandlerPromoteUserToAdmin_TargetUserNotFound(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	admin := database.User{ID: "admin1", Role: "admin"}
 	params := map[string]string{"user_id": "user2"}
@@ -128,9 +132,9 @@ func TestHandlerPromoteUserToAdmin_InvalidPayload(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	admin := database.User{ID: "admin1", Role: "admin"}
 	invalidJSON := `{"user_id":}` // malformed
@@ -152,9 +156,9 @@ func TestHandlerPromoteUserToAdmin_UserNotFoundInContext(t *testing.T) {
 	mockService := new(mockPromoteUserService)
 	mockLogger := new(mockPromoteLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "promote_admin", "user_not_found", "User not found in context", mock.Anything, mock.Anything, mock.Anything).Return()
 

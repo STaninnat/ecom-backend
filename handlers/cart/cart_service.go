@@ -1,9 +1,11 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -13,16 +15,22 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/models"
-	"github.com/google/uuid"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/redis/go-redis/v9"
 )
 
+// cart_service.go: Provides interfaces, adapters, and services for managing shopping carts and checkout processes.
+
+// TTL defines the time-to-live for guest carts in Redis.
 var TTL = 7 * 24 * time.Hour
 
 const (
+	// GuestCartPrefix is the prefix for guest cart keys in Redis.
 	GuestCartPrefix = "guest_cart:"
-	MaxQuantity     = 1000 // Maximum quantity per item
-	MaxCartItems    = 50   // Maximum items in cart
+	// MaxQuantity is the maximum quantity per item in a cart.
+	MaxQuantity = 1000 // Maximum quantity per item
+	// MaxCartItems is the maximum number of items in a cart.
+	MaxCartItems = 50 // Maximum items in cart
 )
 
 // CartMongoAPI defines the interface for MongoDB cart operations
@@ -188,7 +196,7 @@ func (r *cartRedisImpl) GetGuestCart(ctx context.Context, sessionID string) (*mo
 	key := GuestCartPrefix + sessionID
 
 	val, err := r.redisClient.Get(ctx, key).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return &models.Cart{Items: []models.CartItem{}}, nil
 	}
 	if err != nil {
@@ -574,10 +582,7 @@ func (s *cartServiceImpl) CheckoutGuestCart(ctx context.Context, sessionID strin
 	}
 
 	// Clear guest cart after successful checkout
-	if err := s.redis.DeleteGuestCart(ctx, sessionID); err != nil {
-		// Log error but don't fail the checkout
-		// This could be handled by a background job
-	}
+	_ = s.redis.DeleteGuestCart(ctx, sessionID)
 
 	return result, nil
 }
@@ -588,7 +593,12 @@ func (s *cartServiceImpl) processCheckout(ctx context.Context, cart *models.Cart
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Failed to start transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			// Log or handle the error as appropriate
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 
 	totalAmount := 0.0
 	timeNow := time.Now().UTC()
@@ -613,7 +623,7 @@ func (s *cartServiceImpl) processCheckout(ctx context.Context, cart *models.Cart
 	}
 
 	// Create order
-	orderID := uuid.New().String()
+	orderID := utils.NewUUIDString()
 	err = s.order.CreateOrder(ctx, database.CreateOrderParams{
 		ID:          orderID,
 		UserID:      userID,
@@ -649,7 +659,7 @@ func (s *cartServiceImpl) processCheckout(ctx context.Context, cart *models.Cart
 
 		// Create order item
 		err = s.order.CreateOrderItem(ctx, database.CreateOrderItemParams{
-			ID:        uuid.New().String(),
+			ID:        utils.NewUUIDString(),
 			OrderID:   orderID,
 			ProductID: item.ProductID,
 			Quantity:  qty32,
@@ -668,10 +678,7 @@ func (s *cartServiceImpl) processCheckout(ctx context.Context, cart *models.Cart
 	}
 
 	// Clear user cart
-	if err := s.cartMongo.ClearCart(ctx, userID); err != nil {
-		// Log error but don't fail the checkout
-		// This could be handled by a background job
-	}
+	_ = s.cartMongo.ClearCart(ctx, userID)
 
 	return &CartCheckoutResult{
 		OrderID: orderID,

@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -13,12 +14,18 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_payment_webhook_test.go: Tests for Stripe webhook HTTP handler including payload validation and service error handling.
+
+const (
+	testSignatureWebhook = "t=1234567890,v1=abc123"
+)
+
 // TestHandlerStripeWebhook_Success tests successful webhook processing
 func TestHandlerStripeWebhook_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				StripeWebhookSecret: "whsec_test",
 			},
@@ -27,7 +34,7 @@ func TestHandlerStripeWebhook_Success(t *testing.T) {
 		paymentService: mockService,
 	}
 	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	signature := "t=1234567890,v1=abc123"
+	signature := testSignatureWebhook
 	mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "payment_webhook", "Webhook processed successfully", mock.Anything, mock.Anything).Return()
 
@@ -47,7 +54,7 @@ func TestHandlerStripeWebhook_ReadBodyError(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -68,7 +75,7 @@ func TestHandlerStripeWebhook_InvalidContentType(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -88,7 +95,7 @@ func TestHandlerStripeWebhook_MissingSignature(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -109,7 +116,7 @@ func TestHandlerStripeWebhook_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				StripeWebhookSecret: "whsec_test",
 			},
@@ -118,7 +125,7 @@ func TestHandlerStripeWebhook_ServiceError(t *testing.T) {
 		paymentService: mockService,
 	}
 	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	signature := "t=1234567890,v1=abc123"
+	signature := testSignatureWebhook
 	err := &handlers.AppError{Code: "webhook_error", Message: "fail", Err: errors.New("fail")}
 	mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(err)
 	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "webhook_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
@@ -139,7 +146,7 @@ func TestHandlerStripeWebhook_InvalidSignature(t *testing.T) {
 	mockService := new(MockPaymentServiceForWebhook)
 	mockLog := new(MockLoggerForWebhook)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				StripeWebhookSecret: "whsec_test",
 			},
@@ -148,8 +155,8 @@ func TestHandlerStripeWebhook_InvalidSignature(t *testing.T) {
 		paymentService: mockService,
 	}
 	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	signature := "t=1234567890,v1=abc123"
-	err := &handlers.AppError{Code: "invalid_signature", Message: "Invalid signature", Err: errors.New("invalid signature")}
+	signature := testSignatureWebhook
+	err := &handlers.AppError{Code: "invalid_signature", Message: "Invalid signature", Err: errors.New("invalid")}
 	mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(err)
 	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "internal_error", "Invalid signature", mock.Anything, mock.Anything, err.Err).Return()
 
@@ -167,6 +174,6 @@ func TestHandlerStripeWebhook_InvalidSignature(t *testing.T) {
 // errorReader is a reader that always returns an error
 type errorReader struct{}
 
-func (e *errorReader) Read(p []byte) (n int, err error) {
+func (e *errorReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("read error")
 }

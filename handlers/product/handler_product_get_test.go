@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_product_get_test.go: Tests handlers for retrieving all products and by ID, covering success, missing ID, and service error cases.
 
 // TestHandlerGetAllProducts_Success tests the successful retrieval of all products via the handler.
 // It verifies that the handler returns HTTP 200 and logs success when the service returns products without error.

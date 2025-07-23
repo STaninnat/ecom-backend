@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -9,6 +10,9 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/stretchr/testify/assert"
 )
+
+// upload_wrapper_test.go: Tests all error handling branches of handleUploadError for local and S3 upload configs,
+// verifying correct HTTP responses and proper logging in each case.
 
 // TestHandlersUploadConfig_handleUploadError_AllBranches tests handleUploadError for HandlersUploadConfig.
 // It verifies that all error branches are handled correctly, the right status code and message are returned, and logging is performed as expected.
@@ -42,7 +46,8 @@ func TestHandlersUploadConfig_handleUploadError_AllBranches(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			if appErr, ok := tc.err.(*handlers.AppError); ok {
+			appErr := &handlers.AppError{}
+			if errors.As(tc.err, &appErr) {
 				mockLogger.On("LogHandlerError", ctx, "op", tc.logCode, appErr.Message, ip, userAgent, tc.logErr).Return().Once()
 			} else {
 				mockLogger.On("LogHandlerError", ctx, "op", tc.logCode, "Unknown error occurred", ip, userAgent, tc.logErr).Return().Once()
@@ -87,7 +92,8 @@ func TestHandlersUploadS3Config_handleUploadError_AllBranches(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			if appErr, ok := tc.err.(*handlers.AppError); ok {
+			appErr := &handlers.AppError{}
+			if errors.As(tc.err, &appErr) {
 				mockLogger.On("LogHandlerError", ctx, "op", tc.logCode, appErr.Message, ip, userAgent, tc.logErr).Return().Once()
 			} else {
 				mockLogger.On("LogHandlerError", ctx, "op", tc.logCode, "Unknown error occurred", ip, userAgent, tc.logErr).Return().Once()

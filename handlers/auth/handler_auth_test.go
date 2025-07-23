@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -16,7 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// --- Tests for SignUp Handler ---
+// handler_auth_test.go: Tests for HTTP handlers for user signup, signin, and signout with token management.
 
 // TestHandlerSignUp_Success verifies successful signup with valid input and checks response and cookies.
 func TestHandlerSignUp_Success(t *testing.T) {
@@ -25,7 +26,7 @@ func TestHandlerSignUp_Success(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -66,7 +67,7 @@ func TestHandlerSignUp_InvalidRequest(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -98,7 +99,7 @@ func TestHandlerSignUp_MissingFields(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -133,7 +134,7 @@ func TestHandlerSignUp_DuplicateEmail(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -168,7 +169,7 @@ func TestHandlerSignUp_DuplicateName(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -203,7 +204,7 @@ func TestHandlerSignUp_DatabaseError(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -239,7 +240,7 @@ func TestHandlerSignUp_UnknownError(t *testing.T) {
 
 	// Create a proper HandlersAuthConfig for testing
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -275,7 +276,7 @@ func TestHandlerSignIn_Success(t *testing.T) {
 	mockHandlersConfig := new(MockHandlersConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -325,7 +326,7 @@ func TestHandlerSignIn_InvalidRequest(t *testing.T) {
 	mockHandlersConfig := new(MockHandlersConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -355,7 +356,7 @@ func TestHandlerSignIn_MissingFields(t *testing.T) {
 	mockHandlersConfig := new(MockHandlersConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -395,7 +396,7 @@ func TestHandlerSignIn_UserNotFound(t *testing.T) {
 	mockCartConfig := new(MockCartConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -437,7 +438,7 @@ func TestHandlerSignIn_InvalidPassword(t *testing.T) {
 	mockCartConfig := new(MockCartConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -479,7 +480,7 @@ func TestHandlerSignIn_DatabaseError(t *testing.T) {
 	mockCartConfig := new(MockCartConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -522,7 +523,7 @@ func TestHandlerSignIn_UnknownError(t *testing.T) {
 	mockCartConfig := new(MockCartConfig)
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig:     &handlers.HandlersConfig{},
+		Config:             &handlers.Config{},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             mockHandlersConfig,
 		authService:        mockAuthService,
@@ -570,7 +571,7 @@ func TestHandlerSignOut_Success(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "test-refresh-token",
 		Provider: "local",
@@ -659,7 +660,7 @@ func TestHandlerSignOut_SignOutFailure(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "test-refresh-token",
 		Provider: "local",
@@ -706,7 +707,7 @@ func TestHandlerSignOut_GoogleProvider(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "google-refresh-token",
 		Provider: "google",
@@ -752,7 +753,7 @@ func TestHandlerSignOut_UnknownProvider(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "unknown-provider-token",
 		Provider: "unknown",
@@ -806,7 +807,7 @@ func TestHandlerSignOut_EmptyToken(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "", // Empty token
 		Provider: "local",
@@ -853,7 +854,7 @@ func TestHandlerSignOut_GoogleProviderWithEmptyToken(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "", // Empty token for Google
 		Provider: "google",
@@ -893,7 +894,7 @@ func TestHandlerSignOut_AppErrorFromService(t *testing.T) {
 	}
 
 	// Create test data
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "test-refresh-token",
 		Provider: "local",
@@ -980,7 +981,7 @@ func TestHandlerSignOut_ExactGoogleProvider(t *testing.T) {
 	}
 
 	// Create test data with exact "google" provider (case-sensitive)
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "google-refresh-token",
 		Provider: "google", // Exact match for GoogleProvider constant
@@ -1020,7 +1021,7 @@ func TestHandlerSignOut_NonGoogleProvider(t *testing.T) {
 	}
 
 	// Create test data with non-Google provider
-	userID := "test-user-id"
+	userID := testUserID2
 	storedData := &RefreshTokenData{
 		Token:    "local-refresh-token",
 		Provider: "local", // Non-Google provider
@@ -1065,10 +1066,10 @@ func TestHandlerSignOut_NonGoogleProvider(t *testing.T) {
 func TestRealHandlerSignOut_InvalidToken(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger:      mockHandlersConfig,
@@ -1092,8 +1093,8 @@ func TestRealHandlerSignOut_InvalidToken(t *testing.T) {
 func TestRealHandlerSignOut_Direct(t *testing.T) {
 	// Create real config with mocks
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{}, // Real auth config
+		Config: &handlers.Config{
+			Auth: &auth.Config{}, // Real auth config
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
@@ -1109,7 +1110,7 @@ func TestRealHandlerSignOut_Direct(t *testing.T) {
 	}{
 		{
 			name: "Success_LocalProvider",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "sign_out", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -1118,7 +1119,7 @@ func TestRealHandlerSignOut_Direct(t *testing.T) {
 		},
 		{
 			name: "Success_GoogleProvider",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "sign_out", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -1127,7 +1128,7 @@ func TestRealHandlerSignOut_Direct(t *testing.T) {
 		},
 		{
 			name: "ServiceError",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "sign_out", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -1171,8 +1172,8 @@ func TestRealHandlerSignOut_Direct(t *testing.T) {
 // TestRealHandlerSignOut_ValidationError tests the real HandlerSignOut with validation errors and checks unauthorized response.
 func TestRealHandlerSignOut_ValidationError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{},
+		Config: &handlers.Config{
+			Auth: &auth.Config{},
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
@@ -1198,8 +1199,8 @@ func TestRealHandlerSignOut_ValidationError(t *testing.T) {
 // TestRealHandlerSignOut_AppError tests the real HandlerSignOut with AppError and checks unauthorized response.
 func TestRealHandlerSignOut_AppError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{},
+		Config: &handlers.Config{
+			Auth: &auth.Config{},
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},

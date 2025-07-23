@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_create_test.go: Tests for the category creation HTTP handler, covering success and error cases.
 
 // TestHandlerCreateCategory tests the category creation handler with basic scenarios including
 // successful creation, invalid request body, and service errors using mocked dependencies.

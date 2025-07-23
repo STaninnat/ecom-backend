@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_product_filter.go: Handles filtering products: parses filter params, calls service, logs result, and returns matching products.
 
 // HandlerFilterProducts handles HTTP POST requests to filter products based on provided criteria.
 // Parses the request body for filter parameters, validates them, and delegates filtering to the product service.

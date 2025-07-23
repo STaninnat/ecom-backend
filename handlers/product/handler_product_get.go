@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_product_get.go: Handles retrieving all products or by ID with admin check, logging, and JSON response.
 
 // HandlerGetAllProducts handles HTTP GET requests to retrieve all products.
 // Checks if the user is an admin, fetches products accordingly, logs the event, and responds with the product list.

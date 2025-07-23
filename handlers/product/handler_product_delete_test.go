@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_product_delete_test.go: Tests the delete product handler for success, missing ID, and service error with expected responses and logging.
 
 // TestHandlerDeleteProduct_Success tests the successful deletion of a product via the handler.
 // It verifies that the handler returns HTTP 200 and logs success when the service deletes the product without error.

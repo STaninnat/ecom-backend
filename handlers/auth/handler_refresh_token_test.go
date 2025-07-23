@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -10,15 +11,17 @@ import (
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
-	"github.com/google/uuid"
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_refresh_token_test.go: Tests for HandlerRefreshToken — validates refresh token flow and error handling.
+
 // TestHandlerRefreshToken_Success verifies successful token refresh and checks response and cookies.
 func TestHandlerRefreshToken_Success(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -91,7 +94,7 @@ func TestHandlerRefreshToken_InvalidToken(t *testing.T) {
 // TestHandlerRefreshToken_ServiceError ensures a service error during refresh is handled and logged correctly.
 func TestHandlerRefreshToken_ServiceError(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -130,7 +133,7 @@ func TestHandlerRefreshToken_ServiceError(t *testing.T) {
 // TestHandlerRefreshToken_InvalidTokenError checks that an AppError for invalid token is handled as internal error.
 func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -169,7 +172,7 @@ func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
 // TestHandlerRefreshToken_GenericError ensures a generic error during refresh is handled as internal server error.
 func TestHandlerRefreshToken_GenericError(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -235,7 +238,7 @@ func TestHandlerRefreshToken_Exists(t *testing.T) {
 // TestHandlerRefreshToken_EmptyToken checks that refresh with an empty token still succeeds if service allows.
 func TestHandlerRefreshToken_EmptyToken(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "", // Empty token
 		Provider: "local",
@@ -279,7 +282,7 @@ func TestHandlerRefreshToken_EmptyToken(t *testing.T) {
 // TestHandlerRefreshToken_DatabaseError ensures a database error during refresh is handled and logged correctly.
 func TestHandlerRefreshToken_DatabaseError(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -317,7 +320,7 @@ func TestHandlerRefreshToken_DatabaseError(t *testing.T) {
 // TestHandlerRefreshToken_TokenExpiredError checks that an expired token returns a bad request and logs appropriately.
 func TestHandlerRefreshToken_TokenExpiredError(t *testing.T) {
 	cfg := setupTestConfig()
-	userID := uuid.New()
+	userID := utils.NewUUID()
 	refreshTokenData := &RefreshTokenData{
 		Token:    "valid-refresh-token",
 		Provider: "local",
@@ -383,10 +386,10 @@ func TestHandlerRefreshToken_ValidationErrorWithNilData(t *testing.T) {
 func TestRealHandlerRefreshToken_InvalidToken(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger:      mockHandlersConfig,
@@ -409,10 +412,10 @@ func TestRealHandlerRefreshToken_InvalidToken(t *testing.T) {
 func TestRealHandlerRefreshToken_ServiceError(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger:      mockHandlersConfig,
@@ -436,8 +439,8 @@ func TestRealHandlerRefreshToken_ServiceError(t *testing.T) {
 func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 	// Create real config with mocks
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{}, // Real auth config
+		Config: &handlers.Config{
+			Auth: &auth.Config{}, // Real auth config
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
@@ -453,7 +456,7 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 	}{
 		{
 			name: "Success_LocalProvider",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -462,7 +465,7 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 		},
 		{
 			name: "Success_GoogleProvider",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -471,7 +474,7 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 		},
 		{
 			name: "ServiceError",
-			setupMocks: func(logger *MockHandlersConfig, service *MockAuthService) {
+			setupMocks: func(logger *MockHandlersConfig, _ *MockAuthService) {
 				// Mock validation error since real handler will fail without cookies
 				logger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
@@ -515,8 +518,8 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 // TestRealHandlerRefreshToken_ValidationError tests the real HandlerRefreshToken with validation errors and checks unauthorized response.
 func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{},
+		Config: &handlers.Config{
+			Auth: &auth.Config{},
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},
@@ -542,8 +545,8 @@ func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
 // TestRealHandlerRefreshToken_AppError tests the real HandlerRefreshToken with AppError and checks unauthorized response.
 func TestRealHandlerRefreshToken_AppError(t *testing.T) {
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
-			Auth: &auth.AuthConfig{},
+		Config: &handlers.Config{
+			Auth: &auth.Config{},
 		},
 		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 		Logger:             &MockHandlersConfig{},

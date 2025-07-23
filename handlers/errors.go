@@ -1,6 +1,9 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import "fmt"
+
+// errors.go: Defines common error and response types used across API handler modules.
 
 // AppError is a generic error type for all handler modules.
 // Can be used directly or embedded/aliased for module-specific errors.

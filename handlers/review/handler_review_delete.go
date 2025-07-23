@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_review_delete.go: Handles review deletion by ID with validation, ownership check, and error handling.
 
 // HandlerDeleteReviewByID handles HTTP DELETE requests to delete a review by its ID.
 // Validates the review ID parameter, checks if the review exists, verifies user ownership,

@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -15,15 +16,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_get_user_test.go: Tests HandlerGetUser for success, service errors, missing user context, and empty user fields.
+
 // TestHandlerGetUser_Success tests that HandlerGetUser successfully retrieves
 // and returns user information when a valid user is in the context
 func TestHandlerGetUser_Success(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	resp := &UserResponse{ID: "u1", Name: "Test"}
@@ -38,7 +41,8 @@ func TestHandlerGetUser_Success(t *testing.T) {
 	cfg.HandlerGetUser(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var got UserResponse
-	json.NewDecoder(w.Body).Decode(&got)
+	err := json.NewDecoder(w.Body).Decode(&got)
+	assert.NoError(t, err)
 	assert.Equal(t, *resp, got)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -50,9 +54,9 @@ func TestHandlerGetUser_ServiceError(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	mockService.On("GetUser", mock.Anything, user).Return(nil, errors.New("fail"))
@@ -81,9 +85,9 @@ func TestHandlerGetUser_UserNotFoundInContext(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 
 	// Mock error logging for user not found
@@ -97,7 +101,8 @@ func TestHandlerGetUser_UserNotFoundInContext(t *testing.T) {
 	cfg.HandlerGetUser(w, r)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	var errorResp map[string]any
-	json.NewDecoder(w.Body).Decode(&errorResp)
+	err := json.NewDecoder(w.Body).Decode(&errorResp)
+	assert.NoError(t, err)
 	assert.Contains(t, errorResp, "error")
 	mockLogger.AssertExpectations(t)
 }
@@ -108,9 +113,9 @@ func TestHandlerGetUser_EmptyUserData(t *testing.T) {
 	mockService := new(mockGetUserService)
 	mockLogger := new(mockGetHandlerLogger)
 	cfg := &HandlersUserConfig{
-		HandlersConfig: &handlers.HandlersConfig{Logger: logrus.New()},
-		Logger:         mockLogger,
-		userService:    mockService,
+		Config:      &handlers.Config{Logger: logrus.New()},
+		Logger:      mockLogger,
+		userService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Return user with empty/null fields

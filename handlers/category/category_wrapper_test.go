@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// category_wrapper_test.go: Tests for HandlersCategoryConfig covering service initialization, lazy loading, and error handling logic.
+
 // TestHandlersCategoryConfig_InitCategoryService tests the InitCategoryService method of the HandlersCategoryConfig.
 // It covers various initialization scenarios including successful initialization with valid configuration,
 // and error cases when required dependencies (handlers config, API config) are missing.
@@ -28,7 +31,7 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 			name: "successful initialization",
 			setupConfig: func() *HandlersCategoryConfig {
 				return &HandlersCategoryConfig{
-					HandlersConfig: &handlers.HandlersConfig{
+					Config: &handlers.Config{
 						APIConfig: &config.APIConfig{
 							DB:     &database.Queries{},
 							DBConn: &sql.DB{},
@@ -42,7 +45,7 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 			name: "nil handlers config",
 			setupConfig: func() *HandlersCategoryConfig {
 				return &HandlersCategoryConfig{
-					HandlersConfig: nil,
+					Config: nil,
 				}
 			},
 			expectedError: true,
@@ -51,7 +54,7 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 			name: "nil API config",
 			setupConfig: func() *HandlersCategoryConfig {
 				return &HandlersCategoryConfig{
-					HandlersConfig: &handlers.HandlersConfig{
+					Config: &handlers.Config{
 						APIConfig: nil,
 					},
 				}
@@ -76,11 +79,11 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 }
 
 // TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig tests the InitCategoryService method
-// when the HandlersConfig is nil. This edge case test ensures that the initialization properly
+// when the Config is nil. This edge case test ensures that the initialization properly
 // validates the presence of the handlers configuration and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: nil,
+		Config: nil,
 	}
 
 	err := cfg.InitCategoryService()
@@ -93,7 +96,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig(t *testing
 // validates the presence of the API configuration and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config: &handlers.Config{},
 	}
 
 	err := cfg.InitCategoryService()
@@ -106,7 +109,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig(t *testing.T) {
 // validates the presence of the database and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilDB(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 	}
@@ -121,7 +124,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilDB(t *testing.T) {
 // validates the presence of the database connection and returns an appropriate error message.
 func TestHandlersCategoryConfig_InitCategoryService_NilDBConn(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB: &database.Queries{},
 			},
@@ -147,7 +150,7 @@ func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 			name: "service already initialized",
 			setupConfig: func() *HandlersCategoryConfig {
 				cfg := &HandlersCategoryConfig{
-					HandlersConfig: &handlers.HandlersConfig{
+					Config: &handlers.Config{
 						APIConfig: &config.APIConfig{},
 					},
 				}
@@ -160,7 +163,7 @@ func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 			name: "service not initialized - valid config",
 			setupConfig: func() *HandlersCategoryConfig {
 				return &HandlersCategoryConfig{
-					HandlersConfig: &handlers.HandlersConfig{
+					Config: &handlers.Config{
 						APIConfig: &config.APIConfig{},
 					},
 				}
@@ -171,7 +174,7 @@ func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 			name: "service not initialized - invalid config",
 			setupConfig: func() *HandlersCategoryConfig {
 				return &HandlersCategoryConfig{
-					HandlersConfig: nil,
+					Config: nil,
 				}
 			},
 			expectedNil: false, // Should still return a service (will fail gracefully)
@@ -198,7 +201,7 @@ func TestHandlersCategoryConfig_GetCategoryService(t *testing.T) {
 // It ensures that the service doesn't panic and returns appropriate errors for nil dependencies.
 func TestHandlersCategoryConfig_GetCategoryService_NilConfigs(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: nil,
+		Config: nil,
 	}
 
 	service := cfg.GetCategoryService()
@@ -210,7 +213,8 @@ func TestHandlersCategoryConfig_GetCategoryService_NilConfigs(t *testing.T) {
 	})
 	// The service should return an error due to nil DB connection
 	assert.Error(t, err)
-	if appErr, ok := err.(*handlers.AppError); ok {
+	appErr := &handlers.AppError{}
+	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
 		assert.Contains(t, appErr.Message, "DB connection is nil")
 	}
@@ -308,8 +312,8 @@ func TestHandlersCategoryConfig_handleCategoryError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockConfig := &MockHandlersConfig{}
 			cfg := &HandlersCategoryConfig{
-				HandlersConfig: &handlers.HandlersConfig{},
-				Logger:         mockConfig,
+				Config: &handlers.Config{},
+				Logger: mockConfig,
 			}
 
 			// Set up mock expectations

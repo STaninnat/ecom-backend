@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_review_update_test.go: Tests for HandlerUpdateReviewByID covering success, error cases, validation, authorization, and service behavior.
 
 // makeUpdateRequestWithID creates a PUT HTTP request for updating a review by ID.
 // It sets up the chi router context with the review ID parameter and includes the provided request body
@@ -41,12 +44,12 @@ func TestHandlerUpdateReviewByID_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 4, Comment: "Updated!", MediaURLs: []string{"url1"}}
@@ -61,7 +64,9 @@ func TestHandlerUpdateReviewByID_Success(t *testing.T) {
 	cfg.HandlerUpdateReviewByID(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.APIResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "Review updated successfully", resp.Message)
 	assert.Equal(t, "success", resp.Code)
 	assert.NotNil(t, resp.Data)
@@ -75,9 +80,9 @@ func TestHandlerUpdateReviewByID_MissingID(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
@@ -96,12 +101,12 @@ func TestHandlerUpdateReviewByID_ReviewNotFound(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return((*models.Review)(nil), err)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "not_found", "Review not found", mock.Anything, mock.Anything, err.Err).Return()
@@ -121,12 +126,12 @@ func TestHandlerUpdateReviewByID_Unauthorized(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	existing := &models.Review{UserID: "other", ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "unauthorized", "You can only update your own reviews", mock.Anything, mock.Anything, nil).Return()
@@ -145,12 +150,12 @@ func TestHandlerUpdateReviewByID_InvalidPayload(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -169,12 +174,12 @@ func TestHandlerUpdateReviewByID_ValidationError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 0, Comment: ""} // Invalid
@@ -196,12 +201,12 @@ func TestHandlerUpdateReviewByID_ServiceError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 4, Comment: "Updated!"}
@@ -265,7 +270,8 @@ func TestReviewUpdateRequest_Validate_EdgeCases(t *testing.T) {
 			err := tc.request.Validate()
 			if tc.wantErr {
 				assert.Error(t, err)
-				appErr, ok := err.(*handlers.AppError)
+				appErr := &handlers.AppError{}
+				ok := errors.As(err, &appErr)
 				assert.True(t, ok)
 				assert.Equal(t, tc.errCode, appErr.Code)
 			} else {

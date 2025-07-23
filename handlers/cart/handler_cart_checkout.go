@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_cart_checkout.go: Handles cart checkout requests for authenticated users and guests.
 
 // HandlerCheckoutUserCart handles HTTP requests to checkout a user's cart.
 // Calls the service layer, logs the operation, and returns a JSON response with the order details or an error.

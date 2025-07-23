@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_product_delete.go: Handles deleting a product by ID: validates input, calls service, logs result, and sends JSON response.
 
 // HandlerDeleteProduct handles HTTP DELETE requests to remove a product by its ID.
 // Extracts the product ID from the URL, validates it, and delegates deletion to the product service.

@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_payment_confirm.go: HTTP handler for processing payment confirmation and responding with status.
 
 // HandlerConfirmPayment handles HTTP POST requests to confirm a payment.
 // Parses the request body for payment confirmation parameters, validates them, and delegates confirmation to the payment service.

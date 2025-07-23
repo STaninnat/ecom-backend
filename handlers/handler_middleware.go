@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -5,6 +6,8 @@ import (
 
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
+
+// handler_middleware.go: Provides middleware constructors for HandlerConfig and legacy Config, supporting auth, admin-only, and optional authentication.
 
 // HandlerAdminOnlyMiddleware creates middleware that only allows admin users for HandlerConfig.
 func (cfg *HandlerConfig) HandlerAdminOnlyMiddleware(handler AuthHandler) http.HandlerFunc {
@@ -38,9 +41,9 @@ func (cfg *HandlerConfig) HandlerMiddleware(handler AuthHandler) http.HandlerFun
 	return authMiddleware(middlewares.AuthHandler(handler))
 }
 
-// HandlerAdminOnlyMiddleware creates middleware that only allows admin users for HandlersConfig (legacy compatibility).
-// Legacy compatibility methods for existing HandlersConfig
-func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler AuthHandler) http.HandlerFunc {
+// HandlerAdminOnlyMiddleware creates middleware that only allows admin users for Config (legacy compatibility).
+// Legacy compatibility methods for existing Config
+func (apicfg *Config) HandlerAdminOnlyMiddleware(handler AuthHandler) http.HandlerFunc {
 	authService := &legacyAuthService{auth: apicfg.Auth}
 	userService := &legacyUserService{db: apicfg.DB}
 	loggerService := &legacyLoggerService{logger: apicfg.Logger}
@@ -56,7 +59,7 @@ func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler AuthHandler) ht
 }
 
 // HandlerMiddleware returns an HTTP handler with authentication and related middlewares applied.
-func (apicfg *HandlersConfig) HandlerMiddleware(handler AuthHandler) http.HandlerFunc {
+func (apicfg *Config) HandlerMiddleware(handler AuthHandler) http.HandlerFunc {
 	authService := &legacyAuthService{auth: apicfg.Auth}
 	userService := &legacyUserService{db: apicfg.DB}
 	loggerService := &legacyLoggerService{logger: apicfg.Logger}
@@ -87,9 +90,9 @@ func (cfg *HandlerConfig) HandlerOptionalMiddleware(handler OptionalHandler) htt
 	return optionalAuthMiddleware(middlewares.OptionalHandler(handler))
 }
 
-// HandlerOptionalMiddleware creates middleware that optionally authenticates users for HandlersConfig (legacy compatibility).
-// Legacy compatibility method for existing HandlersConfig
-func (apicfg *HandlersConfig) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
+// HandlerOptionalMiddleware creates middleware that optionally authenticates users for Config (legacy compatibility).
+// Legacy compatibility method for existing Config
+func (apicfg *Config) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
 	authService := &legacyAuthService{auth: apicfg.Auth}
 	userService := &legacyUserService{db: apicfg.DB}
 	loggerService := &legacyLoggerService{logger: apicfg.Logger}

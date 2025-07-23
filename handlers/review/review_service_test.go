@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -12,6 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// review_service_test.go: Tests for the review service to verify correct behavior under success and failure scenarios.
+// Covers all core operations, error wrapping, and filtering logic.
 
 // TestCreateReview_Success tests the successful creation of a review via the review service.
 // It verifies that the service correctly delegates to the MongoDB layer and returns no error
@@ -35,7 +39,8 @@ func TestCreateReview_Failure(t *testing.T) {
 	m.On("CreateReview", mock.Anything, review).Return(errors.New("db fail"))
 	err := svc.CreateReview(context.Background(), review)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -64,7 +69,8 @@ func TestGetReviewByID_NotFound(t *testing.T) {
 	m.On("GetReviewByID", mock.Anything, "r1").Return((*models.Review)(nil), dbErr)
 	got, err := svc.GetReviewByID(context.Background(), "r1")
 	assert.Nil(t, got)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "not_found", appErr.Code)
 	m.AssertExpectations(t)
@@ -79,7 +85,8 @@ func TestGetReviewByID_DBError(t *testing.T) {
 	m.On("GetReviewByID", mock.Anything, "r1").Return((*models.Review)(nil), dbErr)
 	got, err := svc.GetReviewByID(context.Background(), "r1")
 	assert.Nil(t, got)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -108,7 +115,8 @@ func TestGetReviewsByProductID_Failure(t *testing.T) {
 	m.On("GetReviewsByProductID", mock.Anything, "p1").Return(([]*models.Review)(nil), dbErr)
 	got, err := svc.GetReviewsByProductID(context.Background(), "p1")
 	assert.Nil(t, got)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -137,7 +145,8 @@ func TestGetReviewsByUserID_Failure(t *testing.T) {
 	m.On("GetReviewsByUserID", mock.Anything, "u1").Return(([]*models.Review)(nil), dbErr)
 	got, err := svc.GetReviewsByUserID(context.Background(), "u1")
 	assert.Nil(t, got)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -165,7 +174,8 @@ func TestUpdateReviewByID_NotFound(t *testing.T) {
 	review := &models.Review{ID: "r1"}
 	m.On("UpdateReviewByID", mock.Anything, "r1", review).Return(dbErr)
 	err := svc.UpdateReviewByID(context.Background(), "r1", review)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "not_found", appErr.Code)
 	m.AssertExpectations(t)
@@ -180,7 +190,8 @@ func TestUpdateReviewByID_Failure(t *testing.T) {
 	review := &models.Review{ID: "r1"}
 	m.On("UpdateReviewByID", mock.Anything, "r1", review).Return(dbErr)
 	err := svc.UpdateReviewByID(context.Background(), "r1", review)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "update_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -206,7 +217,8 @@ func TestDeleteReviewByID_NotFound(t *testing.T) {
 	dbErr := errors.New("review not found")
 	m.On("DeleteReviewByID", mock.Anything, "r1").Return(dbErr)
 	err := svc.DeleteReviewByID(context.Background(), "r1")
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "not_found", appErr.Code)
 	m.AssertExpectations(t)
@@ -220,7 +232,8 @@ func TestDeleteReviewByID_Failure(t *testing.T) {
 	dbErr := errors.New("db fail")
 	m.On("DeleteReviewByID", mock.Anything, "r1").Return(dbErr)
 	err := svc.DeleteReviewByID(context.Background(), "r1")
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "delete_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -259,7 +272,8 @@ func TestGetReviewsByProductIDPaginated_Failure(t *testing.T) {
 	m.On("GetReviewsByProductIDPaginated", mock.Anything, "p1", mock.Anything).Return((*intmongo.PaginatedResult[*models.Review])(nil), dbErr)
 	resp, err := svc.GetReviewsByProductIDPaginated(context.Background(), "p1", 1, 10, nil, nil, nil, nil, nil, nil, "")
 	assert.Nil(t, resp)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	m.AssertExpectations(t)
@@ -298,7 +312,8 @@ func TestGetReviewsByUserIDPaginated_Failure(t *testing.T) {
 	m.On("GetReviewsByUserIDPaginated", mock.Anything, "u1", mock.Anything).Return((*intmongo.PaginatedResult[*models.Review])(nil), dbErr)
 	resp, err := svc.GetReviewsByUserIDPaginated(context.Background(), "u1", 1, 10, nil, nil, nil, nil, nil, nil, "")
 	assert.Nil(t, resp)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	m.AssertExpectations(t)

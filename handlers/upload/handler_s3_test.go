@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_s3_test.go: Tests S3 product image upload and update handlers for success, error, and missing ID cases, verifying correct HTTP responses and proper logging behavior.
 
 // TestHandlerS3UploadProductImage_Success tests the successful upload of a product image to S3 via the handler.
 // It verifies that the handler returns HTTP 200 and logs success when the service returns an S3 image URL without error.
@@ -62,7 +65,7 @@ func TestHandlerS3UpdateProductImageByID_Success(t *testing.T) {
 	user := database.User{ID: "user123"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
+	chiURLParam = func(_ *http.Request, _ string) string {
 		return "prod123"
 	}
 	defer func() { chiURLParam = oldURLParam }()
@@ -90,7 +93,7 @@ func TestHandlerS3UpdateProductImageByID_MissingProductID(t *testing.T) {
 	user := database.User{ID: "user123"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
+	chiURLParam = func(_ *http.Request, _ string) string {
 		return ""
 	}
 	defer func() { chiURLParam = oldURLParam }()
@@ -115,7 +118,7 @@ func TestHandlerS3UpdateProductImageByID_Error(t *testing.T) {
 	user := database.User{ID: "user123"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
+	chiURLParam = func(_ *http.Request, _ string) string {
 		return "prod123"
 	}
 	defer func() { chiURLParam = oldURLParam }()

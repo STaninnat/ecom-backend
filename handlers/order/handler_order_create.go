@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_order_create.go: Handles order creation requests. Validates input, delegates to service, logs the event, and returns the result or error.
 
 // HandlerCreateOrder handles HTTP POST requests to create a new order.
 // Validates the request payload, parses order creation parameters, calls the business logic service, logs the event, and responds with the created order details or error.

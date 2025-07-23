@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_create_integration_test.go: Integration tests for HandlerCreateCategory, including success, errors, and validation edge cases.
 
 // TestIntegration_HandlerCreateCategory tests the category creation handler with various scenarios including
 // successful creation, service errors, invalid JSON, missing content type, and different user states.
@@ -74,7 +77,7 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 			requestBody:    `{"name": "Electronics", "description": "Invalid JSON`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -130,7 +133,7 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 			requestBody:    "",
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -139,7 +142,7 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 			requestBody:    `{"name":}`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -174,12 +177,12 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 
 			// Create the config with proper logger setup
 			cfg := &HandlersCategoryConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger: logger,
 				},
 			}
 			// Set the Logger field to the embedded config which implements HandlerLogger
-			cfg.Logger = cfg.HandlersConfig
+			cfg.Logger = cfg.Config
 
 			// Set the mock service
 			cfg.categoryService = mockService
@@ -287,11 +290,11 @@ func TestIntegration_HandlerCreateCategory_EdgeCases(t *testing.T) {
 
 			// Create the config with proper logger setup
 			cfg := &HandlersCategoryConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger: logger,
 				},
 			}
-			cfg.Logger = cfg.HandlersConfig
+			cfg.Logger = cfg.Config
 			cfg.categoryService = mockService
 
 			// Create request body

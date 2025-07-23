@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -13,15 +14,19 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentintent"
 	"github.com/stripe/stripe-go/v82/refund"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
-// --- Interfaces for DB and Transaction ---
-// PaymentDBQueries defines the interface for payment-related database operations.
+// payment_service.go: Implements payment database query adapters, transaction handling, and Stripe client interface.
+
+const (
+	orderStatusPending = "pending"
+)
+
+// PaymentDBQueries provides methods for payment-related database operations.
 type PaymentDBQueries interface {
 	WithTx(tx PaymentDBTx) PaymentDBQueries
 	GetOrderByID(ctx context.Context, id string) (database.Order, error)
@@ -48,57 +53,72 @@ type PaymentDBTx interface {
 	Rollback() error
 }
 
-// --- Adapters for sqlc-generated types ---
 // PaymentDBQueriesAdapter adapts sqlc-generated Queries to the PaymentDBQueries interface.
 type PaymentDBQueriesAdapter struct {
 	*database.Queries
 }
 
+// WithTx returns a new PaymentDBQueries that uses the provided transaction.
 func (a *PaymentDBQueriesAdapter) WithTx(tx PaymentDBTx) PaymentDBQueries {
+	if tx == nil {
+		return nil
+	}
+
 	return &PaymentDBQueriesAdapter{a.Queries.WithTx(tx.(*sql.Tx))}
 }
 
+// GetOrderByID retrieves an order by its ID.
 func (a *PaymentDBQueriesAdapter) GetOrderByID(ctx context.Context, id string) (database.Order, error) {
 	return a.Queries.GetOrderByID(ctx, id)
 }
 
+// GetPaymentByOrderID retrieves a payment by its order ID.
 func (a *PaymentDBQueriesAdapter) GetPaymentByOrderID(ctx context.Context, orderID string) (database.Payment, error) {
 	return a.Queries.GetPaymentByOrderID(ctx, orderID)
 }
 
-func (a *PaymentDBQueriesAdapter) GetPaymentByProviderPaymentID(ctx context.Context, providerPaymentID string) (database.Payment, error) {
+// GetPaymentByProviderPaymentID is a placeholder and not implemented in the real adapter.
+func (a *PaymentDBQueriesAdapter) GetPaymentByProviderPaymentID(_ context.Context, _ string) (database.Payment, error) {
 	return database.Payment{}, errors.New("GetPaymentByProviderPaymentID not implemented in real adapter")
 }
 
+// GetPaymentsByUserID retrieves all payments for a specific user.
 func (a *PaymentDBQueriesAdapter) GetPaymentsByUserID(ctx context.Context, userID string) ([]database.Payment, error) {
 	return a.Queries.GetPaymentsByUserID(ctx, userID)
 }
 
+// GetAllPayments retrieves all payments from the database.
 func (a *PaymentDBQueriesAdapter) GetAllPayments(ctx context.Context) ([]database.Payment, error) {
 	return a.Queries.GetAllPayments(ctx)
 }
 
+// GetPaymentsByStatus retrieves all payments with a specific status.
 func (a *PaymentDBQueriesAdapter) GetPaymentsByStatus(ctx context.Context, status string) ([]database.Payment, error) {
 	return a.Queries.GetPaymentsByStatus(ctx, status)
 }
 
+// CreatePayment creates a new payment record in the database.
 func (a *PaymentDBQueriesAdapter) CreatePayment(ctx context.Context, params database.CreatePaymentParams) error {
 	_, err := a.Queries.CreatePayment(ctx, params)
 	return err
 }
 
+// UpdatePaymentStatus updates the status of a payment by its ID.
 func (a *PaymentDBQueriesAdapter) UpdatePaymentStatus(ctx context.Context, params database.UpdatePaymentStatusParams) error {
 	return a.Queries.UpdatePaymentStatus(ctx, params)
 }
 
+// UpdatePaymentStatusByID updates the status of a payment by its ID.
 func (a *PaymentDBQueriesAdapter) UpdatePaymentStatusByID(ctx context.Context, params database.UpdatePaymentStatusByIDParams) error {
 	return a.Queries.UpdatePaymentStatusByID(ctx, params)
 }
 
+// UpdatePaymentStatusByProviderPaymentID updates the status of a payment by its provider payment ID.
 func (a *PaymentDBQueriesAdapter) UpdatePaymentStatusByProviderPaymentID(ctx context.Context, params database.UpdatePaymentStatusByProviderPaymentIDParams) error {
 	return a.Queries.UpdatePaymentStatusByProviderPaymentID(ctx, params)
 }
 
+// UpdateOrderStatus updates the status of an order.
 func (a *PaymentDBQueriesAdapter) UpdateOrderStatus(ctx context.Context, params database.UpdateOrderStatusParams) error {
 	return a.Queries.UpdateOrderStatus(ctx, params)
 }
@@ -108,6 +128,7 @@ type PaymentDBConnAdapter struct {
 	*sql.DB
 }
 
+// BeginTx begins a new database transaction.
 func (a *PaymentDBConnAdapter) BeginTx(ctx context.Context, opts *sql.TxOptions) (PaymentDBTx, error) {
 	tx, err := a.DB.BeginTx(ctx, opts)
 	return tx, err
@@ -160,8 +181,7 @@ type PaymentService interface {
 	HandleWebhook(ctx context.Context, payload []byte, signature string, secret string) error
 }
 
-// Request/Response types
-// CreatePaymentParams represents the parameters for creating a payment.
+// CreatePaymentParams contains parameters for creating a payment.
 type CreatePaymentParams struct {
 	OrderID  string
 	UserID   string
@@ -235,7 +255,7 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, params CreatePay
 	if order.UserID != params.UserID {
 		return nil, &handlers.AppError{Code: "unauthorized", Message: "Order does not belong to user"}
 	}
-	if order.Status != "pending" {
+	if order.Status != orderStatusPending {
 		return nil, &handlers.AppError{Code: "invalid_order_status", Message: "Order already paid or invalid"}
 	}
 
@@ -271,14 +291,17 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, params CreatePay
 	}
 
 	// Record payment in database
-	paymentID := uuid.New().String()
+	paymentID := utils.NewUUIDString()
 	timeNow := time.Now().UTC()
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -346,11 +369,7 @@ func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmP
 
 	// Check for refunds first
 	hasRefund := false
-	if pi.Status == stripe.PaymentIntentStatusSucceeded {
-		// Check if there are any successful refunds
-		// Note: In a real implementation, you might want to check refunds via Stripe API
-		// For now, we'll rely on webhook events for refund status
-	}
+	// No-op: refund status is handled by webhook events
 
 	// Determine new status
 	var newStatus string
@@ -364,13 +383,13 @@ func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmP
 	case stripe.PaymentIntentStatusCanceled:
 		newStatus = "cancelled"
 	case stripe.PaymentIntentStatusRequiresPaymentMethod, stripe.PaymentIntentStatusRequiresConfirmation:
-		newStatus = "pending"
+		newStatus = orderStatusPending
 	case stripe.PaymentIntentStatusRequiresAction:
-		newStatus = "pending"
+		newStatus = orderStatusPending
 	case stripe.PaymentIntentStatusRequiresCapture:
-		newStatus = "pending"
+		newStatus = orderStatusPending
 	case stripe.PaymentIntentStatusProcessing:
-		newStatus = "pending"
+		newStatus = orderStatusPending
 	default:
 		newStatus = "failed"
 	}
@@ -382,7 +401,10 @@ func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmP
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -554,7 +576,10 @@ func (s *paymentServiceImpl) RefundPayment(ctx context.Context, params RefundPay
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -598,7 +623,10 @@ func (s *paymentServiceImpl) HandleWebhook(ctx context.Context, payload []byte, 
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = tx.Rollback()
+	}()
 
 	queries := s.db.WithTx(tx)
 

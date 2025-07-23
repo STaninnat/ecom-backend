@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -8,8 +9,10 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
+// handler_log_config.go: Provides logging and metadata utilities for handler operations, supporting both HandlerConfig and Config.
+
 // LogHandlerError logs an error with structured logging and user action tracking for HandlerConfig.
-func (cfg *HandlerConfig) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+func (cfg *HandlerConfig) LogHandlerError(_ context.Context, _ string, _ string, logMsg, _ string, _ string, err error) {
 	if cfg.LoggerService == nil {
 		return
 	}
@@ -19,14 +22,12 @@ func (cfg *HandlerConfig) LogHandlerError(ctx context.Context, action, details, 
 		cfg.LoggerService.Error(logMsg)
 	}
 
-	// For now, we'll use the legacy method since utils.LogUserAction expects *logrus.Logger
-	// TODO: Create an adapter or modify utils.LogUserAction to accept interfaces
+	// Note: Currently using legacy logging method. Future improvement: Create adapter or modify utils.LogUserAction to accept interfaces for better testability.
 }
 
 // LogHandlerSuccess logs a successful operation with structured logging and user action tracking for HandlerConfig.
-func (cfg *HandlerConfig) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
-	// For now, we'll use the legacy method since utils.LogUserAction expects *logrus.Logger
-	// TODO: Create an adapter or modify utils.LogUserAction to accept interfaces
+func (cfg *HandlerConfig) LogHandlerSuccess(_ context.Context, _ string, _ string, _ string, _ string) {
+	// Note: Currently using legacy logging method. Future improvement: Create adapter or modify utils.LogUserAction to accept interfaces for better testability.
 }
 
 // ErrMsgOrNil returns the error message or empty string if error is nil.
@@ -47,9 +48,9 @@ func (cfg *HandlerConfig) GetRequestMetadata(r *http.Request) (ip string, userAg
 	return
 }
 
-// Legacy compatibility methods for existing HandlersConfig
-// LogHandlerError logs an error with structured logging and user action tracking for HandlersConfig.
-func (apicfg *HandlersConfig) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
+// LogHandlerError logs an error with structured logging and user action tracking for Config.
+// It logs the error message and user action details.
+func (apicfg *Config) LogHandlerError(ctx context.Context, action, details, logMsg, ip, ua string, err error) {
 	if err != nil {
 		apicfg.Logger.WithError(err).Error(logMsg)
 	} else {
@@ -68,8 +69,8 @@ func (apicfg *HandlersConfig) LogHandlerError(ctx context.Context, action, detai
 	})
 }
 
-// LogHandlerSuccess logs a successful operation with structured logging and user action tracking for HandlersConfig.
-func (apicfg *HandlersConfig) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
+// LogHandlerSuccess logs a successful operation with structured logging and user action tracking for Config.
+func (apicfg *Config) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	utils.LogUserAction(utils.ActionLogParams{
 		Logger:    apicfg.Logger,
 		Ctx:       ctx,
@@ -89,4 +90,4 @@ func GetRequestMetadata(r *http.Request) (ip string, userAgent string) {
 }
 
 // Ensure HandlersConfig implements HandlerLogger
-var _ HandlerLogger = (*HandlersConfig)(nil)
+var _ HandlerLogger = (*Config)(nil)

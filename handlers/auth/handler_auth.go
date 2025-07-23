@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_auth.go: Provides HTTP handlers for user signup, signin, and signout with token management.
 
 // HandlerSignUp handles user registration requests.
 // Validates the signup payload, creates a new user account, generates tokens, merges guest cart if needed, and returns a success response.

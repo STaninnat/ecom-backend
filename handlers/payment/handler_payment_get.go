@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_payment_get.go: Payment handlers for fetching payment info, history, and admin listing.
 
 // HandlerGetPayment handles HTTP GET requests to retrieve payment information for a specific order.
 // Extracts the order ID from the URL parameters, validates it, and delegates retrieval to the payment service.

@@ -1,3 +1,4 @@
+// Package userhandlers provides HTTP handlers and services for user-related operations, including user retrieval, updates, and admin role management, with proper error handling and logging.
 package userhandlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_get_user.go: Handles GET user requests by extracting user from context, fetching user data, logging, and responding.
 
 // contextKey defines a type for context keys to ensure type safety.
 type contextKey string

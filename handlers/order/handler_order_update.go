@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -10,13 +11,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handler_order_update.go: Handles HTTP request to update order status, with validation, logging, and business logic integration.
+
 // HandlerUpdateOrderStatus handles HTTP PUT/PATCH requests to update an order's status.
 // Validates the request payload, extracts the order ID from URL parameters, calls the business logic service to update the order status, logs the event, and responds with a success message or error.
 // Parameters:
 //   - w: http.ResponseWriter for sending the response
 //   - r: *http.Request containing the request data
 //   - user: database.User representing the authenticated user
-func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, r *http.Request, user database.User) {
+func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, r *http.Request, _ database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

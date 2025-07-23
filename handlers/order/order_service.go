@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -11,8 +12,9 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
 )
+
+// order_service.go: Provides a complete implementation of the OrderService interface for managing order operations.
 
 // OrderService defines the business logic interface for order operations.
 // Provides methods for creating, retrieving, updating, and deleting orders and order items.
@@ -66,14 +68,18 @@ func (s *orderServiceImpl) CreateOrder(ctx context.Context, user database.User, 
 		totalAmount += float64(item.Quantity) * item.Price
 	}
 
-	orderID := uuid.New().String()
+	orderID := utils.NewUUIDString()
 	timeNow := time.Now().UTC()
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -102,7 +108,7 @@ func (s *orderServiceImpl) CreateOrder(ctx context.Context, user database.User, 
 		}
 
 		err := queries.CreateOrderItem(ctx, database.CreateOrderItemParams{
-			ID:        uuid.New().String(),
+			ID:        utils.NewUUIDString(),
 			OrderID:   orderID,
 			ProductID: item.ProductID,
 			Quantity:  int32(item.Quantity),
@@ -263,7 +269,11 @@ func (s *orderServiceImpl) UpdateOrderStatus(ctx context.Context, orderID string
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 
@@ -295,7 +305,11 @@ func (s *orderServiceImpl) DeleteOrder(ctx context.Context, orderID string) erro
 	if err != nil {
 		return &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction", Err: err}
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			fmt.Printf("failed to rollback transaction: %v\n", err)
+		}
+	}()
 
 	queries := s.db.WithTx(tx)
 

@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -5,9 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+// handler_ready_test.go: Tests for basic HTTP handlers for service readiness, health status, and error responses.
 
 // TestHandlerReadiness tests the HandlerReadiness function for the /healthz endpoint.
 // It checks that the response is OK and contains the expected JSON fields.
@@ -66,7 +70,11 @@ func TestHandlerHealth(t *testing.T) {
 	assert.Equal(t, "healthy", response["status"])
 	assert.Equal(t, "ecom-backend", response["service"])
 	assert.Equal(t, "1.0.0", response["version"])
-	assert.Equal(t, "2024-01-01T00:00:00Z", response["timestamp"])
+
+	timestamp, ok := response["timestamp"].(string)
+	assert.True(t, ok)
+	_, err = time.Parse(time.RFC3339, timestamp)
+	assert.NoError(t, err)
 }
 
 // TestHandlerReadiness_ResponseStructure tests the structure of the HandlerReadiness response.
@@ -387,11 +395,7 @@ func TestHandlerReadiness_MalformedRequests(t *testing.T) {
 			var req *http.Request
 			var err error
 
-			if tt.body != nil {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			} else {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			}
+			req, err = http.NewRequest(tt.method, tt.url, nil)
 
 			if err != nil {
 				// Skip tests that can't create valid requests
@@ -445,11 +449,7 @@ func TestHandlerError_MalformedRequests(t *testing.T) {
 			var req *http.Request
 			var err error
 
-			if tt.body != nil {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			} else {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			}
+			req, err = http.NewRequest(tt.method, tt.url, nil)
 
 			if err != nil {
 				// Skip tests that can't create valid requests
@@ -503,11 +503,7 @@ func TestHandlerHealth_MalformedRequests(t *testing.T) {
 			var req *http.Request
 			var err error
 
-			if tt.body != nil {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			} else {
-				req, err = http.NewRequest(tt.method, tt.url, nil)
-			}
+			req, err = http.NewRequest(tt.method, tt.url, nil)
 
 			if err != nil {
 				// Skip tests that can't create valid requests

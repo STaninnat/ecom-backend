@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -6,6 +7,12 @@ import (
 	"mime/multipart"
 	"strings"
 	"testing"
+)
+
+// storage_s3_test.go: Tests S3FileStorage and S3Uploader for successful and error cases in saving and deleting files on S3, including validation of file extensions, URL parsing, and proper error handling.
+
+const (
+	testS3URL = "https://bucket.s3.amazonaws.com/uploads/test.jpg"
 )
 
 // TestS3FileStorage_Save_Success tests the successful saving of a file to S3 storage.
@@ -67,7 +74,7 @@ func TestS3FileStorage_Save_UnsupportedExtension(t *testing.T) {
 func TestS3FileStorage_Delete_Success(t *testing.T) {
 	client := &mockS3Client{}
 	storage := &S3FileStorage{S3Client: client, BucketName: "bucket"}
-	url := "https://bucket.s3.amazonaws.com/uploads/test.jpg"
+	url := testS3URL
 	err := storage.Delete(url, "")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -93,7 +100,7 @@ func TestS3FileStorage_Delete_InvalidURL(t *testing.T) {
 func TestS3FileStorage_Delete_S3Error(t *testing.T) {
 	client := &mockS3Client{deleteErr: errors.New("s3 error")}
 	storage := &S3FileStorage{S3Client: client, BucketName: "bucket"}
-	url := "https://bucket.s3.amazonaws.com/uploads/test.jpg"
+	url := testS3URL
 	err := storage.Delete(url, "")
 	if err == nil || !strings.Contains(err.Error(), "failed to delete file from S3") {
 		t.Errorf("expected S3 error, got: %v", err)
@@ -142,7 +149,7 @@ func TestUploadFileToS3(t *testing.T) {
 func TestDeleteFileFromS3IfExists(t *testing.T) {
 	client := &mockS3Client{}
 	bucket := "bucket"
-	url := "https://bucket.s3.amazonaws.com/uploads/test.jpg"
+	url := testS3URL
 	err := DeleteFileFromS3IfExists(client, bucket, url)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

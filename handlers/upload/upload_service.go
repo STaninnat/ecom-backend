@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -10,6 +11,9 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// upload_service.go: Defines upload service interface, database adapter, and implementation for handling product image uploads and updates,
+// including file validation, storage, and DB updates with error handling.
 
 // UploadService defines the business logic interface for uploads (local or S3).
 // Provides methods to upload and update product images with validation and error handling.
@@ -60,7 +64,7 @@ func (a *ProductDBAdapter) GetProductByID(ctx context.Context, id string) (Produ
 	}
 	return Product{
 		ID: dbProduct.ID,
-		ImageUrl: struct {
+		ImageURL: struct {
 			String string
 			Valid  bool
 		}{
@@ -81,7 +85,7 @@ func (a *ProductDBAdapter) GetProductByID(ctx context.Context, id string) (Produ
 func (a *ProductDBAdapter) UpdateProductImageURL(ctx context.Context, params UpdateProductImageURLParams) error {
 	return a.Queries.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
 		ID:        params.ID,
-		ImageUrl:  utils.ToNullString(params.ImageUrl),
+		ImageUrl:  utils.ToNullString(params.ImageURL),
 		UpdatedAt: time.Unix(params.UpdatedAt, 0),
 	})
 }
@@ -90,7 +94,7 @@ func (a *ProductDBAdapter) UpdateProductImageURL(ctx context.Context, params Upd
 // Local type for upload service operations, mapped from database models.
 type Product struct {
 	ID       string
-	ImageUrl struct {
+	ImageURL struct {
 		String string
 		Valid  bool
 	}
@@ -100,7 +104,7 @@ type Product struct {
 // Structured parameters for database update operations with timestamp tracking.
 type UpdateProductImageURLParams struct {
 	ID        string
-	ImageUrl  string
+	ImageURL  string
 	UpdatedAt int64 // Unix timestamp for simplicity
 }
 
@@ -137,12 +141,15 @@ func NewUploadService(db ProductDB, uploadDir string, storage FileStorage) Uploa
 // Returns:
 //   - string: the generated image URL on success
 //   - error: AppError with appropriate code and message on failure
-func (s *uploadServiceImpl) UploadProductImage(ctx context.Context, userID string, r *http.Request) (string, error) {
+func (s *uploadServiceImpl) UploadProductImage(_ context.Context, _ string, r *http.Request) (string, error) {
 	file, fileHeader, err := ParseAndGetImageFile(r)
 	if err != nil {
 		return "", &handlers.AppError{Code: "invalid_form", Message: err.Error(), Err: err}
 	}
-	defer file.Close()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = file.Close()
+	}()
 
 	// MIME type validation
 	allowedMIMEs := map[string]struct{}{
@@ -176,7 +183,7 @@ func (s *uploadServiceImpl) UploadProductImage(ctx context.Context, userID strin
 // Returns:
 //   - string: the new image URL on success
 //   - error: AppError with appropriate code and message on failure
-func (s *uploadServiceImpl) UpdateProductImage(ctx context.Context, productID string, userID string, r *http.Request) (string, error) {
+func (s *uploadServiceImpl) UpdateProductImage(ctx context.Context, productID string, _ string, r *http.Request) (string, error) {
 	product, err := s.db.GetProductByID(ctx, productID)
 	if err != nil {
 		return "", &handlers.AppError{Code: "not_found", Message: "Product not found", Err: err}
@@ -186,7 +193,10 @@ func (s *uploadServiceImpl) UpdateProductImage(ctx context.Context, productID st
 	if err != nil {
 		return "", &handlers.AppError{Code: "invalid_form", Message: err.Error(), Err: err}
 	}
-	defer file.Close()
+	defer func() {
+		// Log error but don't return it since we're in defer
+		_ = file.Close()
+	}()
 
 	// MIME type validation
 	allowedMIMEs := map[string]struct{}{
@@ -201,8 +211,8 @@ func (s *uploadServiceImpl) UpdateProductImage(ctx context.Context, productID st
 	}
 
 	// Delete old image if exists
-	if product.ImageUrl.Valid && product.ImageUrl.String != "" {
-		_ = s.storage.Delete(product.ImageUrl.String, s.uploadDir)
+	if product.ImageURL.Valid && product.ImageURL.String != "" {
+		_ = s.storage.Delete(product.ImageURL.String, s.uploadDir)
 	}
 
 	filename, err := s.storage.Save(file, fileHeader, s.uploadDir)
@@ -213,7 +223,7 @@ func (s *uploadServiceImpl) UpdateProductImage(ctx context.Context, productID st
 
 	params := UpdateProductImageURLParams{
 		ID:        productID,
-		ImageUrl:  imageURL,
+		ImageURL:  imageURL,
 		UpdatedAt: time.Now().Unix(),
 	}
 	if err := s.db.UpdateProductImageURL(ctx, params); err != nil {

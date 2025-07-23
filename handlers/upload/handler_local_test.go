@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -10,6 +11,12 @@ import (
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+// handler_local_test.go: Tests upload and update product image handlers for success, error, and missing ID cases, verifying correct HTTP responses and proper logging behavior.
+
+const (
+	testProductID = "prod123"
 )
 
 // TestHandlerUploadProductImage_Success tests the successful upload of a product image via the handler.
@@ -64,14 +71,14 @@ func TestHandlerUpdateProductImageByID_Success(t *testing.T) {
 	req := httptest.NewRequest("POST", "/update/123", nil)
 	w := httptest.NewRecorder()
 
-	req = req.WithContext(context.WithValue(req.Context(), contextKey("chi.URLParams"), map[string]string{"id": "prod123"}))
-	mockService.On("UpdateProductImage", req.Context(), "prod123", user.ID, req).Return("/static/updated.jpg", nil)
+	req = req.WithContext(context.WithValue(req.Context(), contextKey("chi.URLParams"), map[string]string{"id": testProductID}))
+	mockService.On("UpdateProductImage", req.Context(), testProductID, user.ID, req).Return("/static/updated.jpg", nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "update_product_image", "Product image updated", mock.Anything, mock.Anything).Return()
 
 	// Patch chi.URLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
-		return "prod123"
+	chiURLParam = func(_ *http.Request, _ string) string {
+		return testProductID
 	}
 	defer func() { chiURLParam = oldURLParam }()
 
@@ -95,7 +102,7 @@ func TestHandlerUpdateProductImageByID_MissingProductID(t *testing.T) {
 
 	// Patch chi.URLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
+	chiURLParam = func(_ *http.Request, _ string) string {
 		return ""
 	}
 	defer func() { chiURLParam = oldURLParam }()
@@ -118,15 +125,15 @@ func TestHandlerUpdateProductImageByID_Error(t *testing.T) {
 	req := httptest.NewRequest("POST", "/update/123", nil)
 	w := httptest.NewRecorder()
 
-	req = req.WithContext(context.WithValue(req.Context(), contextKey("chi.URLParams"), map[string]string{"id": "prod123"}))
+	req = req.WithContext(context.WithValue(req.Context(), contextKey("chi.URLParams"), map[string]string{"id": testProductID}))
 	err := errors.New("update failed")
-	mockService.On("UpdateProductImage", req.Context(), "prod123", user.ID, req).Return("", err)
+	mockService.On("UpdateProductImage", req.Context(), testProductID, user.ID, req).Return("", err)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_product_image", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, err).Return()
 
 	// Patch chi.URLParam for test
 	oldURLParam := chiURLParam
-	chiURLParam = func(r *http.Request, key string) string {
-		return "prod123"
+	chiURLParam = func(_ *http.Request, _ string) string {
+		return testProductID
 	}
 	defer func() { chiURLParam = oldURLParam }()
 

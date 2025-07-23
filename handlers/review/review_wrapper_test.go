@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -11,21 +12,23 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// review_wrapper_test.go: Tests for review handler config, service initialization, and error handling behavior.
+
 // TestInitReviewService_Success tests the successful initialization of the review service.
 // It verifies that the service is properly set in the configuration and can be retrieved
 // without errors when the configuration is valid.
 func TestInitReviewService_Success(t *testing.T) {
-	cfg := &HandlersReviewConfig{HandlersConfig: &handlers.HandlersConfig{}}
+	cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
 	err := cfg.InitReviewService(&mockReviewService{})
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg.GetReviewService())
 }
 
 // TestInitReviewService_Error tests the review service initialization when the configuration is invalid.
-// It ensures that the initialization returns an error when the HandlersConfig is nil,
+// It ensures that the initialization returns an error when the Config is nil,
 // preventing the service from being set in an invalid state.
 func TestInitReviewService_Error(t *testing.T) {
-	cfg := &HandlersReviewConfig{HandlersConfig: nil}
+	cfg := &HandlersReviewConfig{Config: nil}
 	err := cfg.InitReviewService(&mockReviewService{})
 	assert.Error(t, err)
 }
@@ -34,8 +37,9 @@ func TestInitReviewService_Error(t *testing.T) {
 // the correct service instance after initialization. It verifies that the service is not nil
 // and can be accessed through the getter method.
 func TestGetReviewService_ReturnsCorrectInstance(t *testing.T) {
-	cfg := &HandlersReviewConfig{HandlersConfig: &handlers.HandlersConfig{}}
-	cfg.InitReviewService(&mockReviewService{})
+	cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
+	err := cfg.InitReviewService(&mockReviewService{})
+	assert.NoError(t, err)
 	rs := cfg.GetReviewService()
 	assert.NotNil(t, rs)
 }
@@ -56,7 +60,7 @@ func TestHandleReviewError_AppErrorCodes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := &HandlersReviewConfig{HandlersConfig: &handlers.HandlersConfig{}}
+			cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
 			mockLogger := new(mockLoggerWrapper)
 			cfg.Logger = mockLogger
 			w := httptest.NewRecorder()
@@ -73,7 +77,7 @@ func TestHandleReviewError_AppErrorCodes(t *testing.T) {
 // It verifies that the method correctly handles generic errors by returning HTTP 500
 // and ensures that the error handling is robust for different error types.
 func TestHandleReviewError_NonAppError(t *testing.T) {
-	cfg := &HandlersReviewConfig{HandlersConfig: &handlers.HandlersConfig{}}
+	cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
 	mockLogger := new(mockLoggerWrapper)
 	cfg.Logger = mockLogger
 	w := httptest.NewRecorder()

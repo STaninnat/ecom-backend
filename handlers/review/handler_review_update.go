@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_review_update.go: Handles updating a review by ID: validates input, checks ownership, updates via service, and sends response.
 
 // Validate checks the request for required fields and valid values.
 // Ensures that the Rating is within the valid range (1-5) and the Comment field is not empty.

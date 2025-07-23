@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_cart_checkout_test.go: Tests for user and guest cart checkout handlers.
 
 // TestHandlerCheckoutUserCart tests the HandlerCheckoutUserCart function for user cart checkout scenarios.
 // It verifies both successful checkout and service error handling, checking the returned status and response body.
@@ -124,7 +127,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			name:           "missing session ID",
 			sessionID:      "",
 			body:           map[string]string{"user_id": "user1"},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
@@ -132,7 +135,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			name:           "invalid json",
 			sessionID:      "sess1",
 			body:           "not json",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
@@ -140,7 +143,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 			name:           "missing user ID",
 			sessionID:      "sess1",
 			body:           map[string]string{"user_id": ""},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "User ID is required for guest checkout"},
 		},
@@ -161,7 +164,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Patch getSessionIDFromRequest to return the test's sessionID
 			orig := getSessionIDFromRequest
-			getSessionIDFromRequest = func(r *http.Request) string { return tt.sessionID }
+			getSessionIDFromRequest = func(_ *http.Request) string { return tt.sessionID }
 			defer func() { getSessionIDFromRequest = orig }()
 
 			mockService := &MockCartService{}

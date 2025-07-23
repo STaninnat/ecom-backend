@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_delete_integration_test.go: Integration tests for HandlerDeleteCategory with various scenarios including service errors and parameter validation.
 
 // TestIntegration_HandlerDeleteCategory tests the delete category handler with real logger and mock service.
 // Covers successful deletion, service errors, missing parameters, and edge cases.
@@ -49,7 +52,7 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 			name:           "missing category ID",
 			categoryID:     "",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category ID is required"}`,
 		},
@@ -57,7 +60,7 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 			name:           "empty category ID",
 			categoryID:     "",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category ID is required"}`,
 		},
@@ -85,12 +88,12 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 
 			// Create the config with proper logger setup
 			cfg := &HandlersCategoryConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger: logger,
 				},
 			}
 			// Set the Logger field to the embedded config which implements HandlerLogger
-			cfg.Logger = cfg.HandlersConfig
+			cfg.Logger = cfg.Config
 
 			// Set the mock service
 			cfg.categoryService = mockService

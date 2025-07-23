@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_update_test.go: Tests for UpdateCategory HTTP handler with various input and error scenarios.
 
 // TestHandlerUpdateCategory tests the update category handler with mock service and logger.
 // Covers successful updates, invalid requests, and service errors.

@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -12,6 +13,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stripe/stripe-go/v82"
+)
+
+// payment_service_test.go: Tests payment service input and error scenarios.
+
+const (
+	testSignatureService = "test_signature"
+	testSecret           = "whsec_test"
 )
 
 // TestCreatePayment_InvalidRequest tests validation of required fields.
@@ -457,23 +465,28 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 
 			// Test that adapter methods exist and can be called (they'll panic, but that's expected)
 			assert.Panics(t, func() {
-				adapter.GetOrderByID(ctx, "test_order")
+				_, err := adapter.GetOrderByID(ctx, "test_order")
+				_ = err
 			})
 
 			assert.Panics(t, func() {
-				adapter.GetPaymentByOrderID(ctx, "test_order")
+				_, err := adapter.GetPaymentByOrderID(ctx, "test_order")
+				_ = err
 			})
 
 			assert.Panics(t, func() {
-				adapter.GetPaymentsByUserID(ctx, "test_user")
+				_, err := adapter.GetPaymentsByUserID(ctx, "test_user")
+				_ = err
 			})
 
 			assert.Panics(t, func() {
-				adapter.GetAllPayments(ctx)
+				_, err := adapter.GetAllPayments(ctx)
+				_ = err
 			})
 
 			assert.Panics(t, func() {
-				adapter.GetPaymentsByStatus(ctx, "pending")
+				_, err := adapter.GetPaymentsByStatus(ctx, "pending")
+				_ = err
 			})
 
 			assert.Panics(t, func() {
@@ -485,7 +498,8 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 					Currency: "USD",
 					Status:   "pending",
 				}
-				adapter.CreatePayment(ctx, params)
+				err := adapter.CreatePayment(ctx, params)
+				_ = err
 			})
 
 			assert.Panics(t, func() {
@@ -493,7 +507,8 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 					ID:     "test_payment",
 					Status: "completed",
 				}
-				adapter.UpdatePaymentStatus(ctx, params)
+				err := adapter.UpdatePaymentStatus(ctx, params)
+				_ = err
 			})
 
 			assert.Panics(t, func() {
@@ -501,7 +516,8 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 					ID:     "test_payment",
 					Status: "completed",
 				}
-				adapter.UpdatePaymentStatusByID(ctx, params)
+				err := adapter.UpdatePaymentStatusByID(ctx, params)
+				_ = err
 			})
 
 			assert.Panics(t, func() {
@@ -509,7 +525,8 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 					ProviderPaymentID: utils.ToNullString("pi_test_123"),
 					Status:            "completed",
 				}
-				adapter.UpdatePaymentStatusByProviderPaymentID(ctx, params)
+				err := adapter.UpdatePaymentStatusByProviderPaymentID(ctx, params)
+				_ = err
 			})
 
 			assert.Panics(t, func() {
@@ -517,7 +534,8 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 					ID:     "test_order",
 					Status: "paid",
 				}
-				adapter.UpdateOrderStatus(ctx, params)
+				err := adapter.UpdateOrderStatus(ctx, params)
+				_ = err
 			})
 		})
 	})
@@ -530,7 +548,7 @@ func TestPaymentDBAdapters_Coverage(t *testing.T) {
 			adapter := &PaymentDBConnAdapter{DB: nil}
 			ctx := context.Background()
 			assert.Panics(t, func() {
-				adapter.BeginTx(ctx, nil)
+				_, _ = adapter.BeginTx(ctx, nil)
 			})
 		})
 	})
@@ -936,8 +954,8 @@ func TestHandleWebhook_Success(t *testing.T) {
 
 	// Mock webhook payload and signature
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","metadata":{"order_id":"order123","user_id":"user123"}}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	// Mock Stripe event
 	event := stripe.Event{
@@ -978,8 +996,8 @@ func TestHandleWebhook_PaymentNotFound(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	// Mock Stripe event
 	event := stripe.Event{
@@ -1013,8 +1031,8 @@ func TestHandleWebhook_PaymentFailed(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"payment_intent.payment_failed","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "payment_intent.payment_failed",
@@ -1051,8 +1069,8 @@ func TestHandleWebhook_PaymentCanceled(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"payment_intent.canceled","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "payment_intent.canceled",
@@ -1089,8 +1107,8 @@ func TestHandleWebhook_ChargeRefunded(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "charge.refunded",
@@ -1128,8 +1146,8 @@ func TestHandleWebhook_JSONUnmarshalError(t *testing.T) {
 
 	// Invalid JSON payload
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "payment_intent.succeeded",
@@ -1162,8 +1180,8 @@ func TestHandleWebhook_DatabaseUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "payment_intent.succeeded",
@@ -1201,8 +1219,8 @@ func TestHandleWebhook_TransactionCommitError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "payment_intent.succeeded",
@@ -1241,8 +1259,8 @@ func TestHandleWebhook_UnknownEventType(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"unknown.event","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "unknown.event",
@@ -2031,8 +2049,8 @@ func TestHandleWebhook_ChargeRefunded_JSONUnmarshalError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "charge.refunded",
@@ -2064,8 +2082,8 @@ func TestHandleWebhook_ChargeRefunded_DatabaseUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "charge.refunded",
@@ -2101,8 +2119,8 @@ func TestHandleWebhook_ChargeRefunded_CommitError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	event := stripe.Event{
 		Type: "charge.refunded",
@@ -2138,8 +2156,8 @@ func TestHandleWebhook_MalformedPayload(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	payload := []byte(`not a json`)
-	signature := "test_signature"
-	secret := "whsec_test"
+	signature := testSignatureService
+	secret := testSecret
 
 	mockStripe.On("ParseWebhook", payload, signature, secret).Return(stripe.Event{}, errors.New("bad payload"))
 

@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_cart_delete.go: Provides handlers for managing items in authenticated user and guest carts.
 
 // DeleteItemRequest represents a request containing a product ID.
 type DeleteItemRequest struct {

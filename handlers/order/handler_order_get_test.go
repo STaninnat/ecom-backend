@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -14,13 +15,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_order_get_test.go: Tests for order handlers, verifying behavior for admin and user endpoints including success, validation, and error handling.
+
 // TestHandlerGetAllOrders_Success verifies successful retrieval of all orders.
 func TestHandlerGetAllOrders_Success(t *testing.T) {
 	mockOrderService := new(MockOrderService)
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -56,7 +59,7 @@ func TestHandlerGetAllOrders_ServiceError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -88,7 +91,7 @@ func TestHandlerGetUserOrders_Success(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -125,7 +128,7 @@ func TestHandlerGetUserOrders_ServiceError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -158,7 +161,7 @@ func TestHandlerGetOrderByID_Success(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -166,7 +169,7 @@ func TestHandlerGetOrderByID_Success(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	expectedOrder := &OrderDetailResponse{
 		Order: database.Order{ID: orderID, UserID: user.ID, TotalAmount: "100.00", Status: "pending"},
 		Items: []database.OrderItem{},
@@ -198,7 +201,7 @@ func TestHandlerGetOrderByID_MissingOrderID(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -229,7 +232,7 @@ func TestHandlerGetOrderByID_OrderNotFound(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -265,14 +268,14 @@ func TestHandlerGetOrderItemsByOrderID_Success(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
 		orderService: mockOrderService,
 	}
 
-	orderID := "order123"
+	orderID := testOrderID
 	expectedItems := []OrderItemResponse{
 		{ID: "item1", ProductID: "prod1", Quantity: 2, Price: "10.50"},
 		{ID: "item2", ProductID: "prod2", Quantity: 1, Price: "25.00"},
@@ -304,7 +307,7 @@ func TestHandlerGetOrderItemsByOrderID_MissingOrderID(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -334,14 +337,14 @@ func TestHandlerGetOrderItemsByOrderID_ServiceError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
 		orderService: mockOrderService,
 	}
 
-	orderID := "order123"
+	orderID := testOrderID
 	appError := &handlers.AppError{Code: "database_error", Message: "Database connection failed"}
 	mockOrderService.On("GetOrderItemsByOrderID", mock.Anything, orderID).Return(([]OrderItemResponse)(nil), appError)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_order_items", "internal_error", "Database connection failed", mock.Anything, mock.Anything, nil).Return()
@@ -369,7 +372,7 @@ func TestHandlerGetAllOrders_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -401,7 +404,7 @@ func TestHandlerGetUserOrders_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -434,7 +437,7 @@ func TestHandlerGetOrderByID_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -442,7 +445,7 @@ func TestHandlerGetOrderByID_UnknownError(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	unknownError := errors.New("unknown database error")
 	mockOrderService.On("GetOrderByID", mock.Anything, orderID, user).Return(nil, unknownError)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_order_by_id", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, unknownError).Return()
@@ -470,14 +473,14 @@ func TestHandlerGetOrderItemsByOrderID_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
 		orderService: mockOrderService,
 	}
 
-	orderID := "order123"
+	orderID := testOrderID
 	unknownError := errors.New("unknown database error")
 	mockOrderService.On("GetOrderItemsByOrderID", mock.Anything, orderID).Return(([]OrderItemResponse)(nil), unknownError)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_order_items", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, unknownError).Return()

@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"testing"
 )
+
+// storage_local_test.go: Tests LocalFileStorage save/delete, multipart parsing with validation, and error cases for file operations and path security.
 
 // TestLocalFileStorage_Save_And_Delete tests saving and deleting a file using LocalFileStorage.
 // It verifies that the file is saved to disk, exists, and is deleted successfully.
@@ -57,8 +60,13 @@ func TestParseAndGetImageFile_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fw.Write([]byte("image data"))
-	w.Close()
+	_, err = fw.Write([]byte("image data"))
+	if err != nil {
+		t.Errorf("fw.Write failed: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Errorf("Failed to close multipart writer: %v", err)
+	}
 
 	req := httptest.NewRequest("POST", "/upload", body)
 	req.Header.Set("Content-Type", w.FormDataContentType())
@@ -70,7 +78,9 @@ func TestParseAndGetImageFile_Success(t *testing.T) {
 	if fileHeader.Filename != "test.png" {
 		t.Errorf("Expected filename 'test.png', got %q", fileHeader.Filename)
 	}
-	file.Close()
+	if err := file.Close(); err != nil {
+		t.Errorf("Failed to close file: %v", err)
+	}
 }
 
 // TestParseAndGetImageFile_InvalidExtension tests the behavior when an unsupported file extension is uploaded.
@@ -82,8 +92,13 @@ func TestParseAndGetImageFile_InvalidExtension(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fw.Write([]byte("image data"))
-	w.Close()
+	_, err = fw.Write([]byte("image data"))
+	if err != nil {
+		t.Errorf("fw.Write failed: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Errorf("Failed to close multipart writer: %v", err)
+	}
 
 	req := httptest.NewRequest("POST", "/upload", body)
 	req.Header.Set("Content-Type", w.FormDataContentType())
@@ -93,7 +108,9 @@ func TestParseAndGetImageFile_InvalidExtension(t *testing.T) {
 		t.Errorf("Expected unsupported file extension error, got: %v", err)
 	}
 	if file != nil {
-		file.Close()
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
 	}
 	_ = fileHeader // may be nil
 }
@@ -139,8 +156,14 @@ func TestSaveUploadedFile_CreateFails(t *testing.T) {
 	fileHeader := &multipart.FileHeader{Filename: "test.jpg"}
 	dir := t.TempDir()
 	// Make dir read-only to force os.Create to fail
-	os.Chmod(dir, 0500)
-	defer os.Chmod(dir, 0755)
+	if err := os.Chmod(dir, 0500); err != nil { // nolint:gosec // Test file permissions for testing purposes
+		t.Errorf("Failed to chmod directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chmod(dir, 0755); err != nil { // nolint:gosec // Test file permissions for testing purposes
+			t.Errorf("Failed to restore directory permissions: %v", err)
+		}
+	}()
 	_, err := SaveUploadedFile(file, fileHeader, dir)
 	if err == nil || !strings.Contains(err.Error(), "failed to create file") {
 		t.Errorf("Expected create file error, got: %v", err)

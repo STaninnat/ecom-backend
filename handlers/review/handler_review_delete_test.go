@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -13,6 +14,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+// handler_review_delete_test.go: Tests for review deletion handler with success, error, and edge case coverage.
+
+const (
+	testReviewID = "r1"
 )
 
 // makeDeleteRequestWithID creates a DELETE HTTP request with the specified review ID in the URL path.
@@ -37,12 +44,12 @@ func TestHandlerDeleteReviewByID_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	mockService.On("DeleteReviewByID", mock.Anything, reviewID).Return(nil)
@@ -54,7 +61,8 @@ func TestHandlerDeleteReviewByID_Success(t *testing.T) {
 	cfg.HandlerDeleteReviewByID(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.APIResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "success", resp.Code)
 	assert.Equal(t, "Review deleted successfully", resp.Message)
 	mockService.AssertExpectations(t)
@@ -67,9 +75,9 @@ func TestHandlerDeleteReviewByID_MissingID(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
@@ -88,12 +96,12 @@ func TestHandlerDeleteReviewByID_ReviewNotFound(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return((*models.Review)(nil), err)
 	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "not_found", "Review not found", mock.Anything, mock.Anything, err.Err).Return()
@@ -113,12 +121,12 @@ func TestHandlerDeleteReviewByID_Unauthorized(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	review := &models.Review{ID: reviewID, UserID: "other", ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "unauthorized", "You can only delete your own reviews", mock.Anything, mock.Anything, nil).Return()
@@ -137,12 +145,12 @@ func TestHandlerDeleteReviewByID_ServiceError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	reviewID := "r1"
+	reviewID := testReviewID
 	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "p1"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}

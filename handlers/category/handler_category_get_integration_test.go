@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -15,11 +16,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_category_get_integration_test.go: Integration tests covering success and error scenarios of GetAllCategories handler.
+
 // TestIntegration_HandlerGetAllCategories tests the get all categories handler with real logger and mock service.
 // Covers successful retrieval and service errors with proper response validation.
 func TestIntegration_HandlerGetAllCategories(t *testing.T) {
 	cfg := &HandlersCategoryConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 	}

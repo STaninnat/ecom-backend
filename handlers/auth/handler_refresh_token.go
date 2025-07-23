@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_refresh_token.go: Handles the refresh token flow by validating and issuing new tokens.
 
 // HandlerRefreshToken handles token refresh requests.
 // Validates the current refresh token, generates new access and refresh tokens, sets new cookies, and returns a success response.

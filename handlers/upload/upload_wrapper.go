@@ -1,6 +1,8 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -8,22 +10,24 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// upload_wrapper.go: Provides configuration, error handling, and response structures for local and S3 upload handlers.
+
 // HandlersUploadConfig holds dependencies and configuration for local upload handlers.
 // Includes the logger, upload path, and the upload service for local file storage operations.
 type HandlersUploadConfig struct {
-	HandlersConfig *handlers.HandlersConfig
-	Logger         handlers.HandlerLogger
-	UploadPath     string
-	Service        UploadService
+	Config     *handlers.Config
+	Logger     handlers.HandlerLogger
+	UploadPath string
+	Service    UploadService
 }
 
 // HandlersUploadS3Config holds dependencies and configuration for S3 upload handlers.
 // Includes the logger, upload path, and the upload service for S3 cloud storage operations.
 type HandlersUploadS3Config struct {
-	HandlersConfig *handlers.HandlersConfig
-	Logger         handlers.HandlerLogger
-	UploadPath     string
-	Service        UploadService
+	Config     *handlers.Config
+	Logger     handlers.HandlerLogger
+	UploadPath string
+	Service    UploadService
 }
 
 // imageUploadResponse is the response payload for image upload endpoints.
@@ -50,7 +54,8 @@ var chiURLParam = chi.URLParam
 func (cfg *HandlersUploadConfig) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "missing_product_id":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
@@ -87,7 +92,8 @@ func (cfg *HandlersUploadConfig) handleUploadError(w http.ResponseWriter, r *htt
 func (cfg *HandlersUploadS3Config) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	appErr := &handlers.AppError{}
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "missing_product_id":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)

@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -9,6 +10,9 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// cart_helper_test.go: Mocks for cart, product, order, logger, and database APIs used in unit tests.
+
+// Mock service for cart
 type MockCartService struct{ mock.Mock }
 
 func (m *MockCartService) AddItemToUserCart(ctx context.Context, userID, productID string, quantity int) error {

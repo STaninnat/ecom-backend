@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_cart_delete_test.go: Tests for cart handlers covering item removal and cart clearing for users and guests.
 
 // TestHandlerRemoveItemFromUserCart tests the HandlerRemoveItemFromUserCart function for removing an item from a user's cart.
 // It covers scenarios such as successful removal, invalid JSON, missing product ID, and service errors.
@@ -39,7 +42,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 			name:           "invalid json",
 			user:           database.User{ID: "user1"},
 			body:           "not json",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
@@ -47,7 +50,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 			name:           "missing product ID",
 			user:           database.User{ID: "user1"},
 			body:           DeleteItemRequest{ProductID: ""},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Product ID is required"},
 		},
@@ -210,7 +213,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			name:           "missing session ID",
 			sessionID:      "",
 			body:           DeleteItemRequest{ProductID: "prod1"},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
@@ -218,7 +221,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			name:           "invalid json",
 			sessionID:      "sess1",
 			body:           "not json",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
@@ -226,7 +229,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			name:           "missing product ID",
 			sessionID:      "sess1",
 			body:           DeleteItemRequest{ProductID: ""},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Product ID is required"},
 		},
@@ -247,7 +250,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Patch getSessionIDFromRequest to return the test's sessionID
 			orig := getSessionIDFromRequest
-			getSessionIDFromRequest = func(r *http.Request) string { return tt.sessionID }
+			getSessionIDFromRequest = func(_ *http.Request) string { return tt.sessionID }
 			defer func() { getSessionIDFromRequest = orig }()
 
 			mockService := &MockCartService{}
@@ -320,7 +323,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 		{
 			name:           "missing session ID",
 			sessionID:      "",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
@@ -340,7 +343,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Patch getSessionIDFromRequest to return the test's sessionID
 			orig := getSessionIDFromRequest
-			getSessionIDFromRequest = func(r *http.Request) string { return tt.sessionID }
+			getSessionIDFromRequest = func(_ *http.Request) string { return tt.sessionID }
 			defer func() { getSessionIDFromRequest = orig }()
 
 			mockService := &MockCartService{}

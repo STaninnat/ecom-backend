@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -11,6 +12,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// product_wrapper.go: Provides thread-safe product service setup, error handling, and request/response definitions.
 
 // HandlersProductConfig holds the configuration and dependencies for product handlers.
 // Manages the product service lifecycle and provides thread-safe access to the service instance.
@@ -63,7 +66,8 @@ func (cfg *HandlersProductConfig) GetProductService() ProductService {
 func (cfg *HandlersProductConfig) handleProductError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "transaction_error", "update_failed", "commit_error", "create_product_error", "delete_product_error":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)

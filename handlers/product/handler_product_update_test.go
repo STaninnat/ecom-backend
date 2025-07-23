@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_product_update_test.go: Tests the update product handler for success, invalid input, and service error with expected responses and logging.
 
 // TestHandlerUpdateProduct_Success tests the successful update of a product via the handler.
 // It verifies that the handler returns HTTP 200, the correct response message, and logs success when the service updates the product without error.
@@ -37,7 +40,8 @@ func TestHandlerUpdateProduct_Success(t *testing.T) {
 	cfg.HandlerUpdateProduct(w, req, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.HandlerResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "Product updated successfully", resp.Message)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)

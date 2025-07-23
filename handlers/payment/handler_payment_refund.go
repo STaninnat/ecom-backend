@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_payment_refund.go: Refund payment request handler delegating to payment service.
 
 // HandlerRefundPayment handles HTTP POST requests to process a payment refund.
 // Extracts the order ID from URL parameters, validates it, and delegates refund processing to the payment service.

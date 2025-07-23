@@ -1,18 +1,20 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
 	"context"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/uuid"
 )
+
+// storage_s3.go: Implements AWS S3 file storage with upload and delete operations, including file extension validation, unique key generation, and S3 URL parsing for secure object management.
 
 // S3Client defines the interface for AWS S3 operations.
 // Provides methods for uploading and deleting objects in S3 buckets.
@@ -84,14 +86,17 @@ func (s *S3FileStorage) Delete(imageURL, _ string) error {
 //   - string: the S3 image URL
 //   - error: nil on success, error on failure
 func (u *S3Uploader) UploadFileToS3(ctx context.Context, file multipart.File, fileHeader *multipart.FileHeader) (string, string, error) {
-	defer file.Seek(0, io.SeekStart) // reset pointer
+	defer func() {
+		// reset pointer, ignore error on purpose
+		_ = file.Close()
+	}()
 
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	if _, ok := AllowedImageExtensions[ext]; !ok {
 		return "", "", fmt.Errorf("unsupported file extension: %s", ext)
 	}
 
-	key := fmt.Sprintf("uploads/%s_%d%s", uuid.New().String(), time.Now().Unix(), ext)
+	key := fmt.Sprintf("uploads/%s_%d%s", utils.NewUUIDString(), time.Now().Unix(), ext)
 	contentType := fileHeader.Header.Get("Content-Type")
 
 	_, err := u.Client.PutObject(ctx, &s3.PutObjectInput{

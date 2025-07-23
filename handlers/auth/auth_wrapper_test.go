@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// auth_wrapper_test.go: Tests for auth handler configuration, ensuring correct service setup and error handling behavior.
+
 // TestInitAuthService_Success verifies successful initialization of the AuthService with all dependencies present.
 func TestInitAuthService_Success(t *testing.T) {
 	apiCfg := &config.APIConfig{}
@@ -25,9 +28,9 @@ func TestInitAuthService_Success(t *testing.T) {
 	apiCfg.RedisClient = mockRedis
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -43,9 +46,9 @@ func TestInitAuthService_Success(t *testing.T) {
 // TestInitAuthService_MissingDB checks that initialization fails gracefully when the database is missing.
 func TestInitAuthService_MissingDB(t *testing.T) {
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: nil, // Missing APIConfig (which contains DB)
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -63,7 +66,7 @@ func TestInitAuthService_MissingAuth(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 			Auth:      nil, // Missing Auth
 			OAuth:     &config.OAuthConfig{},
@@ -83,9 +86,9 @@ func TestInitAuthService_MissingRedis(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg, // This would need RedisClient to be nil
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -95,7 +98,7 @@ func TestInitAuthService_MissingRedis(t *testing.T) {
 	// Test initialization with missing Redis (this would need the actual APIConfig to have nil RedisClient)
 	// For now, we'll test that it doesn't panic
 	assert.NotPanics(t, func() {
-		cfg.InitAuthService()
+		_ = cfg.InitAuthService()
 	})
 }
 
@@ -104,9 +107,9 @@ func TestGetAuthService_Initialized(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -128,9 +131,9 @@ func TestGetAuthService_NotInitialized(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -148,9 +151,9 @@ func TestGetAuthService_ThreadSafety(t *testing.T) {
 	apiCfg := &config.APIConfig{}
 	apiCfg.DB = (*database.Queries)(nil)
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
-			Auth:      &auth.AuthConfig{},
+			Auth:      &auth.Config{},
 			OAuth:     &config.OAuthConfig{},
 			Logger:    logrus.New(),
 		},
@@ -180,8 +183,8 @@ func TestGetAuthService_ThreadSafety(t *testing.T) {
 func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockHandlersConfig,
+		Config: &handlers.Config{},
+		Logger: mockHandlersConfig,
 	}
 
 	req := httptest.NewRequest("POST", "/test", nil)
@@ -263,10 +266,10 @@ func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 
 // TestInitAuthService_AllValidationBranches covers all validation branches in InitAuthService for missing dependencies.
 func TestInitAuthService_AllValidationBranches(t *testing.T) {
-	// Test missing HandlersConfig
+	// Test missing Config
 	t.Run("MissingHandlersConfig", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: nil,
+			Config: nil,
 		}
 		err := cfg.InitAuthService()
 		assert.Error(t, err)
@@ -276,7 +279,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test missing APIConfig
 	t.Run("MissingAPIConfig", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: nil,
 			},
 		}
@@ -288,7 +291,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test missing DB
 	t.Run("MissingDB", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB: nil,
 				},
@@ -302,7 +305,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test missing Auth (with valid DB)
 	t.Run("MissingAuth", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:          &database.Queries{}, // Valid DB
 					RedisClient: nil,
@@ -318,12 +321,12 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test missing RedisClient (with valid DB and Auth)
 	t.Run("MissingRedisClient", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:          &database.Queries{}, // Valid DB
 					RedisClient: nil,
 				},
-				Auth: &auth.AuthConfig{},
+				Auth: &auth.Config{},
 			},
 		}
 		err := cfg.InitAuthService()
@@ -334,12 +337,12 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 	// Test successful initialization (will fail gracefully due to nil dependencies)
 	t.Run("SuccessfulInitialization", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:          (*database.Queries)(nil), // Non-nil pointer to nil
 					RedisClient: nil,
 				},
-				Auth: &auth.AuthConfig{},
+				Auth: &auth.Config{},
 			},
 		}
 		err := cfg.InitAuthService()
@@ -348,5 +351,3 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 		assert.Contains(t, err.Error(), "database not initialized")
 	})
 }
-
-// Note: Removed problematic tests due to structure issues

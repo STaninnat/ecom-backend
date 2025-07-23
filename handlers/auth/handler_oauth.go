@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_oauth.go: Provides handlers for initiating and processing Google OAuth signin.
 
 // HandlerGoogleSignIn initiates the Google OAuth signin process.
 // Generates a state parameter and redirects the user to Google's authorization URL.

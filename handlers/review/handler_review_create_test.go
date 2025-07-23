@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -15,15 +16,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_review_create_test.go: Tests for review creation handler and request validation logic.
+
 // TestHandlerCreateReview_Success tests the successful creation of a review via the handler.
 // It verifies that the handler returns HTTP 201, the correct response message, and success code when the service succeeds.
 func TestHandlerCreateReview_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := ReviewCreateRequest{
@@ -49,7 +52,8 @@ func TestHandlerCreateReview_Success(t *testing.T) {
 	cfg.HandlerCreateReview(w, req, user)
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var resp handlers.APIResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "Review created successfully", resp.Message)
 	assert.Equal(t, "success", resp.Code)
 	assert.NotNil(t, resp.Data)
@@ -63,9 +67,9 @@ func TestHandlerCreateReview_InvalidPayload(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	badBody := []byte(`{"bad":}`)
@@ -85,9 +89,9 @@ func TestHandlerCreateReview_ValidationError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Missing ProductID
@@ -113,9 +117,9 @@ func TestHandlerCreateReview_ServiceError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	reqBody := ReviewCreateRequest{
@@ -187,7 +191,8 @@ func TestReviewCreateRequest_Validate_EdgeCases(t *testing.T) {
 			err := tc.request.Validate()
 			if tc.wantErr {
 				assert.Error(t, err)
-				appErr, ok := err.(*handlers.AppError)
+				appErr := &handlers.AppError{}
+				ok := errors.As(err, &appErr)
 				assert.True(t, ok)
 				assert.Equal(t, tc.errCode, appErr.Code)
 			} else {

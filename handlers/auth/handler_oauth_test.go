@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -9,74 +10,11 @@ import (
 
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// HandlerGoogleSignIn is a test handler that simulates the Google sign-in flow using mocked dependencies.
-func (cfg *TestHandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-
-	// Generate state and auth URL
-	state := "test-state" // Mock state generation
-	authURL, err := cfg.GetAuthService().GenerateGoogleAuthURL(state)
-	if err != nil {
-		cfg.LogHandlerError(
-			r.Context(),
-			"signin-google",
-			"auth_url_generation_failed",
-			"Error generating Google auth URL",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to initiate Google signin")
-		return
-	}
-
-	// Redirect to Google
-	http.Redirect(w, r, authURL, http.StatusFound)
-}
-
-// HandlerGoogleCallback is a test handler that simulates the Google OAuth callback using mocked dependencies.
-func (cfg *TestHandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	// Get parameters from URL
-	state := r.URL.Query().Get("state")
-	code := r.URL.Query().Get("code")
-
-	if state == "" || code == "" {
-		cfg.LogHandlerError(
-			ctx,
-			"callback-google",
-			"missing_parameters",
-			"Missing state or code parameter",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing required parameters")
-		return
-	}
-
-	// Call business logic service
-	result, err := cfg.GetAuthService().HandleGoogleAuth(ctx, code, state)
-	if err != nil {
-		cfg.handleAuthError(w, r, err, "callback-google", ip, userAgent)
-		return
-	}
-
-	// Set cookies
-	auth.SetTokensAsCookies(w, result.AccessToken, result.RefreshToken, result.AccessTokenExpires, result.RefreshTokenExpires)
-
-	// Log success
-	ctxWithUserID := ctx // We don't have utils.ContextKeyUserID in test context
-	cfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
-
-	// Respond
-	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
-		Message: "Google signin successful",
-	})
-}
+// handler_oauth_test.go: Test handlers and unit tests for Google OAuth signin and callback flow.
 
 // TestHandlerGoogleSignIn_Success checks that a successful Google sign-in redirects to the correct auth URL.
 func TestHandlerGoogleSignIn_Success(t *testing.T) {
@@ -344,10 +282,10 @@ func TestHandlerGoogleCallback_Exists(t *testing.T) {
 func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger:      mockHandlersConfig,
@@ -373,10 +311,10 @@ func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 func TestRealHandlerGoogleCallback_MissingParameters(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.AuthConfig{}
+	realAuthConfig := &auth.Config{}
 
 	cfg := &HandlersAuthConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Auth: realAuthConfig,
 		},
 		Logger:      mockHandlersConfig,

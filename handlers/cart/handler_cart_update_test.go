@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_cart_update_test.go: Tests handlers for updating cart item quantities for users and guests.
 
 // TestHandlerUpdateItemQuantity tests the HandlerUpdateItemQuantity function for updating the quantity of an item in a user's cart.
 // It covers scenarios such as successful update, invalid JSON, missing fields, and service errors.
@@ -41,7 +44,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			name:           "invalid json",
 			user:           database.User{ID: "user1"},
 			body:           "not json",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
@@ -49,7 +52,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			name:           "missing fields",
 			user:           database.User{ID: "user1"},
 			body:           CartUpdateRequest{ProductID: "", Quantity: 0},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Product ID and quantity are required"},
 		},
@@ -90,13 +93,14 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			req := httptest.NewRequest("PUT", "/cart/item", bytes.NewReader(bodyBytes))
 			w := httptest.NewRecorder()
 
-			if tt.expectedStatus == http.StatusOK {
+			switch {
+			case tt.expectedStatus == http.StatusOK:
 				mockLogger.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return()
-			} else if tt.name == "invalid json" {
+			case tt.name == "invalid json":
 				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "invalid request body", "Failed to parse body", mock.Anything, mock.Anything, mock.Anything).Return()
-			} else if tt.name == "missing fields" {
+			case tt.name == "missing fields":
 				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "missing fields", "Required fields are missing", mock.Anything, mock.Anything, nil).Return()
-			} else if tt.name == "service error" {
+			case tt.name == "service error":
 				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "product_not_found", "Product not found", mock.Anything, mock.Anything, mock.Anything).Return()
 			}
 
@@ -148,7 +152,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			name:           "missing session id",
 			sessionID:      "",
 			body:           CartUpdateRequest{ProductID: "prod1", Quantity: 2},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Missing session ID"},
 		},
@@ -156,7 +160,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			name:           "invalid json",
 			sessionID:      "sess1",
 			body:           "not json",
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Invalid request payload"},
 		},
@@ -164,7 +168,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			name:           "missing fields",
 			sessionID:      "sess1",
 			body:           CartUpdateRequest{ProductID: "", Quantity: 0},
-			setupMock:      func(mockService *MockCartService) {},
+			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Product ID and quantity are required"},
 		},
@@ -185,7 +189,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Patch getSessionIDFromRequest to return the test's sessionID
 			orig := getSessionIDFromRequest
-			getSessionIDFromRequest = func(r *http.Request) string { return tt.sessionID }
+			getSessionIDFromRequest = func(_ *http.Request) string { return tt.sessionID }
 			defer func() { getSessionIDFromRequest = orig }()
 
 			mockService := &MockCartService{}

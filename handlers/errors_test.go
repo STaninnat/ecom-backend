@@ -1,9 +1,12 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
 	"errors"
 	"testing"
 )
+
+// errors_test.go: Tests for AppError and APIResponse to verify error handling and API response structure.
 
 // TestAppError_Error tests the Error() method of AppError.
 // It checks the string output for various error and message combinations.
@@ -142,7 +145,7 @@ func TestAppError_Fields(t *testing.T) {
 		t.Errorf("AppError.Message = %v, want Test message", appErr.Message)
 	}
 
-	if appErr.Err != underlyingErr {
+	if !errors.Is(appErr.Err, underlyingErr) {
 		t.Errorf("AppError.Err = %v, want %v", appErr.Err, underlyingErr)
 	}
 }

@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_middleware_test.go: Tests for middleware constructors for HandlerConfig and legacy Config, supporting auth, admin-only, and optional authentication.
 
 // MockAuthService is a mock implementation of the AuthService interface for testing.
 type MockAuthService struct {
@@ -153,7 +156,7 @@ func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
 	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
 		handlerCalled = true
 		assert.Equal(t, expectedUser, user)
 	})
@@ -190,7 +193,7 @@ func TestHandlerConfig_HandlerMiddleware_MissingToken(t *testing.T) {
 	mockLogger.On("Error", "Access token cookie not found").Return()
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		handlerCalled = true
 	})
 
@@ -229,7 +232,7 @@ func TestHandlerConfig_HandlerMiddleware_InvalidToken(t *testing.T) {
 	mockLogger.On("Error", "Access token validation failed").Return()
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		handlerCalled = true
 	})
 
@@ -273,7 +276,7 @@ func TestHandlerConfig_HandlerMiddleware_UserNotFound(t *testing.T) {
 	mockLogger.On("Error", "User not found").Return()
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		handlerCalled = true
 	})
 
@@ -316,7 +319,7 @@ func TestHandlerConfig_HandlerAdminOnlyMiddleware_AdminUser(t *testing.T) {
 	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
 		handlerCalled = true
 		assert.Equal(t, expectedUser, user)
 	})
@@ -361,7 +364,7 @@ func TestHandlerConfig_HandlerAdminOnlyMiddleware_NonAdminUser(t *testing.T) {
 	mockLogger.On("Error", "unauthorized access attempt").Return()
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		handlerCalled = true
 	})
 
@@ -410,7 +413,7 @@ func TestHandlerAdminOnlyMiddleware_UnknownRole(t *testing.T) {
 	mockLogger.On("Error", mock.Anything).Return().Maybe()
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		handlerCalled = true
 	})
 
@@ -453,7 +456,7 @@ func TestHandlerMiddleware_HandlerWritesError(t *testing.T) {
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
 	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
 
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		http.Error(w, "handler error", http.StatusTeapot)
 	})
 
@@ -493,7 +496,7 @@ func TestHandlerMiddleware_TokenExpired(t *testing.T) {
 	entry := logger.WithError(assert.AnError)
 	mockLogger.On("WithError", assert.AnError).Return(entry)
 
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		// Should not be called
 		assert.Fail(t, "handler should not be called for expired token")
 	})
@@ -535,7 +538,7 @@ func TestHandlerMiddleware_LoggerServiceNil(t *testing.T) {
 	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
 
 	handlerCalled := false
-	testHandler := AuthHandler(func(w http.ResponseWriter, r *http.Request, user database.User) {
+	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
 		handlerCalled = true
 		assert.Equal(t, expectedUser, user)
 	})
@@ -585,7 +588,7 @@ func TestHandlerOptionalMiddleware_Success(t *testing.T) {
 	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.NotNil(t, user)
 		assert.Equal(t, expectedUser, *user)
@@ -619,7 +622,7 @@ func TestHandlerOptionalMiddleware_MissingToken(t *testing.T) {
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
@@ -660,7 +663,7 @@ func TestHandlerOptionalMiddleware_InvalidToken(t *testing.T) {
 	mockLogger.On("WithError", assert.AnError).Return(entry)
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
@@ -708,7 +711,7 @@ func TestHandlerOptionalMiddleware_UserNotFound(t *testing.T) {
 	mockLogger.On("WithError", assert.AnError).Return(entry)
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
@@ -724,10 +727,10 @@ func TestHandlerOptionalMiddleware_UserNotFound(t *testing.T) {
 	mockRequestMetadata.AssertExpectations(t)
 }
 
-// TestHandlersConfig_HandlerOptionalMiddleware_Structure tests the structure of HandlersConfig for optional middleware.
+// TestHandlersConfig_HandlerOptionalMiddleware_Structure tests the structure of Config for optional middleware.
 // It checks that the adapter can be created (structure test).
 func TestHandlersConfig_HandlerOptionalMiddleware_Structure(t *testing.T) {
-	adapter := &HandlersConfig{}
+	adapter := &Config{}
 	assert.NotNil(t, adapter)
 }
 
@@ -758,7 +761,7 @@ func TestHandlerOptionalMiddleware_MalformedCookie(t *testing.T) {
 	mockLogger.On("WithError", assert.AnError).Return(entry)
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
@@ -801,7 +804,7 @@ func TestHandlerOptionalMiddleware_MultipleCookies(t *testing.T) {
 	mockLogger.On("WithError", assert.AnError).Return(entry)
 
 	handlerCalled := false
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
@@ -834,7 +837,7 @@ func TestHandlerOptionalMiddleware_ContextPropagation(t *testing.T) {
 	mockRequestMetadata.On("GetIPAddress", req).Return("127.0.0.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-agent")
 
-	testHandler := OptionalHandler(func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	testHandler := OptionalHandler(func(_ http.ResponseWriter, r *http.Request, _ *database.User) {
 		assert.Equal(t, "test-value", r.Context().Value(testKey))
 	})
 
@@ -848,9 +851,9 @@ func TestHandlerOptionalMiddleware_ContextPropagation(t *testing.T) {
 func TestHandlersConfig_HandlerAdminOnlyMiddleware(t *testing.T) {
 	logger := logrus.New()
 	apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		APIConfig: apiCfg,
-		Auth:      &auth.AuthConfig{},
+		Auth:      &auth.Config{},
 		Logger:    logger,
 	}
 
@@ -858,7 +861,7 @@ func TestHandlersConfig_HandlerAdminOnlyMiddleware(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "admin-token"})
 	w := httptest.NewRecorder()
 
-	handler := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -874,9 +877,9 @@ func TestHandlersConfig_HandlerAdminOnlyMiddleware(t *testing.T) {
 func TestHandlersConfig_HandlerMiddleware(t *testing.T) {
 	logger := logrus.New()
 	apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		APIConfig: apiCfg,
-		Auth:      &auth.AuthConfig{},
+		Auth:      &auth.Config{},
 		Logger:    logger,
 	}
 
@@ -884,7 +887,7 @@ func TestHandlersConfig_HandlerMiddleware(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "user-token"})
 	w := httptest.NewRecorder()
 
-	handler := func(w http.ResponseWriter, r *http.Request, user database.User) {
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -899,9 +902,9 @@ func TestHandlersConfig_HandlerMiddleware(t *testing.T) {
 func TestHandlersConfig_HandlerOptionalMiddleware(t *testing.T) {
 	logger := logrus.New()
 	apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
-	cfg := &HandlersConfig{
+	cfg := &Config{
 		APIConfig: apiCfg,
-		Auth:      &auth.AuthConfig{},
+		Auth:      &auth.Config{},
 		Logger:    logger,
 	}
 
@@ -909,7 +912,7 @@ func TestHandlersConfig_HandlerOptionalMiddleware(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "user-token"})
 	w := httptest.NewRecorder()
 
-	handler := func(w http.ResponseWriter, r *http.Request, user *database.User) {
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ *database.User) {
 		w.WriteHeader(http.StatusOK)
 	}
 

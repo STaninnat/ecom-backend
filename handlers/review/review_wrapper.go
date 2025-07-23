@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -11,6 +12,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/models"
 )
+
+// review_wrapper.go: Handles review service setup, error handling, and request/response structures for review operations.
 
 // ReviewService defines the business logic interface for reviews.
 // Provides methods for creating, reading, updating, and deleting reviews,
@@ -29,10 +32,10 @@ type ReviewService interface {
 }
 
 // HandlersReviewConfig contains configuration and dependencies for review handlers.
-// Embeds HandlersConfig, provides logger, reviewService, and thread safety.
+// Embeds Config, provides logger, reviewService, and thread safety.
 // Manages the lifecycle of review service instances with proper synchronization.
 type HandlersReviewConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	Logger        handlers.HandlerLogger
 	ReviewService ReviewService
 	ReviewMutex   sync.RWMutex
@@ -47,14 +50,14 @@ type HandlersReviewConfig struct {
 // Returns:
 //   - error: nil on success, error if handlers config is not initialized
 func (cfg *HandlersReviewConfig) InitReviewService(service ReviewService) error {
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	cfg.ReviewMutex.Lock()
 	defer cfg.ReviewMutex.Unlock()
 	cfg.ReviewService = service
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 	return nil
 }
@@ -82,7 +85,8 @@ func (cfg *HandlersReviewConfig) GetReviewService() ReviewService {
 func (cfg *HandlersReviewConfig) handleReviewError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "not_found":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)

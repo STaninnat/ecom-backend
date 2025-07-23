@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -11,6 +12,8 @@ import (
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_review_create.go: Validates and handles review creation requests with logging and error handling.
 
 // Validate checks the request for required fields and valid values.
 // Ensures that the ProductID is provided, the Rating is within the valid range (1-5), and the Comment field is not empty.

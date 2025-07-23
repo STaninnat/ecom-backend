@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -10,8 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// storage_local.go: Defines FileStorage interface and local filesystem implementation for secure file save/delete operations,
+// including multipart parsing, file extension validation, path traversal protection, and filename generation.
 
 // FileStorage abstracts file operations for uploads.
 // Provides a common interface for saving and deleting files across different storage backends.
@@ -73,7 +77,7 @@ func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeade
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	if _, ok := AllowedImageExtensions[ext]; !ok {
 		if err := file.Close(); err != nil {
-			// Optionally log the error
+			return nil, nil, fmt.Errorf("unsupported file extension: %s (file close error: %w)", ext, err)
 		}
 		return nil, nil, fmt.Errorf("unsupported file extension: %s", ext)
 	}
@@ -91,12 +95,16 @@ func ParseAndGetImageFile(r *http.Request) (multipart.File, *multipart.FileHeade
 //   - string: the full file path on success
 //   - error: nil on success, error on failure
 func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, uploadPath string) (string, error) {
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("file.Close failed: %v\n", err)
+		}
+	}()
 	if err := os.MkdirAll(uploadPath, 0750); err != nil {
 		return "", fmt.Errorf("failed to create upload directory: %w", err)
 	}
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-	filename := fmt.Sprintf("%s_%d%s", uuid.New().String(), time.Now().Unix(), ext)
+	filename := fmt.Sprintf("%s_%d%s", utils.NewUUIDString(), time.Now().Unix(), ext)
 	filePath := filepath.Join(uploadPath, filename)
 	cleanFilePath := filepath.Clean(filePath)
 	// Strict path traversal check: cleanFilePath must be inside uploadPath
@@ -109,7 +117,11 @@ func SaveUploadedFile(file multipart.File, fileHeader *multipart.FileHeader, upl
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			fmt.Printf("dst.Close failed: %v\n", err)
+		}
+	}()
 	if _, err := io.Copy(dst, file); err != nil {
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}

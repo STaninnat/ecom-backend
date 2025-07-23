@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -17,13 +18,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_order_update_test.go: Tests for updating order status handler, covering success and failure cases with mocks.
+
 // TestHandlerUpdateOrderStatus_Success verifies successful order status update.
 func TestHandlerUpdateOrderStatus_Success(t *testing.T) {
 	mockOrderService := new(MockOrderService)
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -31,7 +34,7 @@ func TestHandlerUpdateOrderStatus_Success(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
 	}
@@ -45,7 +48,7 @@ func TestHandlerUpdateOrderStatus_Success(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -69,7 +72,7 @@ func TestHandlerUpdateOrderStatus_InvalidRequest(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -85,7 +88,7 @@ func TestHandlerUpdateOrderStatus_InvalidRequest(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -109,7 +112,7 @@ func TestHandlerUpdateOrderStatus_MissingOrderID(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -153,7 +156,7 @@ func TestHandlerUpdateOrderStatus_OrderNotFound(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -167,7 +170,7 @@ func TestHandlerUpdateOrderStatus_OrderNotFound(t *testing.T) {
 	}
 
 	appError := &handlers.AppError{Code: "order_not_found", Message: "Order not found"}
-	mockOrderService.On("UpdateOrderStatus", mock.Anything, "order123", "shipped").Return(appError)
+	mockOrderService.On("UpdateOrderStatus", mock.Anything, testOrderID, "shipped").Return(appError)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_order_status", "order_not_found", "Order not found", mock.Anything, mock.Anything, nil).Return()
 
 	jsonBody, _ := json.Marshal(requestBody)
@@ -176,7 +179,7 @@ func TestHandlerUpdateOrderStatus_OrderNotFound(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -200,7 +203,7 @@ func TestHandlerUpdateOrderStatus_InvalidStatus(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -208,7 +211,7 @@ func TestHandlerUpdateOrderStatus_InvalidStatus(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	requestBody := UpdateOrderStatusRequest{
 		Status: "invalid_status",
 	}
@@ -223,7 +226,7 @@ func TestHandlerUpdateOrderStatus_InvalidStatus(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -247,7 +250,7 @@ func TestHandlerUpdateOrderStatus_UpdateFailed(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -255,7 +258,7 @@ func TestHandlerUpdateOrderStatus_UpdateFailed(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
 	}
@@ -270,7 +273,7 @@ func TestHandlerUpdateOrderStatus_UpdateFailed(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -294,7 +297,7 @@ func TestHandlerUpdateOrderStatus_UnknownError(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			Logger: logrus.New(),
 		},
 		Logger:       mockLogger,
@@ -302,7 +305,7 @@ func TestHandlerUpdateOrderStatus_UnknownError(t *testing.T) {
 	}
 
 	user := database.User{ID: "user123"}
-	orderID := "order123"
+	orderID := testOrderID
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
 	}
@@ -317,7 +320,7 @@ func TestHandlerUpdateOrderStatus_UnknownError(t *testing.T) {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 		URLParams: chi.RouteParams{
 			Keys:   []string{"order_id"},
-			Values: []string{"order123"},
+			Values: []string{testOrderID},
 		},
 	})
 	req = req.WithContext(ctx)
@@ -345,7 +348,7 @@ func TestHandlerUpdateOrderStatus_ValidStatuses(t *testing.T) {
 			mockLogger := new(mockHandlerLogger)
 
 			cfg := &HandlersOrderConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger: logrus.New(),
 				},
 				Logger:       mockLogger,
@@ -357,7 +360,7 @@ func TestHandlerUpdateOrderStatus_ValidStatuses(t *testing.T) {
 				Status: status,
 			}
 
-			mockOrderService.On("UpdateOrderStatus", mock.Anything, "order123", status).Return(nil)
+			mockOrderService.On("UpdateOrderStatus", mock.Anything, testOrderID, status).Return(nil)
 			mockLogger.On("LogHandlerSuccess", mock.Anything, "update_order_status", "Order status updated successfully", mock.Anything, mock.Anything).Return()
 
 			jsonBody, _ := json.Marshal(requestBody)
@@ -366,7 +369,7 @@ func TestHandlerUpdateOrderStatus_ValidStatuses(t *testing.T) {
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
 				URLParams: chi.RouteParams{
 					Keys:   []string{"order_id"},
-					Values: []string{"order123"},
+					Values: []string{testOrderID},
 				},
 			})
 			req = req.WithContext(ctx)

@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_cart_add.go: Provides HTTP handlers to add items to authenticated user carts and guest session carts.
 
 // getSessionIDFromRequest testable indirection for session ID extraction
 var getSessionIDFromRequest = utils.GetSessionIDFromRequest

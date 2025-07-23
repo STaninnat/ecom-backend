@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -14,12 +15,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_payment_confirm_test.go: Tests for payment confirmation HTTP handler covering success, validation, and error cases.
+
 // TestHandlerConfirmPayment_Success tests successful payment confirmation
 func TestHandlerConfirmPayment_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForConfirm)
 	mockLog := new(MockLoggerForConfirm)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -37,7 +40,9 @@ func TestHandlerConfirmPayment_Success(t *testing.T) {
 	cfg.HandlerConfirmPayment(w, httpReq, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp ConfirmPaymentResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "succeeded", resp.Status)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
@@ -48,7 +53,7 @@ func TestHandlerConfirmPayment_InvalidPayload(t *testing.T) {
 	mockService := new(MockPaymentServiceForConfirm)
 	mockLog := new(MockLoggerForConfirm)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -69,7 +74,7 @@ func TestHandlerConfirmPayment_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForConfirm)
 	mockLog := new(MockLoggerForConfirm)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -95,7 +100,7 @@ func TestHandlerConfirmPayment_ValidationError(t *testing.T) {
 	mockService := new(MockPaymentServiceForConfirm)
 	mockLog := new(MockLoggerForConfirm)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}

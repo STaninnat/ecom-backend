@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_category_update_integration_test.go: Integration tests for UpdateCategory HTTP handler with real logger and mock service.
 
 // TestIntegration_HandlerUpdateCategory tests the update category handler with real logger and mock service.
 // Covers successful updates, validation errors, service errors, and various edge cases.
@@ -74,7 +77,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			requestBody:    `{"invalid": json}`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -84,7 +87,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			requestBody:    `{"invalid": json}`,
 			contentType:    "",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -168,7 +171,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			requestBody:    "",
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -178,7 +181,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			requestBody:    `{"id":"test-category-id","name":}`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
-			mockSetup:      func(mockService *MockCategoryService) {},
+			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Invalid request payload"}`,
 		},
@@ -211,12 +214,12 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 
 			// Create the config with proper logger setup
 			cfg := &HandlersCategoryConfig{
-				HandlersConfig: &handlers.HandlersConfig{
+				Config: &handlers.Config{
 					Logger: logger,
 				},
 			}
 			// Set the Logger field to the embedded config which implements HandlerLogger
-			cfg.Logger = cfg.HandlersConfig
+			cfg.Logger = cfg.Config
 
 			// Set the mock service
 			cfg.categoryService = mockService

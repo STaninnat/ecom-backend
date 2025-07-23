@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -7,6 +8,12 @@ import (
 	"github.com/STaninnat/ecom-backend/handlers"
 	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/models"
+)
+
+// review_service.go: Implements review business logic with error handling, using MongoDB for data access and filtering.
+
+const (
+	reviewNotFoundMsg = "review not found"
 )
 
 // ReviewMongoAPI defines the interface for MongoDB operations on reviews.
@@ -67,7 +74,7 @@ func (s *reviewServiceImpl) CreateReview(ctx context.Context, review *models.Rev
 func (s *reviewServiceImpl) GetReviewByID(ctx context.Context, reviewID string) (*models.Review, error) {
 	review, err := s.reviewMongo.GetReviewByID(ctx, reviewID)
 	if err != nil {
-		if err.Error() == "review not found" {
+		if err.Error() == reviewNotFoundMsg {
 			return nil, &handlers.AppError{Code: "not_found", Message: "Review not found", Err: err}
 		}
 		return nil, &handlers.AppError{Code: "get_failed", Message: "Failed to get review", Err: err}
@@ -120,7 +127,7 @@ func (s *reviewServiceImpl) GetReviewsByUserID(ctx context.Context, userID strin
 //   - error: nil on success, AppError with "not_found" or "update_failed" code on failure
 func (s *reviewServiceImpl) UpdateReviewByID(ctx context.Context, reviewID string, updatedReview *models.Review) error {
 	if err := s.reviewMongo.UpdateReviewByID(ctx, reviewID, updatedReview); err != nil {
-		if err.Error() == "review not found" {
+		if err.Error() == reviewNotFoundMsg {
 			return &handlers.AppError{Code: "not_found", Message: "Review not found", Err: err}
 		}
 		return &handlers.AppError{Code: "update_failed", Message: "Failed to update review", Err: err}
@@ -138,7 +145,7 @@ func (s *reviewServiceImpl) UpdateReviewByID(ctx context.Context, reviewID strin
 //   - error: nil on success, AppError with "not_found" or "delete_failed" code on failure
 func (s *reviewServiceImpl) DeleteReviewByID(ctx context.Context, reviewID string) error {
 	if err := s.reviewMongo.DeleteReviewByID(ctx, reviewID); err != nil {
-		if err.Error() == "review not found" {
+		if err.Error() == reviewNotFoundMsg {
 			return &handlers.AppError{Code: "not_found", Message: "Review not found", Err: err}
 		}
 		return &handlers.AppError{Code: "delete_failed", Message: "Failed to delete review", Err: err}

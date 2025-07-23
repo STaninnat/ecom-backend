@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -15,6 +16,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+// handler_review_get_test.go: Tests for get review handler and type assertion failures with proper request setup and logging verification.
+
+const (
+	testProductID = "p1"
 )
 
 // makeGetRequestWithProductID creates a GET HTTP request for retrieving reviews by product ID.
@@ -54,13 +61,12 @@ func TestHandlerGetReviewsByProductID_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
-	productID := "p1"
 	expectedResult := PaginatedReviewsResponse{
-		Data:       []*models.Review{{ID: "r1", ProductID: productID}},
+		Data:       []*models.Review{{ID: testReviewID, ProductID: testProductID}},
 		TotalCount: 1,
 		Page:       1,
 		PageSize:   10,
@@ -68,16 +74,17 @@ func TestHandlerGetReviewsByProductID_Success(t *testing.T) {
 		HasNext:    false,
 		HasPrev:    false,
 	}
-	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, productID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return(expectedResult, nil)
+	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, testProductID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return(expectedResult, nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "get_reviews_by_product_id", "Got reviews successfully", mock.Anything, mock.Anything).Return()
 
-	r := makeGetRequestWithProductID(productID)
+	r := makeGetRequestWithProductID(testProductID)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerGetReviewsByProductID(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp PaginatedReviewsResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
 	assert.Equal(t, "success", resp.Code)
 	assert.Equal(t, "Reviews fetched successfully", resp.Message)
 	assert.Equal(t, int64(1), resp.TotalCount)
@@ -91,9 +98,9 @@ func TestHandlerGetReviewsByProductID_MissingProductID(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "invalid_request", "Product ID is required", mock.Anything, mock.Anything, nil).Return()
 
@@ -111,16 +118,15 @@ func TestHandlerGetReviewsByProductID_ServiceError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
-	productID := "p1"
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
-	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, productID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return(nil, err)
+	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, testProductID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return(nil, err)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "internal_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
 
-	r := makeGetRequestWithProductID(productID)
+	r := makeGetRequestWithProductID(testProductID)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerGetReviewsByProductID(w, r)
@@ -136,13 +142,13 @@ func TestHandlerGetReviewsByUserID_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	expectedResult := PaginatedReviewsResponse{
-		Data:       []*models.Review{{ID: "r1", UserID: user.ID}},
+		Data:       []*models.Review{{ID: testReviewID, UserID: user.ID}},
 		TotalCount: 1,
 		Page:       1,
 		PageSize:   10,
@@ -159,7 +165,9 @@ func TestHandlerGetReviewsByUserID_Success(t *testing.T) {
 	cfg.HandlerGetReviewsByUserID(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp PaginatedReviewsResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "success", resp.Code)
 	assert.Equal(t, "Reviews fetched successfully", resp.Message)
 	assert.Equal(t, int64(1), resp.TotalCount)
@@ -173,9 +181,9 @@ func TestHandlerGetReviewsByUserID_ServiceError(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
@@ -198,12 +206,12 @@ func TestHandlerGetReviewByID_Success(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
-	reviewID := "r1"
-	review := &models.Review{ID: reviewID, ProductID: "p1", Rating: 5, Comment: "Great!"}
+	reviewID := testReviewID
+	review := &models.Review{ID: reviewID, ProductID: testProductID, Rating: 5, Comment: "Great!"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "get_review_by_id", "Got review successfully", mock.Anything, mock.Anything).Return()
 
@@ -213,7 +221,9 @@ func TestHandlerGetReviewByID_Success(t *testing.T) {
 	cfg.HandlerGetReviewByID(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.APIResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "success", resp.Code)
 	assert.Equal(t, "Review fetched successfully", resp.Message)
 	assert.NotNil(t, resp.Data)
@@ -227,9 +237,9 @@ func TestHandlerGetReviewByID_MissingID(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	mockLogger.On("LogHandlerError", mock.Anything, "get_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
 
@@ -247,11 +257,11 @@ func TestHandlerGetReviewByID_ReviewNotFound(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
-	reviewID := "r1"
+	reviewID := testReviewID
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return((*models.Review)(nil), err)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_review_by_id", "not_found", "Review not found", mock.Anything, mock.Anything, err.Err).Return()
@@ -271,16 +281,15 @@ func TestHandlerGetReviewsByProductID_TypeAssertionFailure(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
-	productID := "p1"
 	// Return wrong type
-	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, productID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return("wrong_type", nil)
+	mockService.On("GetReviewsByProductIDPaginated", mock.Anything, testProductID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return("wrong_type", nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "internal_error", "Unexpected response type", mock.Anything, mock.Anything, nil).Return()
 
-	r := makeGetRequestWithProductID(productID)
+	r := makeGetRequestWithProductID(testProductID)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerGetReviewsByProductID(w, r)
@@ -295,9 +304,9 @@ func TestHandlerGetReviewsByUserID_TypeAssertionFailure(t *testing.T) {
 	mockService := new(MockReviewService)
 	mockLogger := new(MockLogger)
 	cfg := &HandlersReviewConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockLogger,
-		ReviewService:  mockService,
+		Config:        &handlers.Config{},
+		Logger:        mockLogger,
+		ReviewService: mockService,
 	}
 	user := database.User{ID: "u1"}
 	// Return wrong type

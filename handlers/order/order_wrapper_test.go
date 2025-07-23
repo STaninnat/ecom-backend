@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -16,10 +17,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// order_wrapper_test.go: Tests for order handler configuration, service initialization, error handling,
+// and request/response data structures to ensure correctness and concurrency safety.
+
 // TestInitOrderService_Success verifies successful initialization of the OrderService with all dependencies present.
 func TestInitOrderService_Success(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: &sql.DB{},
@@ -32,10 +36,10 @@ func TestInitOrderService_Success(t *testing.T) {
 	assert.NotNil(t, cfg.orderService)
 }
 
-// TestInitOrderService_MissingHandlersConfig checks that initialization fails gracefully when HandlersConfig is missing.
+// TestInitOrderService_MissingHandlersConfig checks that initialization fails gracefully when Config is missing.
 func TestInitOrderService_MissingHandlersConfig(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: nil,
+		Config: nil,
 	}
 
 	err := cfg.InitOrderService()
@@ -46,7 +50,7 @@ func TestInitOrderService_MissingHandlersConfig(t *testing.T) {
 // TestInitOrderService_MissingDB checks that initialization fails gracefully when the database is missing.
 func TestInitOrderService_MissingDB(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     nil,
 				DBConn: &sql.DB{},
@@ -62,7 +66,7 @@ func TestInitOrderService_MissingDB(t *testing.T) {
 // TestInitOrderService_MissingDBConn checks that initialization fails gracefully when the database connection is missing.
 func TestInitOrderService_MissingDBConn(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: nil,
@@ -78,7 +82,7 @@ func TestInitOrderService_MissingDBConn(t *testing.T) {
 // TestGetOrderService_Initialized verifies that GetOrderService returns the initialized service.
 func TestGetOrderService_Initialized(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: &sql.DB{},
@@ -99,7 +103,7 @@ func TestGetOrderService_Initialized(t *testing.T) {
 // TestGetOrderService_NotInitialized checks that GetOrderService auto-initializes the service if not already done.
 func TestGetOrderService_NotInitialized(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: &sql.DB{},
@@ -116,7 +120,7 @@ func TestGetOrderService_NotInitialized(t *testing.T) {
 // TestGetOrderService_ThreadSafety checks that GetOrderService is thread-safe under concurrent access.
 func TestGetOrderService_ThreadSafety(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: &sql.DB{},
@@ -146,7 +150,7 @@ func TestGetOrderService_ThreadSafety(t *testing.T) {
 // TestGetOrderService_NilDependencies checks that GetOrderService handles nil dependencies gracefully.
 func TestGetOrderService_NilDependencies(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: nil,
+		Config: nil,
 	}
 
 	service := cfg.GetOrderService()
@@ -161,7 +165,7 @@ func TestGetOrderService_NilDependencies(t *testing.T) {
 func TestHandleOrderError_AllErrorCodes(t *testing.T) {
 	mockLogger := new(mockHandlerLogger)
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{},
 		},
 		Logger: mockLogger,
@@ -341,7 +345,7 @@ func TestRequestResponseStructs(t *testing.T) {
 // TestHandlersOrderConfig_ConcurrentAccess tests that the HandlersOrderConfig can handle concurrent access safely.
 func TestHandlersOrderConfig_ConcurrentAccess(t *testing.T) {
 	cfg := &HandlersOrderConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: &sql.DB{},

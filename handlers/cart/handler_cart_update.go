@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_cart_update.go: Provides handlers for updating cart item quantities for users and guests.
 
 // HandlerUpdateItemQuantity handles HTTP requests to update the quantity of an item in a user's cart.
 // Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.

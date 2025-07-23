@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_s3.go: Handles S3 product image upload and update with size limits, service calls, logging, and JSON responses.
 
 // HandlerS3UploadProductImage handles HTTP POST requests to upload a new product image to S3 storage.
 // Enforces a max upload size, delegates to the S3 upload service, logs the event, and responds with the S3 image URL.

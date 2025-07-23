@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -15,12 +16,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_payment_get_test.go: Tests for payment-related HTTP handlers: get payment, payment history, and admin payments, covering success, validation errors, and service error handling.
+
 // TestHandlerGetPayment_Success tests successful payment retrieval
 func TestHandlerGetPayment_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -45,7 +48,9 @@ func TestHandlerGetPayment_Success(t *testing.T) {
 	cfg.HandlerGetPayment(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp GetPaymentResult
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Equal(t, "p1", resp.ID)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
@@ -56,7 +61,7 @@ func TestHandlerGetPayment_MissingOrderID(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -78,7 +83,7 @@ func TestHandlerGetPayment_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -104,7 +109,7 @@ func TestHandlerGetPayment_NotFound(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -130,7 +135,7 @@ func TestHandlerGetPayment_ValidationError(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -156,7 +161,7 @@ func TestHandlerGetPaymentHistory_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -190,7 +195,9 @@ func TestHandlerGetPaymentHistory_Success(t *testing.T) {
 	cfg.HandlerGetPaymentHistory(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp []PaymentHistoryItem
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Len(t, resp, 2)
 	assert.Equal(t, "p1", resp[0].ID)
 	assert.Equal(t, "p2", resp[1].ID)
@@ -203,7 +210,7 @@ func TestHandlerGetPaymentHistory_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -226,7 +233,7 @@ func TestHandlerAdminGetPayments_Success(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -260,7 +267,9 @@ func TestHandlerAdminGetPayments_Success(t *testing.T) {
 	cfg.HandlerAdminGetPayments(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp []PaymentHistoryItem
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Len(t, resp, 2)
 	assert.Equal(t, "p1", resp[0].ID)
 	assert.Equal(t, "p2", resp[1].ID)
@@ -273,7 +282,7 @@ func TestHandlerAdminGetPayments_WithStatusFilter(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
@@ -301,7 +310,9 @@ func TestHandlerAdminGetPayments_WithStatusFilter(t *testing.T) {
 	cfg.HandlerAdminGetPayments(w, r, user)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp []PaymentHistoryItem
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Errorf("Failed to decode response: %v", err)
+	}
 	assert.Len(t, resp, 1)
 	assert.Equal(t, "p1", resp[0].ID)
 	assert.Equal(t, "succeeded", resp[0].Status)
@@ -314,7 +325,7 @@ func TestHandlerAdminGetPayments_ServiceError(t *testing.T) {
 	mockService := new(MockPaymentServiceForGet)
 	mockLog := new(MockLoggerForGet)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		Logger:         mockLog,
 		paymentService: mockService,
 	}

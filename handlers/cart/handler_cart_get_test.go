@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// handler_cart_get_test.go: Tests for user and guest cart retrieval handlers with various scenarios.
 
 // TestHandlerGetUserCart tests the HandlerGetUserCart function for retrieving a user's cart.
 // It covers scenarios such as successful retrieval, cart not found, and database errors.
@@ -151,7 +154,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 		{
 			name:      "missing session ID",
 			sessionID: "",
-			setupMock: func(mockService *MockCartService) {
+			setupMock: func(_ *MockCartService) {
 				// No mock setup needed for this case
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -189,7 +192,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Patch getSessionIDFromRequest to return the test's sessionID
 			orig := getSessionIDFromRequest
-			getSessionIDFromRequest = func(r *http.Request) string { return tt.sessionID }
+			getSessionIDFromRequest = func(_ *http.Request) string { return tt.sessionID }
 			defer func() { getSessionIDFromRequest = orig }()
 
 			// Setup
@@ -206,11 +209,12 @@ func TestHandlerGetGuestCart(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// Set up logger expectations
-			if tt.expectedStatus == http.StatusOK {
+			switch {
+			case tt.expectedStatus == http.StatusOK:
 				mockLogger.On("LogHandlerSuccess", mock.Anything, "get_guest_cart", "Got guest cart successfully", mock.Anything, mock.Anything).Return()
-			} else if tt.sessionID == "" {
+			case tt.sessionID == "":
 				mockLogger.On("LogHandlerError", mock.Anything, "get_guest_cart", "missing session ID", "Session ID not found in request", mock.Anything, mock.Anything, nil).Return()
-			} else {
+			default:
 				mockLogger.On("LogHandlerError", mock.Anything, "get_guest_cart", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 			}
 

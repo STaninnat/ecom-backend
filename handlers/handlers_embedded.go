@@ -1,3 +1,4 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
@@ -12,10 +13,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// HandlersConfig represents the main configuration for handlers, including API, auth, OAuth, logger, and cache service.
-type HandlersConfig struct {
+// handlers_embedded.go: Defines the main handler configuration struct and helper functions to initialize and validate handler dependencies.
+
+// Config represents the main configuration for handlers, including API, auth, OAuth, logger, and cache service.
+type Config struct {
 	*config.APIConfig
-	Auth              *auth.AuthConfig
+	Auth              *auth.Config
 	OAuth             *config.OAuthConfig
 	Logger            *logrus.Logger
 	CustomTokenSource func(ctx context.Context, refreshToken string) oauth2.TokenSource
@@ -34,7 +37,7 @@ const (
 )
 
 // SetupHandlersConfig creates and configures a new HandlersConfig instance with all dependencies.
-func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
+func SetupHandlersConfig(logger *logrus.Logger) *Config {
 	apicfg := config.LoadConfig()
 
 	// Connect to database
@@ -47,14 +50,14 @@ func SetupHandlersConfig(logger *logrus.Logger) *HandlersConfig {
 	}
 
 	// Create auth configuration
-	authCfg := &auth.AuthConfig{
+	authCfg := &auth.Config{
 		APIConfig: apicfg,
 	}
 
 	// Create cache service
 	cacheService := utils.NewCacheService(apicfg.RedisClient)
 
-	return &HandlersConfig{
+	return &Config{
 		APIConfig:    apicfg,
 		Auth:         authCfg,
 		OAuth:        oauthConfig,
@@ -88,7 +91,7 @@ func NewHandlerConfig(
 }
 
 // ValidateConfig validates the handler configuration and returns an error if invalid.
-func (cfg *HandlersConfig) ValidateConfig() error {
+func (cfg *Config) ValidateConfig() error {
 	if cfg.Logger == nil {
 		return ErrInvalidConfig("logger is required")
 	}

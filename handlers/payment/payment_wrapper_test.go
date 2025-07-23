@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -15,6 +16,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// payment_wrapper_test.go: Tests for payment handler setup, initialization, and thread safety.
+
 // TestInitPaymentService_Success verifies successful initialization of the PaymentService with all dependencies present.
 func TestInitPaymentService_Success(t *testing.T) {
 	apiCfg := &config.APIConfig{
@@ -24,7 +27,7 @@ func TestInitPaymentService_Success(t *testing.T) {
 	apiCfg.StripeSecretKey = "sk_test_123"
 
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: apiCfg,
 		},
 	}
@@ -38,7 +41,7 @@ func TestInitPaymentService_Success(t *testing.T) {
 // TestInitPaymentService_MissingHandlersConfig checks that initialization fails gracefully when the handlers config is missing.
 func TestInitPaymentService_MissingHandlersConfig(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: nil,
+		Config: nil,
 	}
 
 	// Test initialization with missing handlers config should return an error
@@ -50,7 +53,7 @@ func TestInitPaymentService_MissingHandlersConfig(t *testing.T) {
 // TestInitPaymentService_MissingAPIConfig checks that initialization fails gracefully when the API config is missing.
 func TestInitPaymentService_MissingAPIConfig(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: nil,
 		},
 	}
@@ -64,7 +67,7 @@ func TestInitPaymentService_MissingAPIConfig(t *testing.T) {
 // TestInitPaymentService_MissingDB checks that initialization fails gracefully when the database is missing.
 func TestInitPaymentService_MissingDB(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB: nil,
 			},
@@ -80,7 +83,7 @@ func TestInitPaymentService_MissingDB(t *testing.T) {
 // TestInitPaymentService_MissingDBConn checks that initialization fails gracefully when the database connection is missing.
 func TestInitPaymentService_MissingDBConn(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:     &database.Queries{},
 				DBConn: nil,
@@ -97,7 +100,7 @@ func TestInitPaymentService_MissingDBConn(t *testing.T) {
 // TestInitPaymentService_MissingStripeKey checks that initialization fails gracefully when the Stripe secret key is missing.
 func TestInitPaymentService_MissingStripeKey(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				DB:              &database.Queries{},
 				DBConn:          &sql.DB{},
@@ -116,17 +119,17 @@ func TestInitPaymentService_MissingStripeKey(t *testing.T) {
 func TestGetPaymentService_AlreadyInitialized(t *testing.T) {
 	mockService := new(MockPaymentService)
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
+		Config:         &handlers.Config{},
 		paymentService: mockService,
 	}
 	service := cfg.GetPaymentService()
 	assert.Equal(t, mockService, service)
 }
 
-// TestGetPaymentService_InitializesWithNilConfig tests that GetPaymentService initializes a new service even when HandlersConfig is nil.
+// TestGetPaymentService_InitializesWithNilConfig tests that GetPaymentService initializes a new service even when Config is nil.
 func TestGetPaymentService_InitializesWithNilConfig(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: nil,
+		Config:         nil,
 		paymentService: nil,
 	}
 	service := cfg.GetPaymentService()
@@ -136,7 +139,7 @@ func TestGetPaymentService_InitializesWithNilConfig(t *testing.T) {
 // TestGetPaymentService_ThreadSafety tests that GetPaymentService is thread-safe with concurrent access.
 func TestGetPaymentService_ThreadSafety(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: nil,
+		Config:         nil,
 		paymentService: nil,
 	}
 
@@ -164,7 +167,7 @@ func TestGetPaymentService_ThreadSafety(t *testing.T) {
 // TestSetupStripeAPI tests that SetupStripeAPI sets the Stripe API key correctly.
 func TestSetupStripeAPI(t *testing.T) {
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{
+		Config: &handlers.Config{
 			APIConfig: &config.APIConfig{
 				StripeSecretKey: "sk_test_setup_123",
 			},
@@ -181,8 +184,8 @@ func TestSetupStripeAPI(t *testing.T) {
 func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	cfg := &HandlersPaymentConfig{
-		HandlersConfig: &handlers.HandlersConfig{},
-		Logger:         mockHandlersConfig,
+		Config: &handlers.Config{},
+		Logger: mockHandlersConfig,
 	}
 
 	req := httptest.NewRequest("POST", "/test", nil)
@@ -351,10 +354,10 @@ func TestPaymentRequestResponseTypes(t *testing.T) {
 
 // TestInitPaymentService_AllValidationBranches tests all validation branches in InitPaymentService.
 func TestInitPaymentService_AllValidationBranches(t *testing.T) {
-	// Test missing HandlersConfig
+	// Test missing Config
 	t.Run("MissingHandlersConfig", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: nil,
+			Config: nil,
 		}
 		err := cfg.InitPaymentService()
 		assert.Error(t, err)
@@ -364,7 +367,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 	// Test missing APIConfig
 	t.Run("MissingAPIConfig", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: nil,
 			},
 		}
@@ -376,7 +379,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 	// Test missing DB
 	t.Run("MissingDB", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB: nil,
 				},
@@ -390,7 +393,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 	// Test missing DBConn
 	t.Run("MissingDBConn", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:     &database.Queries{},
 					DBConn: nil,
@@ -405,7 +408,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 	// Test missing StripeSecretKey
 	t.Run("MissingStripeSecretKey", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:              &database.Queries{},
 					DBConn:          &sql.DB{},
@@ -421,7 +424,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 	// Test successful initialization
 	t.Run("SuccessfulInitialization", func(t *testing.T) {
 		cfg := &HandlersPaymentConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{
 					DB:              &database.Queries{},
 					DBConn:          &sql.DB{},

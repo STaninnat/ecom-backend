@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -10,10 +11,12 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
+// auth_wrapper.go: Provides configuration and initialization logic for auth handlers, including service setup and error handling.
+
 // HandlersAuthConfig contains the configuration for auth handlers.
 // Embeds the base handlers config and cart config, provides access to the auth service, and includes a Logger for consistent logging.
 type HandlersAuthConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	*carthandlers.HandlersCartConfig
 	Logger      handlers.HandlerLogger
 	authService AuthService
@@ -24,7 +27,7 @@ type HandlersAuthConfig struct {
 // Should be called during application startup.
 func (cfg *HandlersAuthConfig) InitAuthService() error {
 	// Validate that the embedded config is not nil
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	if cfg.APIConfig == nil {
@@ -54,7 +57,7 @@ func (cfg *HandlersAuthConfig) InitAuthService() error {
 
 	// Set Logger if not already set
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 
 	return nil
@@ -77,7 +80,7 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 	// Double-check pattern in case another goroutine initialized it
 	if cfg.authService == nil {
 		// Validate that the embedded config is not nil before accessing its fields
-		if cfg.HandlersConfig == nil || cfg.APIConfig == nil || cfg.DB == nil {
+		if cfg.Config == nil || cfg.APIConfig == nil || cfg.DB == nil {
 			// Return a default service that will fail gracefully when used
 			cfg.authService = NewAuthService(nil, nil, nil, nil, nil)
 		} else {
@@ -99,7 +102,8 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 func (cfg *HandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "name_exists", "email_exists", "user_not_found", "invalid_password":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)

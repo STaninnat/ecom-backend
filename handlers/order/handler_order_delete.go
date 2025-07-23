@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/go-chi/chi/v5"
 )
+
+// handler_order_delete.go: Handles HTTP DELETE request to delete an order by ID. Validates request, calls service, logs event, and responds.
 
 // HandlerDeleteOrder handles HTTP DELETE requests to delete an order by its ID.
 // Extracts the order ID from the URL parameters, validates the request, calls the business logic service to delete the order, logs the event, and responds with a success message or error.

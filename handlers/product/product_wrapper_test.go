@@ -1,3 +1,4 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// product_wrapper_test.go: Tests for product service initialization, lazy loading, and error handling with logging and HTTP responses.
 
 // TestInitProductService_MissingConfig tests InitProductService when both DB and DBConn are nil.
 // It expects an error indicating the database is not initialized.

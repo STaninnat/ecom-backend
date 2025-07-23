@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -18,6 +19,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// cart_service_test.go: Tests for interfaces, adapters, and services for managing shopping carts and checkout processes.
+
+const (
+	testUserID           = "user123"
+	testSessionIDService = "sess123"
+)
+
 // TestAddItemToUserCart_ProductNotFound tests the service behavior when the product is not found.
 // It ensures that the service correctly wraps the database error in an AppError with the "product_not_found" code.
 func TestAddItemToUserCart_ProductNotFound(t *testing.T) {
@@ -34,7 +42,8 @@ func TestAddItemToUserCart_ProductNotFound(t *testing.T) {
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "product_not_found", appErr.Code)
 	mockProduct.AssertExpectations(t)
@@ -61,7 +70,8 @@ func TestAddItemToUserCart_InvalidPrice(t *testing.T) {
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_price", appErr.Code)
 	mockProduct.AssertExpectations(t)
@@ -90,7 +100,8 @@ func TestAddItemToUserCart_AddFailed(t *testing.T) {
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "add_failed", appErr.Code)
 	mockProduct.AssertExpectations(t)
@@ -162,7 +173,8 @@ func TestAddItemToGuestCart_InvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.AddItemToGuestCart(context.Background(), tc.sessionID, tc.productID, tc.quantity)
 			assert.Error(t, err)
-			appErr, ok := err.(*handlers.AppError)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
 			assert.Equal(t, tc.wantCode, appErr.Code)
 		})
@@ -210,7 +222,8 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 
 	err := svc.AddItemToGuestCart(context.Background(), "session123", "product123", 2)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "cart_full", appErr.Code)
 	mockProduct.AssertExpectations(t)
@@ -256,7 +269,8 @@ func TestGetUserCart_InvalidInput(t *testing.T) {
 	cart, err := svc.GetUserCart(context.Background(), "")
 	assert.Error(t, err)
 	assert.Nil(t, cart)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -278,7 +292,8 @@ func TestGetUserCart_Failure(t *testing.T) {
 	cart, err := svc.GetUserCart(context.Background(), "user123")
 	assert.Error(t, err)
 	assert.Nil(t, cart)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	mockCartMongo.AssertExpectations(t)
@@ -323,7 +338,8 @@ func TestGetGuestCart_InvalidInput(t *testing.T) {
 	cart, err := svc.GetGuestCart(context.Background(), "")
 	assert.Error(t, err)
 	assert.Nil(t, cart)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -345,7 +361,8 @@ func TestGetGuestCart_Failure(t *testing.T) {
 	cart, err := svc.GetGuestCart(context.Background(), "session123")
 	assert.Error(t, err)
 	assert.Nil(t, cart)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_failed", appErr.Code)
 	mockRedis.AssertExpectations(t)
@@ -398,7 +415,8 @@ func TestUpdateItemQuantity_InvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.UpdateItemQuantity(context.Background(), tc.userID, tc.productID, tc.quantity)
 			assert.Error(t, err)
-			appErr, ok := err.(*handlers.AppError)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
 			assert.Equal(t, tc.wantCode, appErr.Code)
 		})
@@ -421,7 +439,8 @@ func TestUpdateItemQuantity_Failure(t *testing.T) {
 
 	err := svc.UpdateItemQuantity(context.Background(), "user123", "product123", 5)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "update_failed", appErr.Code)
 	mockCartMongo.AssertExpectations(t)
@@ -474,7 +493,8 @@ func TestUpdateGuestItemQuantity_InvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.UpdateGuestItemQuantity(context.Background(), tc.sessionID, tc.productID, tc.quantity)
 			assert.Error(t, err)
-			appErr, ok := err.(*handlers.AppError)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
 			assert.Equal(t, tc.wantCode, appErr.Code)
 		})
@@ -497,7 +517,8 @@ func TestUpdateGuestItemQuantity_Failure(t *testing.T) {
 
 	err := svc.UpdateGuestItemQuantity(context.Background(), "session123", "product123", 5)
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "update_failed", appErr.Code)
 	mockRedis.AssertExpectations(t)
@@ -546,7 +567,8 @@ func TestRemoveItem_InvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.RemoveItem(context.Background(), tc.userID, tc.productID)
 			assert.Error(t, err)
-			appErr, ok := err.(*handlers.AppError)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
 			assert.Equal(t, tc.wantCode, appErr.Code)
 		})
@@ -569,7 +591,8 @@ func TestRemoveItem_Failure(t *testing.T) {
 
 	err := svc.RemoveItem(context.Background(), "user123", "product123")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "remove_failed", appErr.Code)
 	mockCartMongo.AssertExpectations(t)
@@ -618,7 +641,8 @@ func TestRemoveGuestItem_InvalidInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.RemoveGuestItem(context.Background(), tc.sessionID, tc.productID)
 			assert.Error(t, err)
-			appErr, ok := err.(*handlers.AppError)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
 			assert.Equal(t, tc.wantCode, appErr.Code)
 		})
@@ -641,7 +665,8 @@ func TestRemoveGuestItem_Failure(t *testing.T) {
 
 	err := svc.RemoveGuestItem(context.Background(), "session123", "product123")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "remove_failed", appErr.Code)
 	mockRedis.AssertExpectations(t)
@@ -678,7 +703,8 @@ func TestDeleteUserCart_InvalidInput(t *testing.T) {
 
 	err := svc.DeleteUserCart(context.Background(), "")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -699,7 +725,8 @@ func TestDeleteUserCart_Failure(t *testing.T) {
 
 	err := svc.DeleteUserCart(context.Background(), "user123")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "clear_failed", appErr.Code)
 	mockCartMongo.AssertExpectations(t)
@@ -736,7 +763,8 @@ func TestDeleteGuestCart_InvalidInput(t *testing.T) {
 
 	err := svc.DeleteGuestCart(context.Background(), "")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -757,7 +785,8 @@ func TestDeleteGuestCart_Failure(t *testing.T) {
 
 	err := svc.DeleteGuestCart(context.Background(), "session123")
 	assert.Error(t, err)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "clear_failed", appErr.Code)
 	mockRedis.AssertExpectations(t)
@@ -775,7 +804,7 @@ func TestCheckoutUserCart_Success(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -826,13 +855,14 @@ func TestCheckoutUserCart_EmptyCart(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	mockCartMongo.On("GetCartByUserID", mock.Anything, userID).Return(&models.Cart{ID: userID, UserID: userID, Items: []models.CartItem{}}, nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "cart_empty", appErr.Code)
 }
@@ -847,7 +877,7 @@ func TestCheckoutUserCart_InsufficientStock(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -861,7 +891,8 @@ func TestCheckoutUserCart_InsufficientStock(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "insufficient_stock", appErr.Code)
 }
@@ -876,7 +907,7 @@ func TestCheckoutUserCart_ProductNotFound(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -890,7 +921,8 @@ func TestCheckoutUserCart_ProductNotFound(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "product_not_found", appErr.Code)
 }
@@ -904,7 +936,7 @@ func TestCheckoutUserCart_BeginTxError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -918,7 +950,8 @@ func TestCheckoutUserCart_BeginTxError(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -933,7 +966,7 @@ func TestCheckoutUserCart_CreateOrderError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -948,7 +981,8 @@ func TestCheckoutUserCart_CreateOrderError(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_failed", appErr.Code)
 }
@@ -963,7 +997,7 @@ func TestCheckoutUserCart_UpdateStockError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -979,7 +1013,8 @@ func TestCheckoutUserCart_UpdateStockError(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "update_stock_failed", appErr.Code)
 }
@@ -994,7 +1029,7 @@ func TestCheckoutUserCart_CreateOrderItemError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -1011,7 +1046,8 @@ func TestCheckoutUserCart_CreateOrderItemError(t *testing.T) {
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_item_failed", appErr.Code)
 }
@@ -1026,7 +1062,7 @@ func TestCheckoutUserCart_ClearCartError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     userID,
 		UserID: userID,
@@ -1060,8 +1096,8 @@ func TestCheckoutGuestCart_Success(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1096,14 +1132,15 @@ func TestCheckoutGuestCart_EmptyCart(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	mockRedis.On("GetGuestCart", mock.Anything, sessionID).Return(&models.Cart{ID: sessionID, UserID: "", Items: []models.CartItem{}}, nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "cart_empty", appErr.Code)
 }
@@ -1117,11 +1154,12 @@ func TestCheckoutGuestCart_MissingSessionID(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	userID := "user123"
+	userID := testUserID
 	result, err := svc.CheckoutGuestCart(context.Background(), "", userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -1135,11 +1173,12 @@ func TestCheckoutGuestCart_MissingUserID(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
+	sessionID := testSessionIDService
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
@@ -1153,14 +1192,15 @@ func TestCheckoutGuestCart_GetCartError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	mockRedis.On("GetGuestCart", mock.Anything, sessionID).Return((*models.Cart)(nil), errors.New("redis error"))
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "get_cart_failed", appErr.Code)
 }
@@ -1175,8 +1215,8 @@ func TestCheckoutGuestCart_InsufficientStock(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1190,7 +1230,8 @@ func TestCheckoutGuestCart_InsufficientStock(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "insufficient_stock", appErr.Code)
 }
@@ -1205,8 +1246,8 @@ func TestCheckoutGuestCart_ProductNotFound(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1220,7 +1261,8 @@ func TestCheckoutGuestCart_ProductNotFound(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "product_not_found", appErr.Code)
 }
@@ -1234,8 +1276,8 @@ func TestCheckoutGuestCart_BeginTxError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1249,7 +1291,8 @@ func TestCheckoutGuestCart_BeginTxError(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
@@ -1264,8 +1307,8 @@ func TestCheckoutGuestCart_CreateOrderError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1280,7 +1323,8 @@ func TestCheckoutGuestCart_CreateOrderError(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_failed", appErr.Code)
 }
@@ -1295,8 +1339,8 @@ func TestCheckoutGuestCart_UpdateStockError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1312,7 +1356,8 @@ func TestCheckoutGuestCart_UpdateStockError(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "update_stock_failed", appErr.Code)
 }
@@ -1327,8 +1372,8 @@ func TestCheckoutGuestCart_CreateOrderItemError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1345,7 +1390,8 @@ func TestCheckoutGuestCart_CreateOrderItemError(t *testing.T) {
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "create_order_item_failed", appErr.Code)
 }
@@ -1360,8 +1406,8 @@ func TestCheckoutGuestCart_ClearCartError(t *testing.T) {
 	mockRedis := new(MockCartRedisAPI)
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-	sessionID := "sess123"
-	userID := "user123"
+	sessionID := testSessionIDService
+	userID := testUserID
 	cart := &models.Cart{
 		ID:     sessionID,
 		UserID: "",
@@ -1416,17 +1462,17 @@ func TestSafeIntToInt32(t *testing.T) {
 	}
 }
 
-func TestDBConnAdapter_BeginTx_Coverage(t *testing.T) {
+func TestDBConnAdapter_BeginTx_Coverage(_ *testing.T) {
 	adapter := &DBConnAdapter{}
 	_ = adapter
 }
 
-func TestDBTxAdapter_CommitRollback_Coverage(t *testing.T) {
+func TestDBTxAdapter_CommitRollback_Coverage(_ *testing.T) {
 	adapter := &DBTxAdapter{}
 	_ = adapter
 }
 
-func TestCartRedisImpl_Coverage(t *testing.T) {
+func TestCartRedisImpl_Coverage(_ *testing.T) {
 	r := &cartRedisImpl{}
 	_ = r
 }
@@ -1482,7 +1528,12 @@ func TestProductAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+
+	// defer func() {
+	// 	if err := db.Close(); err != nil {
+	// 		t.Errorf("db.Close() failed: %v", err)
+	// 	}
+	// }()
 
 	// Create queries with the mock database
 	queries := database.New(db)
@@ -1516,7 +1567,13 @@ func TestOrderAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+
+	// mock.ExpectClose()
+	// defer func() {
+	// 	if err := db.Close(); err != nil {
+	// 		t.Errorf("db.Close() failed: %v", err)
+	// 	}
+	// }()
 
 	// Create queries with the mock database
 	queries := database.New(db)
@@ -1568,7 +1625,11 @@ func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("db.Close() failed: %v", err)
+		}
+	}()
 
 	adapter := NewDBConnAdapter(db)
 	ctx := context.Background()
@@ -1594,7 +1655,12 @@ func TestDBTxAdapter(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	defer db.Close()
+
+	// defer func() {
+	// 	if err := db.Close(); err != nil {
+	// 		t.Errorf("db.Close() failed: %v", err)
+	// 	}
+	// }()
 
 	// Start a transaction
 	mock.ExpectBegin()

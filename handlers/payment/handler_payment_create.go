@@ -1,3 +1,4 @@
+// Package paymenthandlers provides HTTP handlers and configurations for processing payments, including Stripe integration, error handling, and payment-related request and response management.
 package paymenthandlers
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// handler_payment_create.go: Payment intent creation handler with request validation and error handling.
 
 // HandlerCreatePayment handles HTTP POST requests to create a new payment intent.
 // Parses the request body for payment parameters, validates them, and delegates creation to the payment service.

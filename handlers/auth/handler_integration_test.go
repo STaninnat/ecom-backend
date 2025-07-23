@@ -1,3 +1,4 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
@@ -17,6 +18,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// handler_integration_test.go: Integration and error tests for authentication HTTP handlers with mock services.
+
 // TestHandlerIntegration tests the actual handler functions with mock service implementation
 func TestHandlerIntegration(t *testing.T) {
 	// Skip if not running integration tests
@@ -31,7 +34,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{Auth: &auth.AuthConfig{}},
+			Config:             &handlers.Config{Auth: &auth.Config{}},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{}, // Use real struct
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -89,7 +92,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{Auth: &auth.AuthConfig{}},
+			Config:             &handlers.Config{Auth: &auth.Config{}},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{}, // Use real struct
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -144,8 +147,8 @@ func TestHandlerIntegration(t *testing.T) {
 		mockHandlersConfig := new(MockHandlersConfig)
 
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
-				Auth: &auth.AuthConfig{},
+			Config: &handlers.Config{
+				Auth: &auth.Config{},
 			},
 			Logger:      mockHandlersConfig,
 			authService: mockAuthService,
@@ -171,7 +174,7 @@ func TestHandlerIntegration(t *testing.T) {
 		mockHandlersConfig := new(MockHandlersConfig)
 
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -201,8 +204,8 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Initialize AuthConfig with a minimal APIConfig and required secrets to avoid nil pointer panic
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
-				Auth: &auth.AuthConfig{
+			Config: &handlers.Config{
+				Auth: &auth.Config{
 					APIConfig: &config.APIConfig{
 						RefreshSecret: "dummy-refresh-secret",
 						RedisClient:   db,
@@ -249,7 +252,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -282,7 +285,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -335,7 +338,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -375,7 +378,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -415,7 +418,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -448,7 +451,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 
 		// Create test config with proper mocks
 		cfg := &HandlersAuthConfig{
-			HandlersConfig:     &handlers.HandlersConfig{},
+			Config:             &handlers.Config{},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             mockHandlersConfig,
 			authService:        mockAuthService,
@@ -492,7 +495,7 @@ func TestAuthWrapperIntegration(t *testing.T) {
 	t.Run("InitAuthService_MissingDependencies", func(t *testing.T) {
 		// Create test config with minimal setup
 		apiCfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{},
+			Config: &handlers.Config{},
 		}
 
 		// Execute
@@ -506,7 +509,7 @@ func TestAuthWrapperIntegration(t *testing.T) {
 	t.Run("InitAuthService_Success", func(t *testing.T) {
 		// Create test config with minimal setup - this will fail gracefully
 		apiCfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{},
 			},
 		}
@@ -522,7 +525,7 @@ func TestAuthWrapperIntegration(t *testing.T) {
 	t.Run("GetAuthService_Success", func(t *testing.T) {
 		// Create test config
 		apiCfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
+			Config: &handlers.Config{
 				APIConfig: &config.APIConfig{},
 			},
 		}
@@ -545,7 +548,7 @@ func TestAuthServiceMethods(t *testing.T) {
 
 	t.Run("NewAuthService_Success", func(t *testing.T) {
 		// Create test dependencies
-		authConfig := &auth.AuthConfig{
+		authConfig := &auth.Config{
 			APIConfig: &config.APIConfig{
 				JWTSecret:     "test-secret-key-for-testing-only-32-chars-long-enough",
 				RefreshSecret: "test-refresh-secret-key-for-testing-only-32-chars-long-enough",
@@ -599,8 +602,8 @@ func TestRealHandlerIntegration(t *testing.T) {
 
 	t.Run("HandlerSignOut_WithoutCookies", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
-				Auth: &auth.AuthConfig{},
+			Config: &handlers.Config{
+				Auth: &auth.Config{},
 			},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             &MockHandlersConfig{},
@@ -626,8 +629,8 @@ func TestRealHandlerIntegration(t *testing.T) {
 
 	t.Run("HandlerRefreshToken_WithoutCookies", func(t *testing.T) {
 		cfg := &HandlersAuthConfig{
-			HandlersConfig: &handlers.HandlersConfig{
-				Auth: &auth.AuthConfig{},
+			Config: &handlers.Config{
+				Auth: &auth.Config{},
 			},
 			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
 			Logger:             &MockHandlersConfig{},

@@ -1,3 +1,4 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
@@ -11,10 +12,12 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
+// order_wrapper.go: Provides order handler configuration, service initialization, error handling, and defines request/response structures for order operations.
+
 // HandlersOrderConfig holds the configuration and dependencies for order handlers.
 // Manages the order service lifecycle and provides thread-safe access to the service instance.
 type HandlersOrderConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	Logger       handlers.HandlerLogger
 	orderService OrderService
 	orderMutex   sync.RWMutex
@@ -23,7 +26,7 @@ type HandlersOrderConfig struct {
 // InitOrderService initializes the order service with the current configuration.
 // Validates that both DB and DBConn are set before creating the service. Returns an error if either dependency is missing.
 func (cfg *HandlersOrderConfig) InitOrderService() error {
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	if cfg.DB == nil {
@@ -38,7 +41,7 @@ func (cfg *HandlersOrderConfig) InitOrderService() error {
 
 	// Set Logger if not already set
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 
 	return nil
@@ -56,7 +59,7 @@ func (cfg *HandlersOrderConfig) GetOrderService() OrderService {
 	cfg.orderMutex.Lock()
 	defer cfg.orderMutex.Unlock()
 	if cfg.orderService == nil {
-		if cfg.HandlersConfig == nil || cfg.DB == nil || cfg.DBConn == nil {
+		if cfg.Config == nil || cfg.DB == nil || cfg.DBConn == nil {
 			cfg.orderService = NewOrderService(nil, nil)
 		} else {
 			cfg.orderService = NewOrderService(cfg.DB, cfg.DBConn)
@@ -70,7 +73,8 @@ func (cfg *HandlersOrderConfig) GetOrderService() OrderService {
 func (cfg *HandlersOrderConfig) handleOrderError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "transaction_error", "update_failed", "commit_error", "create_order_error", "delete_order_error", "create_order_item_error":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)

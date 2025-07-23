@@ -1,8 +1,10 @@
+// Package authhandlers implements HTTP handlers for user authentication, including signup, signin, signout, token refresh, and OAuth integration.
 package authhandlers
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/oauth2"
 )
+
+// auth_helper_test.go: Mock implementations and test utilities for authentication, authorization, token handling, and related service components.
 
 // --- RefreshTokenData represents refresh token data structure ---
 type RefreshTokenData struct {
@@ -221,7 +225,8 @@ func (cfg *TestHandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r 
 func (cfg *TestHandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	appErr := &handlers.AppError{}
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "name_exists", "email_exists", "user_not_found", "invalid_password":
 			cfg.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
@@ -240,6 +245,70 @@ func (cfg *TestHandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *htt
 		cfg.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 	}
+}
+
+// HandlerGoogleSignIn is a test handler that simulates the Google sign-in flow using mocked dependencies.
+func (cfg *TestHandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+
+	// Generate state and auth URL
+	state := "test-state" // Mock state generation
+	authURL, err := cfg.GetAuthService().GenerateGoogleAuthURL(state)
+	if err != nil {
+		cfg.LogHandlerError(
+			r.Context(),
+			"signin-google",
+			"auth_url_generation_failed",
+			"Error generating Google auth URL",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to initiate Google signin")
+		return
+	}
+
+	// Redirect to Google
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+// HandlerGoogleCallback is a test handler that simulates the Google OAuth callback using mocked dependencies.
+func (cfg *TestHandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	// Get parameters from URL
+	state := r.URL.Query().Get("state")
+	code := r.URL.Query().Get("code")
+
+	if state == "" || code == "" {
+		cfg.LogHandlerError(
+			ctx,
+			"callback-google",
+			"missing_parameters",
+			"Missing state or code parameter",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing required parameters")
+		return
+	}
+
+	// Call business logic service
+	result, err := cfg.GetAuthService().HandleGoogleAuth(ctx, code, state)
+	if err != nil {
+		cfg.handleAuthError(w, r, err, "callback-google", ip, userAgent)
+		return
+	}
+
+	// Set cookies
+	auth.SetTokensAsCookies(w, result.AccessToken, result.RefreshToken, result.AccessTokenExpires, result.RefreshTokenExpires)
+
+	// Log success
+	ctxWithUserID := ctx // We don't have utils.ContextKeyUserID in test context
+	cfg.LogHandlerSuccess(ctxWithUserID, "callback-google", "Google signin success", ip, userAgent)
+
+	// Respond
+	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
+		Message: "Google signin successful",
+	})
 }
 
 // --- Mocks for new interfaces ---
@@ -321,17 +390,17 @@ func (m *mockServiceAuthConfig) HashPassword(password string) (string, error) {
 
 // GenerateTokens is a mock implementation for token generation in tests.
 func (m *mockServiceAuthConfig) GenerateTokens(userID string, expiresAt time.Time) (string, string, error) {
-	cfg := &auth.AuthConfig{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
+	cfg := &auth.Config{APIConfig: &config.APIConfig{JWTSecret: "supersecretkeysupersecretkey123456", RefreshSecret: "refreshsecretkeyrefreshsecretkey1234", Issuer: "issuer", Audience: "aud"}}
 	return cfg.GenerateTokens(userID, expiresAt)
 }
 
 // StoreRefreshTokenInRedis is a mock implementation for storing refresh tokens in tests.
-func (m *mockServiceAuthConfig) StoreRefreshTokenInRedis(ctx context.Context, userID, refreshToken, provider string, ttl time.Duration) error {
+func (m *mockServiceAuthConfig) StoreRefreshTokenInRedis(_ context.Context, _, _, _ string, _ time.Duration) error {
 	return nil
 }
 
 // GenerateAccessToken is a mock implementation for access token generation in tests.
-func (m *mockServiceAuthConfig) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
+func (m *mockServiceAuthConfig) GenerateAccessToken(_ string, _ time.Time) (string, error) {
 	return "access-token", nil
 }
 
@@ -407,13 +476,13 @@ type FakeRedis struct {
 	getResult string
 }
 
-func (f *FakeRedis) Del(ctx context.Context, keys ...string) *redis.IntCmd {
+func (f *FakeRedis) Del(_ context.Context, _ ...string) *redis.IntCmd {
 	return redis.NewIntResult(1, nil)
 }
-func (f *FakeRedis) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+func (f *FakeRedis) Set(_ context.Context, _ string, _ any, _ time.Duration) *redis.StatusCmd {
 	return redis.NewStatusResult("OK", nil)
 }
-func (f *FakeRedis) Get(ctx context.Context, key string) *redis.StringCmd {
+func (f *FakeRedis) Get(_ context.Context, _ string) *redis.StringCmd {
 	return redis.NewStringResult(f.getResult, nil)
 }
 
@@ -422,55 +491,55 @@ func (f *FakeRedis) Get(ctx context.Context, key string) *redis.StringCmd {
 // --- Test for SignOut ---
 type ErrorRedis struct{}
 
-func (e *ErrorRedis) Del(ctx context.Context, keys ...string) *redis.IntCmd {
+func (e *ErrorRedis) Del(_ context.Context, _ ...string) *redis.IntCmd {
 	return redis.NewIntResult(0, assert.AnError)
 }
-func (e *ErrorRedis) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+func (e *ErrorRedis) Set(_ context.Context, _ string, _ any, _ time.Duration) *redis.StatusCmd {
 	return redis.NewStatusResult("", assert.AnError)
 }
-func (e *ErrorRedis) Get(ctx context.Context, key string) *redis.StringCmd {
+func (e *ErrorRedis) Get(_ context.Context, _ string) *redis.StringCmd {
 	return redis.NewStringResult("", assert.AnError)
 }
 
 // --- Mocks for error cases ---
 type mockAuthConfigWithTokenError struct{}
 
-func (m *mockAuthConfigWithTokenError) HashPassword(password string) (string, error) { return "", nil }
-func (m *mockAuthConfigWithTokenError) GenerateTokens(userID string, expiresAt time.Time) (string, string, error) {
+func (m *mockAuthConfigWithTokenError) HashPassword(_ string) (string, error) { return "", nil }
+func (m *mockAuthConfigWithTokenError) GenerateTokens(_ string, _ time.Time) (string, string, error) {
 	return "", "", assert.AnError
 }
-func (m *mockAuthConfigWithTokenError) StoreRefreshTokenInRedis(ctx context.Context, userID, refreshToken, provider string, ttl time.Duration) error {
+func (m *mockAuthConfigWithTokenError) StoreRefreshTokenInRedis(_ context.Context, _, _, _ string, _ time.Duration) error {
 	return nil
 }
-func (m *mockAuthConfigWithTokenError) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
+func (m *mockAuthConfigWithTokenError) GenerateAccessToken(_ string, _ time.Time) (string, error) {
 	return "", assert.AnError
 }
 
 type mockAuthConfigWithStoreError struct{}
 
-func (m *mockAuthConfigWithStoreError) HashPassword(password string) (string, error) { return "", nil }
-func (m *mockAuthConfigWithStoreError) GenerateTokens(userID string, expiresAt time.Time) (string, string, error) {
+func (m *mockAuthConfigWithStoreError) HashPassword(_ string) (string, error) { return "", nil }
+func (m *mockAuthConfigWithStoreError) GenerateTokens(_ string, _ time.Time) (string, string, error) {
 	return "access", "refresh", nil
 }
-func (m *mockAuthConfigWithStoreError) StoreRefreshTokenInRedis(ctx context.Context, userID, refreshToken, provider string, ttl time.Duration) error {
+func (m *mockAuthConfigWithStoreError) StoreRefreshTokenInRedis(_ context.Context, _, _, _ string, _ time.Duration) error {
 	return assert.AnError
 }
-func (m *mockAuthConfigWithStoreError) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
+func (m *mockAuthConfigWithStoreError) GenerateAccessToken(_ string, _ time.Time) (string, error) {
 	return "", nil
 }
 
 type mockAuthConfigWithHashError struct{}
 
-func (m *mockAuthConfigWithHashError) HashPassword(password string) (string, error) {
+func (m *mockAuthConfigWithHashError) HashPassword(_ string) (string, error) {
 	return "", assert.AnError
 }
-func (m *mockAuthConfigWithHashError) GenerateTokens(userID string, expiresAt time.Time) (string, string, error) {
+func (m *mockAuthConfigWithHashError) GenerateTokens(_ string, _ time.Time) (string, string, error) {
 	return "", "", nil
 }
-func (m *mockAuthConfigWithHashError) StoreRefreshTokenInRedis(ctx context.Context, userID, refreshToken, provider string, ttl time.Duration) error {
+func (m *mockAuthConfigWithHashError) StoreRefreshTokenInRedis(_ context.Context, _, _, _ string, _ time.Duration) error {
 	return nil
 }
-func (m *mockAuthConfigWithHashError) GenerateAccessToken(userID string, expiresAt time.Time) (string, error) {
+func (m *mockAuthConfigWithHashError) GenerateAccessToken(_ string, _ time.Time) (string, error) {
 	return "", nil
 }
 
@@ -480,19 +549,19 @@ type mockOAuth2ExchangerWithClient struct {
 	client *http.Client
 }
 
-func (m *mockOAuth2ExchangerWithClient) Client(ctx context.Context, t *oauth2.Token) *http.Client {
+func (m *mockOAuth2ExchangerWithClient) Client(_ context.Context, _ *oauth2.Token) *http.Client {
 	return m.client
 }
 
-func (m *mockOAuth2ExchangerWithClient) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+func (m *mockOAuth2ExchangerWithClient) Exchange(_ context.Context, _ string, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return nil, nil
 }
 
-func (m *mockOAuth2ExchangerWithClient) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string {
+func (m *mockOAuth2ExchangerWithClient) AuthCodeURL(_ string, _ ...oauth2.AuthCodeOption) string {
 	return ""
 }
 
-func (m *mockOAuth2ExchangerWithClient) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
+func (m *mockOAuth2ExchangerWithClient) TokenSource(_ context.Context, _ *oauth2.Token) oauth2.TokenSource {
 	return nil
 }
 
@@ -503,10 +572,10 @@ type mockOAuth2Config struct {
 	exchangeErr   error
 }
 
-func (m *mockOAuth2Config) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+func (m *mockOAuth2Config) Exchange(_ context.Context, _ string, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return m.exchangeToken, m.exchangeErr
 }
-func (m *mockOAuth2Config) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string {
+func (m *mockOAuth2Config) AuthCodeURL(state string, _ ...oauth2.AuthCodeOption) string {
 	return "http://mock-oauth-url/?state=" + state
 }
 func (m *mockOAuth2Config) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
@@ -528,7 +597,7 @@ func (m *mockRedisClient) Del(ctx context.Context, keys ...string) *redis.IntCmd
 func (m *mockRedisClient) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
 	return m.SetFunc(ctx, key, value, expiration)
 }
-func (m *mockRedisClient) Get(ctx context.Context, key string) *redis.StringCmd {
+func (m *mockRedisClient) Get(_ context.Context, _ string) *redis.StringCmd {
 	return redis.NewStringResult("", nil)
 }
 
@@ -539,13 +608,13 @@ type mockOAuth2Exchanger struct {
 func (m *mockOAuth2Exchanger) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string {
 	return m.AuthCodeURLFunc(state, opts...)
 }
-func (m *mockOAuth2Exchanger) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+func (m *mockOAuth2Exchanger) Exchange(_ context.Context, _ string, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return nil, nil
 }
-func (m *mockOAuth2Exchanger) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
+func (m *mockOAuth2Exchanger) TokenSource(_ context.Context, _ *oauth2.Token) oauth2.TokenSource {
 	return nil
 }
-func (m *mockOAuth2Exchanger) Client(ctx context.Context, t *oauth2.Token) *http.Client { return nil }
+func (m *mockOAuth2Exchanger) Client(_ context.Context, _ *oauth2.Token) *http.Client { return nil }
 
 // --- TestMergeCartConfig is a test configuration specifically for MergeCart tests ---
 type TestMergeCartConfig struct {
@@ -624,18 +693,18 @@ type mockOAuth2ExchangerWithTokenSource struct {
 	tokenSource *mockTokenSource
 }
 
-func (m *mockOAuth2ExchangerWithTokenSource) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
+func (m *mockOAuth2ExchangerWithTokenSource) TokenSource(_ context.Context, _ *oauth2.Token) oauth2.TokenSource {
 	return m.tokenSource
 }
 
-func (m *mockOAuth2ExchangerWithTokenSource) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+func (m *mockOAuth2ExchangerWithTokenSource) Exchange(_ context.Context, _ string, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return nil, nil
 }
 
-func (m *mockOAuth2ExchangerWithTokenSource) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string {
+func (m *mockOAuth2ExchangerWithTokenSource) AuthCodeURL(_ string, _ ...oauth2.AuthCodeOption) string {
 	return ""
 }
 
-func (m *mockOAuth2ExchangerWithTokenSource) Client(ctx context.Context, t *oauth2.Token) *http.Client {
+func (m *mockOAuth2ExchangerWithTokenSource) Client(_ context.Context, _ *oauth2.Token) *http.Client {
 	return nil
 }

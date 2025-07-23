@@ -1,3 +1,4 @@
+// Package uploadhandlers manages product image uploads with local and S3 storage, including validation, error handling, and logging.
 package uploadhandlers
 
 import (
@@ -15,6 +16,9 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// upload_service_test.go: Tests for UploadService and ProductDBAdapter covering success and failure cases of image upload, update,
+// validation, storage, deletion, and DB operations, including mocks and error handling.
+
 // TestUploadServiceImpl_UploadProductImage_Success tests successful product image upload via the service.
 // It verifies that a valid image is saved and the correct URL is returned.
 func TestUploadServiceImpl_UploadProductImage_Success(t *testing.T) {
@@ -25,7 +29,11 @@ func TestUploadServiceImpl_UploadProductImage_Success(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.jpg", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 
 	// Set Content-Type header for the file
 	fileHeader.Header.Set("Content-Type", "image/jpeg")
@@ -52,7 +60,8 @@ func TestUploadServiceImpl_UploadProductImage_InvalidForm(t *testing.T) {
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_form", appErr.Code)
 }
@@ -67,7 +76,11 @@ func TestUploadServiceImpl_UploadProductImage_InvalidMIME(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.jpg", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "application/pdf") // Not allowed
 
 	// Patch Save should not be called
@@ -75,7 +88,8 @@ func TestUploadServiceImpl_UploadProductImage_InvalidMIME(t *testing.T) {
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_image", appErr.Code)
 }
@@ -90,7 +104,11 @@ func TestUploadServiceImpl_UploadProductImage_SaveError(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.jpg", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "image/jpeg")
 
 	saveErr := errors.New("disk full")
@@ -100,7 +118,8 @@ func TestUploadServiceImpl_UploadProductImage_SaveError(t *testing.T) {
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "file_save_failed", appErr.Code)
 	assert.Equal(t, saveErr, appErr.Err)
@@ -117,7 +136,11 @@ func TestUploadServiceImpl_UpdateProductImage_Success(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "image/png")
 
 	product := Product{ID: "prod123"}
@@ -147,7 +170,8 @@ func TestUpdateProductImage_ProductNotFound(t *testing.T) {
 	imageURL, err := service.UpdateProductImage(ctx, "prod404", "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "not_found", appErr.Code)
 }
@@ -167,7 +191,8 @@ func TestUpdateProductImage_InvalidForm(t *testing.T) {
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_form", appErr.Code)
 }
@@ -184,14 +209,19 @@ func TestUpdateProductImage_InvalidMIME(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "application/pdf")
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_image", appErr.Code)
 }
@@ -208,7 +238,11 @@ func TestUpdateProductImage_SaveError(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "image/png")
 
 	saveErr := errors.New("disk full")
@@ -218,7 +252,8 @@ func TestUpdateProductImage_SaveError(t *testing.T) {
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "file_save_failed", appErr.Code)
 	assert.Equal(t, saveErr, appErr.Err)
@@ -237,7 +272,11 @@ func TestUpdateProductImage_DBUpdateError(t *testing.T) {
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "image/png")
 
 	mockStorage.On("Save", mock.Anything, fileHeader, "/tmp/uploads").Return("/tmp/uploads/test.png", nil)
@@ -248,7 +287,8 @@ func TestUpdateProductImage_DBUpdateError(t *testing.T) {
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
 	assert.Error(t, err)
 	assert.Empty(t, imageURL)
-	appErr, ok := err.(*handlers.AppError)
+	appErr := &handlers.AppError{}
+	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "db_error", appErr.Code)
 	assert.Equal(t, dbErr, appErr.Err)
@@ -264,13 +304,17 @@ func TestUpdateProductImage_DeletesOldImage(t *testing.T) {
 	service := NewUploadService(mockDB, "/tmp/uploads", mockStorage)
 
 	product := Product{ID: "prod123"}
-	product.ImageUrl.String = "/static/old.png"
-	product.ImageUrl.Valid = true
+	product.ImageURL.String = "/static/old.png"
+	product.ImageURL.Valid = true
 	mockDB.On("GetProductByID", mock.Anything, "prod123").Return(product, nil)
 	imgContent := []byte("fake image data")
 	req, fileHeader := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	file, _, _ := req.FormFile("image")
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("Failed to close file: %v", err)
+		}
+	}()
 	fileHeader.Header.Set("Content-Type", "image/png")
 
 	mockStorage.On("Delete", "/static/old.png", "/tmp/uploads").Return(nil)
@@ -322,7 +366,7 @@ func (a *testProductDBAdapter) GetProductByID(ctx context.Context, id string) (P
 	}
 	return Product{
 		ID: dbProduct.ID,
-		ImageUrl: struct {
+		ImageURL: struct {
 			String string
 			Valid  bool
 		}{
@@ -336,7 +380,7 @@ func (a *testProductDBAdapter) GetProductByID(ctx context.Context, id string) (P
 func (a *testProductDBAdapter) UpdateProductImageURL(ctx context.Context, params UpdateProductImageURLParams) error {
 	return a.Queries.UpdateProductImageURL(ctx, database.UpdateProductImageURLParams{
 		ID:        params.ID,
-		ImageUrl:  sql.NullString{String: params.ImageUrl, Valid: true},
+		ImageUrl:  sql.NullString{String: params.ImageURL, Valid: true},
 		UpdatedAt: time.Unix(params.UpdatedAt, 0),
 	})
 }
@@ -365,7 +409,7 @@ func TestProductDBAdapter_GetProductByID_Success(t *testing.T) {
 		ImageUrl: sql.NullString{String: "img.png", Valid: true},
 	}
 	q := &mockQueries{
-		getProductByIDFunc: func(ctx context.Context, id string) (database.Product, error) {
+		getProductByIDFunc: func(_ context.Context, id string) (database.Product, error) {
 			assert.Equal(t, "p1", id)
 			return fakeProduct, nil
 		},
@@ -374,8 +418,8 @@ func TestProductDBAdapter_GetProductByID_Success(t *testing.T) {
 	prod, err := a.GetProductByID(context.Background(), "p1")
 	assert.NoError(t, err)
 	assert.Equal(t, "p1", prod.ID)
-	assert.Equal(t, "img.png", prod.ImageUrl.String)
-	assert.True(t, prod.ImageUrl.Valid)
+	assert.Equal(t, "img.png", prod.ImageURL.String)
+	assert.True(t, prod.ImageURL.Valid)
 }
 
 // TestProductDBAdapter_GetProductByID_Error tests ProductDBAdapter's GetProductByID for the error case.
@@ -383,7 +427,7 @@ func TestProductDBAdapter_GetProductByID_Success(t *testing.T) {
 func TestProductDBAdapter_GetProductByID_Error(t *testing.T) {
 	dbErr := errors.New("not found")
 	q := &mockQueries{
-		getProductByIDFunc: func(ctx context.Context, id string) (database.Product, error) {
+		getProductByIDFunc: func(_ context.Context, _ string) (database.Product, error) {
 			return database.Product{}, dbErr
 		},
 	}
@@ -398,7 +442,7 @@ func TestProductDBAdapter_GetProductByID_Error(t *testing.T) {
 // It verifies the DB method is called and no error is returned.
 func TestProductDBAdapter_UpdateProductImageURL_Success(t *testing.T) {
 	q := &mockQueries{
-		updateProductImageURLFunc: func(ctx context.Context, arg database.UpdateProductImageURLParams) error {
+		updateProductImageURLFunc: func(_ context.Context, arg database.UpdateProductImageURLParams) error {
 			assert.Equal(t, "p1", arg.ID)
 			assert.Equal(t, "img.png", arg.ImageUrl.String)
 			assert.True(t, arg.ImageUrl.Valid)
@@ -406,7 +450,7 @@ func TestProductDBAdapter_UpdateProductImageURL_Success(t *testing.T) {
 		},
 	}
 	a := newTestProductDBAdapter(q)
-	params := UpdateProductImageURLParams{ID: "p1", ImageUrl: "img.png", UpdatedAt: 1234567890}
+	params := UpdateProductImageURLParams{ID: "p1", ImageURL: "img.png", UpdatedAt: 1234567890}
 	err := a.UpdateProductImageURL(context.Background(), params)
 	assert.NoError(t, err)
 }
@@ -416,12 +460,12 @@ func TestProductDBAdapter_UpdateProductImageURL_Success(t *testing.T) {
 func TestProductDBAdapter_UpdateProductImageURL_Error(t *testing.T) {
 	dbErr := errors.New("db fail")
 	q := &mockQueries{
-		updateProductImageURLFunc: func(ctx context.Context, arg database.UpdateProductImageURLParams) error {
+		updateProductImageURLFunc: func(_ context.Context, _ database.UpdateProductImageURLParams) error {
 			return dbErr
 		},
 	}
 	a := newTestProductDBAdapter(q)
-	params := UpdateProductImageURLParams{ID: "p1", ImageUrl: "img.png", UpdatedAt: 1234567890}
+	params := UpdateProductImageURLParams{ID: "p1"}
 	err := a.UpdateProductImageURL(context.Background(), params)
 	assert.Error(t, err)
 	assert.Equal(t, dbErr, err)

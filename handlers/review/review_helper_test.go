@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -8,6 +9,8 @@ import (
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/stretchr/testify/mock"
 )
+
+// review_helper_test.go: Mocks for review service, logger, and dependencies used in unit tests.
 
 // Mock Service
 type mockReviewMongo struct{ mock.Mock }
@@ -58,26 +61,26 @@ func (m *mockLoggerWrapper) LogHandlerSuccess(ctx context.Context, op, msg, ip, 
 
 type mockReviewService struct{}
 
-func (m *mockReviewService) CreateReview(ctx context.Context, review *models.Review) error {
+func (m *mockReviewService) CreateReview(_ context.Context, _ *models.Review) error {
 	return nil
 }
-func (m *mockReviewService) GetReviewByID(ctx context.Context, reviewID string) (*models.Review, error) {
+func (m *mockReviewService) GetReviewByID(_ context.Context, _ string) (*models.Review, error) {
 	return nil, nil
 }
-func (m *mockReviewService) GetReviewsByProductID(ctx context.Context, productID string) ([]*models.Review, error) {
+func (m *mockReviewService) GetReviewsByProductID(_ context.Context, _ string) ([]*models.Review, error) {
 	return nil, nil
 }
-func (m *mockReviewService) GetReviewsByUserID(ctx context.Context, userID string) ([]*models.Review, error) {
+func (m *mockReviewService) GetReviewsByUserID(_ context.Context, _ string) ([]*models.Review, error) {
 	return nil, nil
 }
-func (m *mockReviewService) UpdateReviewByID(ctx context.Context, reviewID string, updatedReview *models.Review) error {
+func (m *mockReviewService) UpdateReviewByID(_ context.Context, _ string, _ *models.Review) error {
 	return nil
 }
-func (m *mockReviewService) DeleteReviewByID(ctx context.Context, reviewID string) error { return nil }
-func (m *mockReviewService) GetReviewsByProductIDPaginated(ctx context.Context, productID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
+func (m *mockReviewService) DeleteReviewByID(_ context.Context, _ string) error { return nil }
+func (m *mockReviewService) GetReviewsByProductIDPaginated(_ context.Context, _ string, _, _ int, _, _, _ *int, _, _ *time.Time, _ *bool, _ string) (any, error) {
 	return nil, nil
 }
-func (m *mockReviewService) GetReviewsByUserIDPaginated(ctx context.Context, userID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
+func (m *mockReviewService) GetReviewsByUserIDPaginated(_ context.Context, _ string, _, _ int, _, _, _ *int, _, _ *time.Time, _ *bool, _ string) (any, error) {
 	return nil, nil
 }
 

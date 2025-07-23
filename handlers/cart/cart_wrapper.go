@@ -1,3 +1,4 @@
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
 package carthandlers
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/redis/go-redis/v9"
 )
+
+// cart_wrapper.go: Defines cart business logic interface, handler config, DTOs, error handling, and service initialization.
 
 // CartService defines the business logic interface for cart operations.
 type CartService interface {
@@ -38,9 +41,9 @@ type CartCheckoutResult struct {
 }
 
 // HandlersCartConfig contains configuration and dependencies for cart handlers.
-// Embeds HandlersConfig, provides logger, cartService, and thread safety.
+// Embeds Config, provides logger, cartService, and thread safety.
 type HandlersCartConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	Logger      handlers.HandlerLogger
 	CartService CartService
 	CartMutex   sync.RWMutex
@@ -48,16 +51,16 @@ type HandlersCartConfig struct {
 
 // InitCartService initializes the cart service with the current configuration.
 // Sets the CartService and Logger fields, ensuring thread safety with CartMutex.
-// Returns an error if the embedded HandlersConfig is not initialized.
+// Returns an error if the embedded Config is not initialized.
 func (cfg *HandlersCartConfig) InitCartService(service CartService) error {
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	cfg.CartMutex.Lock()
 	defer cfg.CartMutex.Unlock()
 	cfg.CartService = service
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 	return nil
 }
@@ -77,7 +80,8 @@ func (cfg *HandlersCartConfig) GetCartService() CartService {
 func (cfg *HandlersCartConfig) handleCartError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "not_found":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)

@@ -1,3 +1,4 @@
+// Package categoryhandlers provides HTTP handlers and services for managing product categories.
 package categoryhandlers
 
 import (
@@ -9,10 +10,12 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
+// category_wrapper.go: Provides configuration, initialization, and error handling for category-related operations.
+
 // HandlersCategoryConfig contains the configuration for category handlers.
 // Manages the category service lifecycle and provides thread-safe access to the service instance.
 type HandlersCategoryConfig struct {
-	*handlers.HandlersConfig
+	*handlers.Config
 	Logger          handlers.HandlerLogger
 	categoryService CategoryService
 	categoryMutex   sync.RWMutex
@@ -22,7 +25,7 @@ type HandlersCategoryConfig struct {
 // Validates required dependencies and sets up the service. Returns an error if any dependency is missing.
 func (cfg *HandlersCategoryConfig) InitCategoryService() error {
 	// Validate that the embedded config is not nil
-	if cfg.HandlersConfig == nil {
+	if cfg.Config == nil {
 		return errors.New("handlers config not initialized")
 	}
 	if cfg.APIConfig == nil {
@@ -43,7 +46,7 @@ func (cfg *HandlersCategoryConfig) InitCategoryService() error {
 
 	// Set Logger if not already set
 	if cfg.Logger == nil {
-		cfg.Logger = cfg.HandlersConfig // HandlersConfig implements HandlerLogger
+		cfg.Logger = cfg.Config // Config implements HandlerLogger
 	}
 
 	return nil
@@ -66,7 +69,7 @@ func (cfg *HandlersCategoryConfig) GetCategoryService() CategoryService {
 	// Double-check pattern in case another goroutine initialized it
 	if cfg.categoryService == nil {
 		// Validate that the embedded config is not nil before accessing its fields
-		if cfg.HandlersConfig == nil || cfg.APIConfig == nil || cfg.DB == nil || cfg.DBConn == nil {
+		if cfg.Config == nil || cfg.APIConfig == nil || cfg.DB == nil || cfg.DBConn == nil {
 			// Return a default service that will fail gracefully when used
 			cfg.categoryService = NewCategoryService(nil, nil)
 		} else {
@@ -82,7 +85,8 @@ func (cfg *HandlersCategoryConfig) GetCategoryService() CategoryService {
 func (cfg *HandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
 	ctx := r.Context()
 
-	if appErr, ok := err.(*handlers.AppError); ok {
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "invalid_request":
 			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
