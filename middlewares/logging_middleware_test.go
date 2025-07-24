@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/sirupsen/logrus"
+
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // logging_middleware_test.go: Tests for structured request logging and request ID middleware.

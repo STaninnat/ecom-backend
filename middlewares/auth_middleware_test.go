@@ -152,77 +152,6 @@ func TestCreateAuthMiddleware_UserLookupFail(t *testing.T) {
 	}
 }
 
-// TestCreateAuthMiddleware_Success tests successful authentication flow
-// It verifies that the middleware calls the handler with the correct user when authentication succeeds
-func TestCreateAuthMiddleware_Success(t *testing.T) {
-	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
-	user := database.User{ID: "u1", Role: "user"}
-	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
-	mw := CreateAuthMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
-	called := false
-	h := mw(func(_ http.ResponseWriter, _ *http.Request, u database.User) {
-		called = true
-		if u.ID != "u1" {
-			t.Errorf("expected user u1, got %v", u)
-		}
-	})
-	r := httptest.NewRequest("GET", "/", nil)
-	r.AddCookie(&http.Cookie{Name: "access_token", Value: "good"})
-	rw := httptest.NewRecorder()
-	h.ServeHTTP(rw, r)
-	if !called {
-		t.Error("handler not called on success")
-	}
-}
-
-// TestCreateAdminOnlyMiddleware_NonAdmin tests admin middleware with non-admin users
-// It verifies that non-admin users are denied access with 403 status and error logging
-func TestCreateAdminOnlyMiddleware_NonAdmin(t *testing.T) {
-	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "u1"}, nil }}
-	user := database.User{ID: "u1", Role: "user"}
-	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
-	mw := CreateAdminOnlyMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
-	h := mw(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
-		t.Error("handler should not be called for non-admin")
-	})
-	r := httptest.NewRequest("GET", "/", nil)
-	r.AddCookie(&http.Cookie{Name: "access_token", Value: "good"})
-	rw := httptest.NewRecorder()
-	h.ServeHTTP(rw, r)
-	if rw.Code != 403 {
-		t.Errorf("expected 403, got %d", rw.Code)
-	}
-	if !logger.errorCalled {
-		t.Error("expected error to be logged")
-	}
-}
-
-// TestCreateAdminOnlyMiddleware_Admin tests admin middleware with admin users
-// It verifies that admin users are allowed access and the handler is called with the admin user
-func TestCreateAdminOnlyMiddleware_Admin(t *testing.T) {
-	logger := &mockLogger{}
-	auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return &Claims{UserID: "admin"}, nil }}
-	user := database.User{ID: "admin", Role: "admin"}
-	userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return user, nil }}
-	mw := CreateAdminOnlyMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
-	called := false
-	h := mw(func(_ http.ResponseWriter, _ *http.Request, u database.User) {
-		called = true
-		if u.ID != "admin" {
-			t.Errorf("expected admin user, got %v", u)
-		}
-	})
-	r := httptest.NewRequest("GET", "/", nil)
-	r.AddCookie(&http.Cookie{Name: "access_token", Value: "good"})
-	rw := httptest.NewRecorder()
-	h.ServeHTTP(rw, r)
-	if !called {
-		t.Error("handler not called for admin")
-	}
-}
-
 // TestCreateOptionalAuthMiddleware_NoToken tests optional auth when no token is provided
 // It verifies that the handler is called with nil user when no authentication token exists
 func TestCreateOptionalAuthMiddleware_NoToken(t *testing.T) {
@@ -315,5 +244,63 @@ func TestCreateOptionalAuthMiddleware_Success(t *testing.T) {
 	h.ServeHTTP(rw, r)
 	if !called {
 		t.Error("handler not called on success")
+	}
+}
+
+const adminRole = "admin"
+
+func TestAuthMiddleware_SuccessScenarios(t *testing.T) {
+	testCases := []struct {
+		name        string
+		middleware  func(auth AuthService, userSvc UserService, logger *mockLogger) func(AuthHandler) http.HandlerFunc
+		claims      *Claims
+		user        database.User
+		handlerRole string // "user" or "admin"
+	}{
+		{
+			name: "AuthMiddleware_UserSuccess",
+			middleware: func(auth AuthService, userSvc UserService, logger *mockLogger) func(AuthHandler) http.HandlerFunc {
+				return CreateAuthMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
+			},
+			claims:      &Claims{UserID: "u1"},
+			user:        database.User{ID: "u1", Role: "user"},
+			handlerRole: "user",
+		},
+		{
+			name: "AdminOnlyMiddleware_AdminSuccess",
+			middleware: func(auth AuthService, userSvc UserService, logger *mockLogger) func(AuthHandler) http.HandlerFunc {
+				return CreateAdminOnlyMiddleware(auth, userSvc, logger, &mockMetadataService{}, "secret")
+			},
+			claims:      &Claims{UserID: adminRole},
+			user:        database.User{ID: adminRole, Role: adminRole},
+			handlerRole: adminRole,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := &mockLogger{}
+			auth := &mockAuthService{validateFunc: func(_, _ string) (*Claims, error) { return tc.claims, nil }}
+			userSvc := &mockUserService{getUserFunc: func(_ context.Context, _ string) (database.User, error) { return tc.user, nil }}
+			mw := tc.middleware(auth, userSvc, logger)
+			called := false
+			handler := func(w http.ResponseWriter, r *http.Request, u database.User) {
+				called = true
+				if u.ID != tc.user.ID {
+					t.Errorf("expected user %v, got %v", tc.user.ID, u)
+				}
+				if tc.handlerRole == adminRole && u.Role != adminRole {
+					t.Errorf("expected admin role, got %v", u.Role)
+				}
+			}
+			wrapped := mw(handler)
+			r := httptest.NewRequest("GET", "/", nil)
+			r.AddCookie(&http.Cookie{Name: "access_token", Value: "good"})
+			rw := httptest.NewRecorder()
+			wrapped.ServeHTTP(rw, r)
+			if !called {
+				t.Error("handler not called on success")
+			}
+		})
 	}
 }

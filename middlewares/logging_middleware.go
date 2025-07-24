@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // logging_middleware.go: Middleware for structured request logging and request ID tracing.
