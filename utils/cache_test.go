@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // cache_test.go: Tests for Redis-based caching service, including get, set, delete, and pattern operations.
@@ -85,7 +86,7 @@ func TestCacheService_Get(t *testing.T) {
 
 		var dest string
 		found, err := cache.Get(ctx, key, &dest)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, found)
 		mockRedis.AssertExpectations(t)
 	})
@@ -100,7 +101,7 @@ func TestCacheService_Get(t *testing.T) {
 
 		var dest string
 		found, err := cache.Get(ctx, key, &dest)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache get error")
 		assert.False(t, found)
 		mockRedis.AssertExpectations(t)
@@ -117,7 +118,7 @@ func TestCacheService_Get(t *testing.T) {
 
 		var dest int // int can't unmarshal from "not-json"
 		found, err := cache.Get(ctx, key, &dest)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache unmarshal error")
 		assert.False(t, found)
 		mockRedis.AssertExpectations(t)
@@ -136,7 +137,7 @@ func TestCacheService_Get(t *testing.T) {
 
 		var dest string
 		found, err := cache.Get(ctx, key, &dest)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, value, dest)
 		mockRedis.AssertExpectations(t)
@@ -156,7 +157,7 @@ func TestCacheService_Set(t *testing.T) {
 		key := "bad-value"
 		ch := make(chan int) // channels can't be marshaled to JSON
 		err := cache.Set(ctx, key, ch, time.Minute)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache marshal error")
 	})
 
@@ -172,7 +173,7 @@ func TestCacheService_Set(t *testing.T) {
 		mockRedis.On("Set", ctx, key, jsonVal, time.Minute).Return(cmd)
 
 		err := cache.Set(ctx, key, val, time.Minute)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache set error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -189,7 +190,7 @@ func TestCacheService_Set(t *testing.T) {
 		mockRedis.On("Set", ctx, key, jsonVal, time.Minute).Return(cmd)
 
 		err := cache.Set(ctx, key, val, time.Minute)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mockRedis.AssertExpectations(t)
 	})
 }
@@ -208,7 +209,7 @@ func TestCacheService_Delete(t *testing.T) {
 		mockRedis.On("Del", ctx, []string{key}).Return(cmd)
 
 		err := cache.Delete(ctx, key)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache delete error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -223,7 +224,7 @@ func TestCacheService_Delete(t *testing.T) {
 		mockRedis.On("Del", ctx, []string{key}).Return(cmd)
 
 		err := cache.Delete(ctx, key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mockRedis.AssertExpectations(t)
 	})
 }
@@ -244,7 +245,7 @@ func TestCacheService_DeletePattern(t *testing.T) {
 		mockRedis.On("Keys", ctx, pattern).Return(cmd)
 
 		err := cache.DeletePattern(ctx, pattern)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache keys pattern error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -262,7 +263,7 @@ func TestCacheService_DeletePattern(t *testing.T) {
 		mockRedis.On("Del", ctx, keys).Return(cmdDel)
 
 		err := cache.DeletePattern(ctx, pattern)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache delete pattern error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -277,7 +278,7 @@ func TestCacheService_DeletePattern(t *testing.T) {
 		mockRedis.On("Keys", ctx, pattern).Return(cmd)
 
 		err := cache.DeletePattern(ctx, pattern)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mockRedis.AssertExpectations(t)
 	})
 
@@ -294,7 +295,7 @@ func TestCacheService_DeletePattern(t *testing.T) {
 		mockRedis.On("Del", ctx, keys).Return(cmdDel)
 
 		err := cache.DeletePattern(ctx, pattern)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mockRedis.AssertExpectations(t)
 	})
 }
@@ -314,7 +315,7 @@ func TestCacheService_Exists(t *testing.T) {
 		mockRedis.On("Exists", ctx, []string{key}).Return(cmd)
 
 		found, err := cache.Exists(ctx, key)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache exists error")
 		assert.False(t, found)
 		mockRedis.AssertExpectations(t)
@@ -330,7 +331,7 @@ func TestCacheService_Exists(t *testing.T) {
 		mockRedis.On("Exists", ctx, []string{key}).Return(cmd)
 
 		found, err := cache.Exists(ctx, key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, found)
 		mockRedis.AssertExpectations(t)
 	})
@@ -345,7 +346,7 @@ func TestCacheService_Exists(t *testing.T) {
 		mockRedis.On("Exists", ctx, []string{key}).Return(cmd)
 
 		found, err := cache.Exists(ctx, key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.False(t, found)
 		mockRedis.AssertExpectations(t)
 	})
@@ -365,7 +366,7 @@ func TestCacheService_TTL(t *testing.T) {
 		mockRedis.On("TTL", ctx, key).Return(cmd)
 
 		_, err := cache.TTL(ctx, key)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache TTL error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -381,7 +382,7 @@ func TestCacheService_TTL(t *testing.T) {
 		mockRedis.On("TTL", ctx, key).Return(cmd)
 
 		ttl, err := cache.TTL(ctx, key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, exp, ttl)
 		mockRedis.AssertExpectations(t)
 	})
@@ -400,7 +401,7 @@ func TestCacheService_FlushAll(t *testing.T) {
 		mockRedis.On("FlushAll", ctx).Return(cmd)
 
 		err := cache.FlushAll(ctx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cache flush all error")
 		mockRedis.AssertExpectations(t)
 	})
@@ -414,7 +415,7 @@ func TestCacheService_FlushAll(t *testing.T) {
 		mockRedis.On("FlushAll", ctx).Return(cmd)
 
 		err := cache.FlushAll(ctx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mockRedis.AssertExpectations(t)
 	})
 }
