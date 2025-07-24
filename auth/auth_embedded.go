@@ -2,8 +2,9 @@
 package auth
 
 import (
-	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/STaninnat/ecom-backend/internal/config"
 )
 
 // auth_embedded.go: Embedded authentication configuration and helpers.

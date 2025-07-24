@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
+	redismock "github.com/go-redis/redismock/v9"
+
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/utils"
-	redismock "github.com/go-redis/redismock/v9"
 )
 
 // token_manager_test.go: Tests for token generation, storage in Redis, and config validation.

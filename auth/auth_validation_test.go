@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/internal/config"
-	"github.com/STaninnat/ecom-backend/utils"
 	redismock "github.com/go-redis/redismock/v9"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // auth_validation_test.go: Tests for authentication-related utilities, including token validation, format checks, and Redis-backed refresh token handling.
