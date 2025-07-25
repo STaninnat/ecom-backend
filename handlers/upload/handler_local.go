@@ -14,12 +14,15 @@ import (
 // handler_local.go: Handles product image upload and update (local storage) with size limits, service delegation, logging, and JSON responses.
 
 // HandlerUploadProductImage handles HTTP POST requests to upload a new product image (local storage).
-// Enforces a max upload size, delegates to the upload service, logs the event, and responds with the image URL.
-// On error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Upload product image
+// @Description  Uploads a new product image (admin only). The backend (local filesystem or S3) is selected by server configuration. The API and request/response are the same regardless of backend.
+// @Tags         products
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "Product image file"
+// @Success      200  {object}  imageUploadResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/upload-image [post]
 func (cfg *HandlersUploadConfig) HandlerUploadProductImage(w http.ResponseWriter, r *http.Request, user database.User) {
 	handleProductImageUpload(
 		w, r, user,
@@ -74,6 +77,17 @@ func handleUpdateProductImageByID(
 	)
 }
 
+// HandlerUpdateProductImageByID handles HTTP POST requests to update a product image by ID (local storage).
+// @Summary      Update product image by ID
+// @Description  Updates a product image by product ID (admin only). The backend (local filesystem or S3) is selected by server configuration. The API and request/response are the same regardless of backend.
+// @Tags         products
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true  "Product ID"
+// @Param        file  formData  file    true  "Product image file"
+// @Success      200  {object}  imageUploadResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/{id}/image [post]
 func (cfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	handleUpdateProductImageByID(
 		w, r, user,

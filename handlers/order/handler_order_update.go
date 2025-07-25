@@ -14,12 +14,17 @@ import (
 
 // handler_order_update.go: Handles HTTP request to update order status, with validation, logging, and business logic integration.
 
-// HandlerUpdateOrderStatus handles HTTP PUT/PATCH requests to update an order's status.
-// Validates the request payload, extracts the order ID from URL parameters, calls the business logic service to update the order status, logs the event, and responds with a success message or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// HandlerUpdateOrderStatus handles HTTP PUT requests to update an order's status.
+// @Summary      Update order status
+// @Description  Updates the status of an order (admin only)
+// @Tags         orders
+// @Accept       json
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Param        status    body  object{}  true  "Order status payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/{order_id}/status [put]
 func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, r *http.Request, _ database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)

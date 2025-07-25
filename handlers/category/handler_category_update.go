@@ -11,12 +11,15 @@ import (
 // handler_category_update.go: Provides HTTP handler for updating categories.
 
 // HandlerUpdateCategory handles HTTP PUT requests to update a category.
-// Parses the request body for category parameters, validates them, and delegates update to the category service.
-// On success, logs the event and responds with a confirmation message; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Update category
+// @Description  Updates an existing product category
+// @Tags         categories
+// @Accept       json
+// @Produce      json
+// @Param        category  body  object{}  true  "Category payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/categories/ [put]
 func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	HandleCategoryRequest(
 		w, r, user,

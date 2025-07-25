@@ -15,12 +15,15 @@ import (
 // handler_product_update.go: Handles updating a product: parses input, calls service, logs result, and returns success or error response.
 
 // HandlerUpdateProduct handles HTTP PUT requests to update an existing product.
-// Parses the request body for product parameters, validates them, and delegates the update to the product service.
-// On success, logs the event and responds with a success message; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Update product
+// @Description  Updates an existing product
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        product  body  object{}  true  "Product payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/ [put]
 func (cfg *HandlersProductConfig) HandlerUpdateProduct(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

@@ -16,12 +16,14 @@ import (
 // handler_payment_get.go: Payment handlers for fetching payment info, history, and admin listing.
 
 // HandlerGetPayment handles HTTP GET requests to retrieve payment information for a specific order.
-// Extracts the order ID from the URL parameters, validates it, and delegates retrieval to the payment service.
-// On success, logs the event and responds with the payment details; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get payment by order ID
+// @Description  Retrieves payment information for a specific order
+// @Tags         payments
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/{order_id} [get]
 func (cfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -39,11 +41,8 @@ func (cfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Get payment using service
-	result, err := paymentService.GetPayment(ctx, orderID, user.ID)
+	result, err := cfg.GetPaymentService().GetPayment(ctx, orderID, user.ID)
 	if err != nil {
 		cfg.handlePaymentError(w, r, err, "get_payment", ip, userAgent)
 		return
@@ -56,21 +55,19 @@ func (cfg *HandlersPaymentConfig) HandlerGetPayment(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetPaymentHistory handles HTTP GET requests to retrieve payment history for the authenticated user.
-// Delegates retrieval to the payment service and returns the user's payment history.
-// On success, logs the event and responds with the payment history; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get payment history
+// @Description  Retrieves payment history for the authenticated user
+// @Tags         payments
+// @Produce      json
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/history [get]
 func (cfg *HandlersPaymentConfig) HandlerGetPaymentHistory(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Get payment history using service
-	payments, err := paymentService.GetPaymentHistory(ctx, user.ID)
+	payments, err := cfg.GetPaymentService().GetPaymentHistory(ctx, user.ID)
 	if err != nil {
 		cfg.handlePaymentError(w, r, err, "get_history_payment", ip, userAgent)
 		return
@@ -83,23 +80,22 @@ func (cfg *HandlersPaymentConfig) HandlerGetPaymentHistory(w http.ResponseWriter
 }
 
 // HandlerAdminGetPayments handles HTTP GET requests to retrieve all payments for admin users.
-// Extracts optional status filter from URL parameters and delegates retrieval to the payment service.
-// On success, logs the event and responds with the payment list; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated admin user
+// @Summary      Admin get payments by status
+// @Description  Retrieves all payments filtered by status (admin only)
+// @Tags         payments
+// @Produce      json
+// @Param        status  path  string  true  "Payment status"
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/admin/{status} [get]
 func (cfg *HandlersPaymentConfig) HandlerAdminGetPayments(w http.ResponseWriter, r *http.Request, _ database.User) {
 	ctx := r.Context()
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
 	status := chi.URLParam(r, "status")
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Get all payments using service
-	payments, err := paymentService.GetAllPayments(ctx, status)
+	payments, err := cfg.GetPaymentService().GetAllPayments(ctx, status)
 	if err != nil {
 		cfg.handlePaymentError(w, r, err, "admin_get_payments", ip, userAgent)
 		return

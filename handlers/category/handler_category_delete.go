@@ -10,12 +10,14 @@ import (
 // handler_category_delete.go: Provides HTTP handler for deleting categories by ID.
 
 // HandlerDeleteCategory handles HTTP DELETE requests to delete a category.
-// Extracts the category ID from the URL parameters, validates it, and delegates deletion to the category service.
-// On success, logs the event and responds with a confirmation message; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Delete category
+// @Description  Deletes a product category by ID
+// @Tags         categories
+// @Produce      json
+// @Param        id  path  string  true  "Category ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/categories/{id} [delete]
 func (cfg *HandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, r *http.Request, user database.User) {
 	HandleCategoryDelete(
 		w, r, user,

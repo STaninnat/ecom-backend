@@ -33,13 +33,16 @@ func (r *ReviewUpdateRequest) Validate() error {
 }
 
 // HandlerUpdateReviewByID handles HTTP PUT requests to update an existing review by its ID.
-// Validates the review ID parameter, checks if the review exists, verifies user ownership,
-// parses and validates the update request, and delegates the update to the review service.
-// On success, logs the event and responds with the updated review; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with review ID in URL parameters and update data in body
-//   - user: database.User representing the authenticated user
+// @Summary      Update review by ID
+// @Description  Updates an existing review by its ID
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Param        id     path  string  true  "Review ID"
+// @Param        review body  object{}  true  "Review update payload"
+// @Success      200  {object}  handlers.APIResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/{id} [put]
 func (cfg *HandlersReviewConfig) HandlerUpdateReviewByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

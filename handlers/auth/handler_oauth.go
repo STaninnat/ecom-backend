@@ -14,10 +14,13 @@ import (
 // handler_oauth.go: Provides handlers for initiating and processing Google OAuth signin.
 
 // HandlerGoogleSignIn initiates the Google OAuth signin process.
-// Generates a state parameter and redirects the user to Google's authorization URL.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Google OAuth signin
+// @Description  Redirects to Google OAuth for authentication
+// @Tags         auth
+// @Produce      json
+// @Success      302  {string}  string  "Redirect"
+// @Failure      500  {object}  map[string]string
+// @Router       /v1/auth/google/signin [get]
 func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
@@ -41,10 +44,13 @@ func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *htt
 }
 
 // HandlerGoogleCallback handles the Google OAuth callback.
-// Processes the authorization code, exchanges it for tokens, retrieves user information, and completes authentication.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Google OAuth callback
+// @Description  Handles Google OAuth callback and authenticates user
+// @Tags         auth
+// @Produce      json
+// @Success      201  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/auth/google/callback [get]
 func (cfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

@@ -14,11 +14,29 @@ import (
 
 // handler_auth.go: Provides HTTP handlers for user signup, signin, and signout with token management.
 
+// SignupRequest represents the payload for user signup.
+type SignupRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// SigninRequest represents the payload for user signin.
+type SigninRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 // HandlerSignUp handles user registration requests.
-// Validates the signup payload, creates a new user account, generates tokens, merges guest cart if needed, and returns a success response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      User signup
+// @Description  Registers a new user and returns tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        signup  body  SignupRequest  true  "Signup payload"
+// @Success      201  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/auth/signup [post]
 func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -70,10 +88,15 @@ func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Requ
 }
 
 // HandlerSignIn handles user authentication requests.
-// Validates the signin payload, authenticates the user, generates tokens, merges guest cart if needed, and returns a success response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      User signin
+// @Description  Authenticates a user and returns tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        signin  body  SigninRequest  true  "Signin payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/auth/signin [post]
 func (cfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -123,10 +146,13 @@ func (cfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.Requ
 }
 
 // HandlerSignOut handles user logout requests.
-// Validates authentication, clears session, revokes tokens, clears cookies, and handles OAuth provider-specific logout.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      User signout
+// @Description  Logs out the user and revokes tokens
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      401  {object}  map[string]string
+// @Router       /v1/auth/signout [post]
 func (cfg *HandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

@@ -12,11 +12,14 @@ import (
 // handler_payment_webhook.go: Stripe webhook handler for payment event processing and validation.
 
 // HandlerStripeWebhook handles HTTP POST requests from Stripe webhooks.
-// Validates the webhook signature, processes the payload, and delegates handling to the payment service.
-// On success, logs the event and responds with a confirmation; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the webhook payload
+// @Summary      Stripe webhook
+// @Description  Handles Stripe webhook events
+// @Tags         payments
+// @Accept       json
+// @Produce      json
+// @Success      201  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/webhook [post]
 func (cfg *HandlersPaymentConfig) HandlerStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	const MaxBodyBytes = int64(65536)
 	r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
@@ -64,11 +67,8 @@ func (cfg *HandlersPaymentConfig) HandlerStripeWebhook(w http.ResponseWriter, r 
 		return
 	}
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Handle webhook using service
-	err = paymentService.HandleWebhook(ctx, payload, signature, cfg.StripeWebhookSecret)
+	err = cfg.GetPaymentService().HandleWebhook(ctx, payload, signature, cfg.StripeWebhookSecret)
 	if err != nil {
 		cfg.handlePaymentError(w, r, err, "payment_webhook", ip, userAgent)
 		return

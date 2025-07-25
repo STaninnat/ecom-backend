@@ -11,12 +11,6 @@ import (
 // handler_s3.go: Handles S3 product image upload and update with size limits, service calls, logging, and JSON responses.
 
 // HandlerS3UploadProductImage handles HTTP POST requests to upload a new product image to S3 storage.
-// Enforces a max upload size, delegates to the S3 upload service, logs the event, and responds with the S3 image URL.
-// On error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
 func (cfg *HandlersUploadS3Config) HandlerS3UploadProductImage(w http.ResponseWriter, r *http.Request, user database.User) {
 	handleProductImageUpload(
 		w, r, user,
@@ -30,12 +24,6 @@ func (cfg *HandlersUploadS3Config) HandlerS3UploadProductImage(w http.ResponseWr
 }
 
 // HandlerS3UpdateProductImageByID handles HTTP POST requests to update a product image by its ID in S3 storage.
-// Extracts the product ID from the URL, delegates to the S3 upload service, logs the event, and responds with the updated S3 image URL.
-// On error or missing ID, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
 func (cfg *HandlersUploadS3Config) HandlerS3UpdateProductImageByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	handleUpdateProductImageByID(
 		w, r, user,

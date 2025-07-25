@@ -14,18 +14,18 @@ import (
 // handler_cart_get.go: Provides handlers to fetch shopping cart data for users and guests.
 
 // HandlerGetUserCart handles HTTP requests to retrieve a user's cart.
-// Calls the service layer, logs the operation, and returns a JSON response with the cart data or an error.
-// Expects a valid user in the request context.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get user cart
+// @Description  Retrieves the authenticated user's cart
+// @Tags         cart
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [get]
 func (cfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	cartService := cfg.GetCartService()
-	cart, err := cartService.GetUserCart(ctx, user.ID)
+	cart, err := cfg.GetCartService().GetUserCart(ctx, user.ID)
 	if err != nil {
 		cfg.handleCartError(w, r, err, "get_cart", ip, userAgent)
 		return
@@ -38,11 +38,13 @@ func (cfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http
 }
 
 // HandlerGetGuestCart handles HTTP requests to retrieve a guest cart (session-based).
-// Extracts the session ID, calls the service layer, logs the operation, and returns a JSON response with the cart data or an error.
-// Expects a valid session ID in the request context.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Get guest cart
+// @Description  Retrieves the guest cart (session-based)
+// @Tags         guest-cart
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/ [get]
 func (cfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -60,8 +62,7 @@ func (cfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *htt
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	cart, err := cartService.GetGuestCart(ctx, sessionID)
+	cart, err := cfg.GetCartService().GetGuestCart(ctx, sessionID)
 	if err != nil {
 		cfg.handleCartError(w, r, err, "get_guest_cart", ip, userAgent)
 		return

@@ -16,12 +16,13 @@ import (
 // handler_product_get.go: Handles retrieving all products or by ID with admin check, logging, and JSON response.
 
 // HandlerGetAllProducts handles HTTP GET requests to retrieve all products.
-// Checks if the user is an admin, fetches products accordingly, logs the event, and responds with the product list.
-// On error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: *database.User representing the authenticated user (may be nil)
+// @Summary      Get all products
+// @Description  Retrieves all products
+// @Tags         products
+// @Produce      json
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/ [get]
 func (cfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -45,12 +46,14 @@ func (cfg *HandlersProductConfig) HandlerGetAllProducts(w http.ResponseWriter, r
 }
 
 // HandlerGetProductByID handles HTTP GET requests to retrieve a product by its ID.
-// Extracts the product ID from the URL, checks admin status, fetches the product, logs the event, and responds with the product data.
-// On error or missing ID, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get product by ID
+// @Description  Retrieves a product by its ID
+// @Tags         products
+// @Produce      json
+// @Param        id  path  string  true  "Product ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/{id} [get]
 func (cfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

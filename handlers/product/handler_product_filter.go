@@ -15,12 +15,15 @@ import (
 // handler_product_filter.go: Handles filtering products: parses filter params, calls service, logs result, and returns matching products.
 
 // HandlerFilterProducts handles HTTP POST requests to filter products based on provided criteria.
-// Parses the request body for filter parameters, validates them, and delegates filtering to the product service.
-// On success, logs the event and responds with the filtered products; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: *database.User representing the authenticated user (may be nil)
+// @Summary      Filter products
+// @Description  Filters products based on provided criteria
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        filter  body  object{}  true  "Filter payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/filter [get]
 func (cfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter, r *http.Request, user *database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

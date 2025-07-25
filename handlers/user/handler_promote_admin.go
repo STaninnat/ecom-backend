@@ -13,15 +13,26 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
+// PromoteUserRequest represents the payload for promoting a user to admin.
+type PromoteUserRequest struct {
+	UserID string `json:"user_id"`
+}
+
 // handler_promote_admin.go: Handles user promotion to admin role with context extraction, validation, service delegation, error handling, and success response logging.
 
 // HandlerPromoteUserToAdmin handles HTTP POST requests to promote a user to admin role (admin only).
-// Extracts user from request context, validates the target user ID, delegates to user service,
-// and handles specific error cases with appropriate HTTP status codes. On success, logs the event
-// and responds with success message; on error, logs and returns appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with user in context and target user ID in body
+// @Summary      Promote user to admin
+// @Description  Promotes a user to admin role (admin only)
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Param        promote  body  PromoteUserRequest  true  "User promotion payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Router       /v1/admin/user/promote [post]
 func (cfg *HandlersUserConfig) HandlerPromoteUserToAdmin(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -34,9 +45,7 @@ func (cfg *HandlersUserConfig) HandlerPromoteUserToAdmin(w http.ResponseWriter, 
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	var req struct {
-		UserID string `json:"user_id"`
-	}
+	var req PromoteUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
 		cfg.Logger.LogHandlerError(ctxWithUserID, "promote_admin", "invalid_request", "Invalid request payload", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")

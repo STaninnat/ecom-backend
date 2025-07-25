@@ -94,11 +94,23 @@ func parseFilterSort(r *http.Request) (rating *int, minRating *int, maxRating *i
 }
 
 // HandlerGetReviewsByProductID handles HTTP GET requests to retrieve paginated, filtered, and sorted reviews for a product.
-// Parses pagination and filter parameters from the request, validates the product ID, and delegates retrieval to the review service.
-// On success, logs the event and responds with the paginated review data; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with product ID in URL parameters and filter/sort in query parameters
+// @Summary      Get reviews by product ID
+// @Description  Retrieves paginated, filtered, and sorted reviews for a product
+// @Tags         reviews
+// @Produce      json
+// @Param        product_id  path  string  true  "Product ID"
+// @Param        page        query int     false "Page number"
+// @Param        pageSize    query int     false "Page size"
+// @Param        rating      query int     false "Exact rating filter"
+// @Param        min_rating  query int     false "Minimum rating filter"
+// @Param        max_rating  query int     false "Maximum rating filter"
+// @Param        from        query string  false "Start date (RFC3339)"
+// @Param        to          query string  false "End date (RFC3339)"
+// @Param        has_media   query bool    false "Has media filter"
+// @Param        sort        query string  false "Sort option"
+// @Success      200  {object}  PaginatedReviewsResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/product/{product_id} [get]
 func (cfg *HandlersReviewConfig) HandlerGetReviewsByProductID(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -138,12 +150,22 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewsByProductID(w http.ResponseWri
 }
 
 // HandlerGetReviewsByUserID handles HTTP GET requests to retrieve paginated, filtered, and sorted reviews for the authenticated user.
-// Parses pagination and filter parameters from the request and delegates retrieval to the review service.
-// On success, logs the event and responds with the paginated review data; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with filter/sort in query parameters
-//   - user: database.User representing the authenticated user
+// @Summary      Get reviews by user
+// @Description  Retrieves paginated, filtered, and sorted reviews for the authenticated user
+// @Tags         reviews
+// @Produce      json
+// @Param        page        query int     false "Page number"
+// @Param        pageSize    query int     false "Page size"
+// @Param        rating      query int     false "Exact rating filter"
+// @Param        min_rating  query int     false "Minimum rating filter"
+// @Param        max_rating  query int     false "Maximum rating filter"
+// @Param        from        query string  false "Start date (RFC3339)"
+// @Param        to          query string  false "End date (RFC3339)"
+// @Param        has_media   query bool    false "Has media filter"
+// @Param        sort        query string  false "Sort option"
+// @Success      200  {object}  PaginatedReviewsResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/user [get]
 func (cfg *HandlersReviewConfig) HandlerGetReviewsByUserID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -177,11 +199,14 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewsByUserID(w http.ResponseWriter
 }
 
 // HandlerGetReviewByID handles HTTP GET requests to retrieve a single review by its ID.
-// Validates the review ID parameter and delegates retrieval to the review service.
-// On success, logs the event and responds with the review data; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with review ID in URL parameters
+// @Summary      Get review by ID
+// @Description  Retrieves a single review by its ID
+// @Tags         reviews
+// @Produce      json
+// @Param        id  path  string  true  "Review ID"
+// @Success      200  {object}  handlers.APIResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/{id} [get]
 func (cfg *HandlersReviewConfig) HandlerGetReviewByID(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

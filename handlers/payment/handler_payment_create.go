@@ -15,12 +15,15 @@ import (
 // handler_payment_create.go: Payment intent creation handler with request validation and error handling.
 
 // HandlerCreatePayment handles HTTP POST requests to create a new payment intent.
-// Parses the request body for payment parameters, validates them, and delegates creation to the payment service.
-// On success, logs the event and responds with the client secret; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Create payment intent
+// @Description  Creates a new payment intent for an order
+// @Tags         payments
+// @Accept       json
+// @Produce      json
+// @Param        payment  body  object{}  true  "Payment intent payload"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/intent [post]
 func (cfg *HandlersPaymentConfig) HandlerCreatePayment(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -38,11 +41,8 @@ func (cfg *HandlersPaymentConfig) HandlerCreatePayment(w http.ResponseWriter, r 
 		return
 	}
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Create payment using service
-	result, err := paymentService.CreatePayment(ctx, CreatePaymentParams{
+	result, err := cfg.GetPaymentService().CreatePayment(ctx, CreatePaymentParams{
 		OrderID:  req.OrderID,
 		UserID:   user.ID,
 		Currency: req.Currency,

@@ -2,6 +2,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/http"
@@ -17,8 +18,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"os/exec"
+
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
+	upload "github.com/STaninnat/ecom-backend/handlers/upload"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
@@ -27,7 +37,8 @@ import (
 // router_test.go: Tests for router setup, middleware, and endpoint registration.
 
 const (
-	testRemoteAddr = "1.2.3.4:5678"
+	testRemoteAddr  = "1.2.3.4:5678"
+	uploadBackendS3 = "s3"
 )
 
 // setupTestRouterConfig creates a test router configuration with mocked dependencies.
@@ -129,8 +140,19 @@ func TestSetupRouter_BasicSetup(t *testing.T) {
 	assert.NotNil(t, router)
 }
 
-// TestSetupRouter_HealthzEndpoint tests that the health check endpoint is properly registered.
-// It verifies the endpoint responds correctly even without full database connections.
+func TestSetupRouter_ReadinessEndpoint(t *testing.T) {
+	routerCfg := setupTestRouterConfig(t)
+	logger := logrus.New()
+	router := routerCfg.SetupRouter(logger)
+
+	req := httptest.NewRequest("GET", "/v1/readiness", nil)
+	req.RemoteAddr = testRemoteAddr
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusNotFound, w.Code, "Readiness endpoint should be registered")
+}
+
 func TestSetupRouter_HealthzEndpoint(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
 	logger := logrus.New()
@@ -141,13 +163,14 @@ func TestSetupRouter_HealthzEndpoint(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// The healthz endpoint should work even without database connections
-	// It might return 500 due to missing dependencies, but the route should be registered
-	assert.NotEqual(t, http.StatusNotFound, w.Code, "Healthz endpoint should be registered")
+	assert.Equal(t, http.StatusOK, w.Code, "Healthz endpoint should return 200 OK")
+	// Optionally, check for expected JSON keys
+	assert.Contains(t, w.Body.String(), "\"status\"")
+	assert.Contains(t, w.Body.String(), "\"service\"")
+	assert.Contains(t, w.Body.String(), "\"version\"")
+	assert.Contains(t, w.Body.String(), "\"timestamp\"")
 }
 
-// TestSetupRouter_ErrorzEndpoint tests the error simulation endpoint functionality.
-// It verifies the endpoint returns the expected 500 status and error response.
 func TestSetupRouter_ErrorzEndpoint(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
 	logger := logrus.New()
@@ -158,72 +181,55 @@ func TestSetupRouter_ErrorzEndpoint(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// The errorz endpoint should return 500 (which is expected behavior)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	expected := `{"error":"Internal server error","code":"INTERNAL_ERROR","message":"An unexpected error occurred. Please try again later."}`
 	assert.JSONEq(t, expected, w.Body.String())
 }
 
-// TestSetupRouter_SecurityHeaders verifies that security headers are properly set by middleware.
-// It checks for X-Content-Type-Options, X-Frame-Options, and X-XSS-Protection headers.
 func TestSetupRouter_SecurityHeaders(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
-	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req := httptest.NewRequest("GET", "/v1/readiness", nil)
 	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Check for security headers - these should be set by middleware regardless of handler success
 	headers := w.Header()
 	assert.NotEmpty(t, headers.Get("X-Content-Type-Options"), "Should have X-Content-Type-Options header")
 	assert.NotEmpty(t, headers.Get("X-Frame-Options"), "Should have X-Frame-Options header")
 	assert.NotEmpty(t, headers.Get("X-XSS-Protection"), "Should have X-XSS-Protection header")
 }
 
-// TestSetupRouter_RequestID tests that the request ID middleware is properly applied.
-// It verifies the middleware doesn't break request processing even if headers aren't visible.
 func TestSetupRouter_RequestID(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
-	req := httptest.NewRequest("GET", "/v1/healthz", nil)
+	req := httptest.NewRequest("GET", "/v1/readiness", nil)
 	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// The RequestIDMiddleware only sets the ID in context, not in response headers
-	// So we can't test for X-Request-ID header in the response
-	// Instead, we'll test that the middleware doesn't break the request
-	assert.NotEqual(t, http.StatusNotFound, w.Code, "Healthz endpoint should be registered")
+	assert.NotEqual(t, http.StatusNotFound, w.Code, "Readiness endpoint should be registered")
 }
 
-// TestSetupRouter_CORSHeaders tests CORS preflight request handling.
-// It verifies that CORS headers are properly set for cross-origin requests.
 func TestSetupRouter_CORSHeaders(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
 	logger := logrus.New()
 	router := routerCfg.SetupRouter(logger)
 
-	// Test CORS preflight request - this should set CORS headers
-	req := httptest.NewRequest("OPTIONS", "/v1/healthz", nil)
+	req := httptest.NewRequest("OPTIONS", "/v1/readiness", nil)
 	req.Header.Set("Origin", "https://example.com")
 	req.Header.Set("Access-Control-Request-Method", "GET")
 	req.RemoteAddr = testRemoteAddr
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Since the handler is returning 500 due to missing dependencies,
-	// we'll test that the request is processed (not 404) and that CORS middleware is applied
 	if w.Code == http.StatusInternalServerError {
-		// If we get 500, it means the middleware is working but the handler failed
-		// This is acceptable for our test since we're not mocking all dependencies
 		t.Log("Got 500 for CORS preflight - this is acceptable since we're not mocking all dependencies")
 	} else {
-		// If the handler succeeds, check for CORS headers
 		headers := w.Header()
 		assert.NotEmpty(t, headers.Get("Access-Control-Allow-Origin"), "Should have CORS headers for preflight")
 		assert.NotEmpty(t, headers.Get("Access-Control-Allow-Methods"), "Should have CORS methods header for preflight")
@@ -389,7 +395,7 @@ func TestSetupRouter_S3UploadBackend(t *testing.T) {
 	apiCfg := &config.APIConfig{
 		RedisClient:         redisClient,
 		UploadPath:          "./uploads",
-		UploadBackend:       "s3", // Use S3 backend
+		UploadBackend:       uploadBackendS3, // Use S3 backend
 		MongoDB:             nil,
 		JWTSecret:           "test-jwt-secret",
 		RefreshSecret:       "test-refresh-secret",
@@ -569,12 +575,16 @@ func TestCreateCacheConfigs(t *testing.T) {
 // TestSetupUploadHandlers_S3Backend tests upload handler setup with S3 backend.
 func TestSetupUploadHandlers_S3Backend(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
-	routerCfg.UploadBackend = "s3"
+	routerCfg.UploadBackend = uploadBackendS3
 	configs := routerCfg.createHandlerConfigs()
 	routerCfg.setupUploadHandlers(configs)
 	// Just check that the upload config is not nil and has the right path
 	assert.NotNil(t, configs.upload)
-	assert.Equal(t, routerCfg.UploadPath, configs.upload.UploadPath)
+	if s3UploadConfig, ok := configs.upload.(*upload.HandlersUploadS3Config); ok {
+		assert.Equal(t, routerCfg.UploadPath, s3UploadConfig.UploadPath)
+	} else {
+		t.Fatalf("configs.upload is not of type *HandlersUploadS3Config")
+	}
 }
 
 // TestGlobalMiddleware_PanicRecovery checks that panic recovery middleware works.
@@ -603,4 +613,143 @@ func TestStaticFileServer_NotFound(t *testing.T) {
 	if w.Code != http.StatusNotFound && w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 404 or 500, got %d", w.Code)
 	}
+}
+
+// --- Integration test for MongoDB-backed router routes ---
+// testContainer holds the MongoDB test container and connection details for integration testing.
+type testContainer struct {
+	Container *mongodb.MongoDBContainer
+	URI       string
+	Client    *mongo.Client
+	Database  *mongo.Database
+}
+
+// setupTestContainerForRouter creates a MongoDB test container for router integration tests.
+// It returns a testContainer with connection details, or skips the test if Docker is unavailable.
+func setupTestContainerForRouter(t *testing.T) *testContainer {
+	t.Helper()
+	ctx := context.Background()
+
+	// Check if Docker is available
+	if !isDockerAvailableForRouter() {
+		t.Skip("Docker not available - skipping integration tests")
+	}
+
+	container, err := mongodb.Run(ctx, "mongo:7.0",
+		testcontainers.WithWaitStrategy(
+			wait.ForAll(
+				wait.ForListeningPort("27017/tcp"),
+				wait.ForLog("Waiting for connections").WithOccurrence(1),
+			).WithDeadline(60*time.Second),
+		),
+	)
+	if err != nil {
+		t.Skipf("Failed to create MongoDB container: %v - skipping integration tests", err)
+	}
+
+	uri, err := container.ConnectionString(ctx)
+	if err != nil {
+		_ = container.Terminate(ctx)
+		t.Skipf("Failed to get container URI: %v - skipping integration tests", err)
+	}
+	time.Sleep(2 * time.Second)
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	if err != nil {
+		_ = container.Terminate(ctx)
+		t.Skipf("Failed to connect to MongoDB: %v - skipping integration tests", err)
+	}
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		_ = client.Disconnect(ctx)
+		_ = container.Terminate(ctx)
+		t.Skipf("Failed to ping MongoDB: %v - skipping integration tests", err)
+	}
+	database := client.Database("testdb")
+	return &testContainer{
+		Container: container,
+		URI:       uri,
+		Client:    client,
+		Database:  database,
+	}
+}
+
+// isDockerAvailableForRouter checks if Docker is available on the system for integration tests.
+func isDockerAvailableForRouter() bool {
+	cmd := exec.Command("docker", "info")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// cleanupTestContainerForRouter disconnects the MongoDB client and terminates the test container.
+func cleanupTestContainerForRouter(t *testing.T, tc *testContainer) {
+	t.Helper()
+	ctx := context.Background()
+	if tc.Client != nil {
+		_ = tc.Client.Disconnect(ctx)
+	}
+	if tc.Container != nil {
+		_ = tc.Container.Terminate(ctx)
+	}
+}
+
+// TestRouter_MongoIntegrationRoutes verifies that cart, guest cart, and review routes are registered
+// when the router is configured with a real MongoDB instance using testcontainers.
+func TestRouter_MongoIntegrationRoutes(t *testing.T) {
+	tc := setupTestContainerForRouter(t)
+	defer cleanupTestContainerForRouter(t, tc)
+
+	logger := logrus.New()
+	redisClient, _ := redismock.NewClientMock()
+
+	apiCfg := &config.APIConfig{
+		RedisClient:         redisClient,
+		UploadPath:          "./uploads",
+		UploadBackend:       "local",
+		MongoDB:             tc.Database,
+		JWTSecret:           "test-jwt-secret",
+		RefreshSecret:       "test-refresh-secret",
+		Issuer:              "test-issuer",
+		Audience:            "test-audience",
+		CredsPath:           "test-creds-path",
+		S3Bucket:            "test-bucket",
+		S3Region:            "test-region",
+		S3Client:            nil,
+		StripeSecretKey:     "test-stripe-key",
+		StripeWebhookSecret: "test-stripe-webhook",
+		Port:                "8080",
+	}
+
+	handlersCfg := &handlers.Config{
+		APIConfig:    apiCfg,
+		Logger:       logger,
+		Auth:         &auth.Config{APIConfig: apiCfg},
+		CacheService: utils.NewCacheService(redisClient),
+	}
+
+	routerCfg := &Config{Config: handlersCfg}
+	router := routerCfg.SetupRouter(logger)
+
+	t.Run("cart routes registered", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/v1/cart/items", nil)
+		req.RemoteAddr = testRemoteAddr
+		router.ServeHTTP(w, req)
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "/v1/cart/items should be registered")
+	})
+	t.Run("guest cart routes registered", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/v1/guest-cart/", nil)
+		req.RemoteAddr = testRemoteAddr
+		router.ServeHTTP(w, req)
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "/v1/guest-cart/ should be registered")
+	})
+	t.Run("review routes registered", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/v1/reviews/product/123", nil)
+		req.RemoteAddr = testRemoteAddr
+		router.ServeHTTP(w, req)
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "/v1/reviews/product/123 should be registered")
+	})
 }

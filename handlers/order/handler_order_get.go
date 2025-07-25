@@ -16,11 +16,13 @@ import (
 // handler_order_get.go: HTTP handlers for fetching orders and order items, with service calls and structured logging.
 
 // HandlerGetAllOrders handles HTTP GET requests to retrieve all orders (admin only).
-// Calls the business logic service, logs the event, and responds with the complete order list or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user (admin only)
+// @Summary      Get all orders
+// @Description  Retrieves all orders (admin only)
+// @Tags         orders
+// @Produce      json
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/ [get]
 func (cfg *HandlersOrderConfig) HandlerGetAllOrders(w http.ResponseWriter, r *http.Request, _ database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
@@ -42,11 +44,13 @@ func (cfg *HandlersOrderConfig) HandlerGetAllOrders(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetUserOrders handles HTTP GET requests to retrieve orders for a specific user.
-// Calls the business logic service, logs the event, and responds with the user's order list or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get user orders
+// @Description  Retrieves all orders for the authenticated user
+// @Tags         orders
+// @Produce      json
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/user [get]
 func (cfg *HandlersOrderConfig) HandlerGetUserOrders(w http.ResponseWriter, r *http.Request, user database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
@@ -68,11 +72,14 @@ func (cfg *HandlersOrderConfig) HandlerGetUserOrders(w http.ResponseWriter, r *h
 }
 
 // HandlerGetOrderByID handles HTTP GET requests to retrieve a specific order by its ID.
-// Extracts the order ID from URL parameters, validates the request, calls the business logic service, logs the event, and responds with the order information or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get order by ID
+// @Description  Retrieves a specific order by its ID
+// @Tags         orders
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/{order_id} [get]
 func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
@@ -110,11 +117,14 @@ func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *ht
 }
 
 // HandlerGetOrderItemsByOrderID handles HTTP GET requests to retrieve items for a specific order.
-// Extracts the order ID from URL parameters, validates the request, calls the business logic service, logs the event, and responds with the order items list or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Get order items by order ID
+// @Description  Retrieves items for a specific order by its ID
+// @Tags         orders
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Success      200  {array}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/items/{order_id} [get]
 func (cfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request, _ database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)

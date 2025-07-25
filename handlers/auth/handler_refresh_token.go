@@ -14,10 +14,13 @@ import (
 // handler_refresh_token.go: Handles the refresh token flow by validating and issuing new tokens.
 
 // HandlerRefreshToken handles token refresh requests.
-// Validates the current refresh token, generates new access and refresh tokens, sets new cookies, and returns a success response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Refresh token
+// @Description  Refreshes access and refresh tokens
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      401  {object}  map[string]string
+// @Router       /v1/auth/refresh [post]
 func (cfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

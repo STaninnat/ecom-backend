@@ -20,11 +20,13 @@ type contextKey string
 const contextKeyUser contextKey = "user"
 
 // HandlerGetUser handles HTTP GET requests to retrieve user information.
-// Extracts user from request context, delegates to user service, and responds with user data.
-// On success, logs the event and responds with user information; on error, logs and returns appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with user in context
+// @Summary      Get current user
+// @Description  Retrieves the current user's information
+// @Tags         users
+// @Produce      json
+// @Success      200  {object}  UserResponse
+// @Failure      401  {object}  map[string]string
+// @Router       /v1/users/ [get]
 func (cfg *HandlersUserConfig) HandlerGetUser(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

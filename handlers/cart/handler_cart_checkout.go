@@ -15,18 +15,18 @@ import (
 // handler_cart_checkout.go: Handles cart checkout requests for authenticated users and guests.
 
 // HandlerCheckoutUserCart handles HTTP requests to checkout a user's cart.
-// Calls the service layer, logs the operation, and returns a JSON response with the order details or an error.
-// Expects a valid user in the request context.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Checkout user cart
+// @Description  Checks out the authenticated user's cart and creates an order
+// @Tags         cart
+// @Produce      json
+// @Success      200  {object}  CartResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/checkout [post]
 func (cfg *HandlersCartConfig) HandlerCheckoutUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	cartService := cfg.GetCartService()
-	result, err := cartService.CheckoutUserCart(ctx, user.ID)
+	result, err := cfg.GetCartService().CheckoutUserCart(ctx, user.ID)
 	if err != nil {
 		cfg.handleCartError(w, r, err, "checkout_user_cart", ip, userAgent)
 		return
@@ -41,12 +41,21 @@ func (cfg *HandlersCartConfig) HandlerCheckoutUserCart(w http.ResponseWriter, r 
 	})
 }
 
+// GuestCheckoutRequest represents the payload for guest cart checkout.
+type GuestCheckoutRequest struct {
+	UserID string `json:"user_id"`
+}
+
 // HandlerCheckoutGuestCart handles HTTP requests to checkout a guest cart (session-based).
-// Extracts the session ID and user ID, validates them, calls the service layer, logs the operation, and returns a JSON response with the order details or an error.
-// Expects a valid session ID and user ID in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Checkout guest cart
+// @Description  Checks out the guest cart (session-based) and creates an order
+// @Tags         guest-cart
+// @Accept       json
+// @Produce      json
+// @Param        checkout  body  GuestCheckoutRequest  true  "Guest checkout payload"
+// @Success      200  {object}  CartResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/checkout [post]
 func (cfg *HandlersCartConfig) HandlerCheckoutGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -65,9 +74,7 @@ func (cfg *HandlersCartConfig) HandlerCheckoutGuestCart(w http.ResponseWriter, r
 	}
 
 	// Get user ID from request body or context
-	var req struct {
-		UserID string `json:"user_id"`
-	}
+	var req GuestCheckoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		cfg.Logger.LogHandlerError(
 			ctx,
@@ -92,8 +99,7 @@ func (cfg *HandlersCartConfig) HandlerCheckoutGuestCart(w http.ResponseWriter, r
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	result, err := cartService.CheckoutGuestCart(ctx, sessionID, req.UserID)
+	result, err := cfg.GetCartService().CheckoutGuestCart(ctx, sessionID, req.UserID)
 	if err != nil {
 		cfg.handleCartError(w, r, err, "checkout_guest_cart", ip, userAgent)
 		return

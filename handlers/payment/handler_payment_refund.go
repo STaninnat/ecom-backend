@@ -16,12 +16,14 @@ import (
 // handler_payment_refund.go: Refund payment request handler delegating to payment service.
 
 // HandlerRefundPayment handles HTTP POST requests to process a payment refund.
-// Extracts the order ID from URL parameters, validates it, and delegates refund processing to the payment service.
-// On success, logs the event and responds with a confirmation message; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Refund payment
+// @Description  Processes a payment refund for a specific order
+// @Tags         payments
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/{order_id}/refund [post]
 func (cfg *HandlersPaymentConfig) HandlerRefundPayment(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -39,11 +41,8 @@ func (cfg *HandlersPaymentConfig) HandlerRefundPayment(w http.ResponseWriter, r 
 		return
 	}
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Process refund using service
-	err := paymentService.RefundPayment(ctx, RefundPaymentParams{
+	err := cfg.GetPaymentService().RefundPayment(ctx, RefundPaymentParams{
 		OrderID: orderID,
 		UserID:  user.ID,
 	})

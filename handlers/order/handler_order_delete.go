@@ -16,11 +16,14 @@ import (
 // handler_order_delete.go: Handles HTTP DELETE request to delete an order by ID. Validates request, calls service, logs event, and responds.
 
 // HandlerDeleteOrder handles HTTP DELETE requests to delete an order by its ID.
-// Extracts the order ID from the URL parameters, validates the request, calls the business logic service to delete the order, logs the event, and responds with a success message or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Delete order
+// @Description  Deletes an order by its ID (admin only)
+// @Tags         orders
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/{order_id} [delete]
 func (cfg *HandlersOrderConfig) HandlerDeleteOrder(w http.ResponseWriter, r *http.Request, user database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)

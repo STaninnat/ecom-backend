@@ -11,6 +11,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/sirupsen/logrus"
 
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
@@ -114,7 +116,7 @@ type handlerConfigs struct {
 	user     *userhandlers.HandlersUserConfig
 	product  *producthandlers.HandlersProductConfig
 	category *categoryhandlers.HandlersCategoryConfig
-	upload   *uploadhandlers.HandlersUploadConfig
+	upload   any
 	order    *orderhandlers.HandlersOrderConfig
 	payment  *paymenthandlers.HandlersPaymentConfig
 	review   *reviewhandlers.HandlersReviewConfig
@@ -167,18 +169,27 @@ func (apicfg *Config) setupUploadHandlers(configs *handlerConfigs) {
 			S3Client:   apicfg.S3Client, // AWS S3 client
 			BucketName: apicfg.S3Bucket, // S3 bucket name
 		}
+		// Upload service combines DB, path, and storage backend
+		uploadService := uploadhandlers.NewUploadService(productDB, apicfg.UploadPath, fileStorage)
+		// Upload handler config: provides dependencies for S3 upload endpoints
+		configs.upload = &uploadhandlers.HandlersUploadS3Config{
+			Config:     apicfg.Config,
+			Logger:     apicfg.Config,
+			UploadPath: apicfg.UploadPath,
+			Service:    uploadService,
+		}
 	} else {
 		// Use local filesystem for file storage
 		fileStorage = &uploadhandlers.LocalFileStorage{}
-	}
-	// Upload service combines DB, path, and storage backend
-	uploadService := uploadhandlers.NewUploadService(productDB, apicfg.UploadPath, fileStorage)
-	// Upload handler config: provides dependencies for upload endpoints
-	configs.upload = &uploadhandlers.HandlersUploadConfig{
-		Config:     apicfg.Config,
-		Logger:     apicfg.Config,
-		UploadPath: apicfg.UploadPath,
-		Service:    uploadService,
+		// Upload service combines DB, path, and storage backend
+		uploadService := uploadhandlers.NewUploadService(productDB, apicfg.UploadPath, fileStorage)
+		// Upload handler config: provides dependencies for local upload endpoints
+		configs.upload = &uploadhandlers.HandlersUploadConfig{
+			Config:     apicfg.Config,
+			Logger:     apicfg.Config,
+			UploadPath: apicfg.UploadPath,
+			Service:    uploadService,
+		}
 	}
 }
 
@@ -239,8 +250,12 @@ func (apicfg *Config) createV1Router(configs *handlerConfigs, cacheConfigs map[s
 	v1Router := chi.NewRouter()
 
 	// --- Health and Error Endpoints ---
-	v1Router.Get("/healthz", Adapt(handlers.HandlerReadiness)) // Health check endpoint
-	v1Router.Get("/errorz", Adapt(handlers.HandlerError))      // Error simulation endpoint
+	v1Router.Get("/readiness", Adapt(handlers.HandlerReadiness)) // Health check endpoint
+	v1Router.Get("/healthz", Adapt(handlers.HandlerHealth))      // Detailed health check endpoint
+	v1Router.Get("/errorz", Adapt(handlers.HandlerError))        // Error simulation endpoint
+
+	// --- Swagger UI ---
+	v1Router.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	apicfg.setupAuthRoutes(v1Router, configs.auth)
 	apicfg.setupUserRoutes(v1Router, configs.user)
@@ -275,7 +290,7 @@ func (apicfg *Config) setupUserRoutes(v1Router *chi.Mux, userConfig *userhandler
 	v1Router.Mount("/users", usersRouter)
 }
 
-func (apicfg *Config) setupProductRoutes(v1Router *chi.Mux, productConfig *producthandlers.HandlersProductConfig, uploadConfig *uploadhandlers.HandlersUploadConfig, cacheConfig middlewares.CacheConfig) {
+func (apicfg *Config) setupProductRoutes(v1Router *chi.Mux, productConfig *producthandlers.HandlersProductConfig, uploadConfig any, cacheConfig middlewares.CacheConfig) {
 	// --- Product Subrouter ---
 	productsRouter := chi.NewRouter()
 	productsRouter.Get("/", middlewares.CacheMiddleware(cacheConfig)(WithOptionalUser(productConfig.HandlerGetAllProducts)).(http.HandlerFunc))                      // List all products (cached)
@@ -284,8 +299,16 @@ func (apicfg *Config) setupProductRoutes(v1Router *chi.Mux, productConfig *produ
 	productsRouter.Post("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerCreateProduct)).(http.HandlerFunc))       // Admin: create product, invalidates cache
 	productsRouter.Put("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerUpdateProduct)).(http.HandlerFunc))        // Admin: update product, invalidates cache
 	productsRouter.Delete("/{id}", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerDeleteProduct)).(http.HandlerFunc)) // Admin: delete product, invalidates cache
-	productsRouter.Post("/upload-image", WithAdmin(uploadConfig.HandlerUploadProductImage))                                                                          // Admin: upload product image
-	productsRouter.Post("/{id}/image", WithAdmin(uploadConfig.HandlerUpdateProductImageByID))                                                                        // Admin: update product image
+	// Use correct upload handler based on backend
+	if apicfg.UploadBackend == "s3" {
+		s3UploadConfig := uploadConfig.(*uploadhandlers.HandlersUploadS3Config)
+		productsRouter.Post("/upload-image", WithAdmin(s3UploadConfig.HandlerS3UploadProductImage))
+		productsRouter.Post("/{id}/image", WithAdmin(s3UploadConfig.HandlerS3UpdateProductImageByID))
+	} else {
+		localUploadConfig := uploadConfig.(*uploadhandlers.HandlersUploadConfig)
+		productsRouter.Post("/upload-image", WithAdmin(localUploadConfig.HandlerUploadProductImage))
+		productsRouter.Post("/{id}/image", WithAdmin(localUploadConfig.HandlerUpdateProductImageByID))
+	}
 	v1Router.Mount("/products", productsRouter)
 }
 

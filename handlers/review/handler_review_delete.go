@@ -16,13 +16,14 @@ import (
 // handler_review_delete.go: Handles review deletion by ID with validation, ownership check, and error handling.
 
 // HandlerDeleteReviewByID handles HTTP DELETE requests to delete a review by its ID.
-// Validates the review ID parameter, checks if the review exists, verifies user ownership,
-// and delegates deletion to the review service. On success, logs the event and responds
-// with a success message; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data with review ID in URL parameters
-//   - user: database.User representing the authenticated user
+// @Summary      Delete review by ID
+// @Description  Deletes a review by its ID
+// @Tags         reviews
+// @Produce      json
+// @Param        id  path  string  true  "Review ID"
+// @Success      200  {object}  handlers.APIResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/{id} [delete]
 func (cfg *HandlersReviewConfig) HandlerDeleteReviewByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

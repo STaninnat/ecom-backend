@@ -15,12 +15,15 @@ import (
 // handler_product_create.go: Handles creating a new product: parses request, calls service, logs outcome, and sends JSON response.
 
 // HandlerCreateProduct handles HTTP POST requests to create a new product.
-// Parses the request body for product parameters, validates them, and delegates creation to the product service.
-// On success, logs the event and responds with the new product ID; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Create product
+// @Description  Creates a new product
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        product  body  object{}  true  "Product payload"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/ [post]
 func (cfg *HandlersProductConfig) HandlerCreateProduct(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

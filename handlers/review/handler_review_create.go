@@ -34,12 +34,15 @@ func (r *ReviewCreateRequest) Validate() error {
 }
 
 // HandlerCreateReview handles HTTP POST requests to create a new review.
-// Parses the request body for review parameters, validates them, and delegates creation to the review service.
-// On success, logs the event and responds with the created review; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Create review
+// @Description  Creates a new review for a product
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Param        review  body  object{}  true  "Review payload"
+// @Success      201  {object}  handlers.APIResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/ [post]
 func (cfg *HandlersReviewConfig) HandlerCreateReview(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()

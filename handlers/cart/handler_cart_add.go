@@ -15,12 +15,15 @@ import (
 var getSessionIDFromRequest = utils.GetSessionIDFromRequest
 
 // HandlerAddItemToUserCart handles HTTP requests to add an item to a user's cart.
-// Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid user and CartItemRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Add item to user cart
+// @Description  Adds an item to the authenticated user's cart
+// @Tags         cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  CartItemRequest  true  "Cart item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [post]
 func (cfg *HandlersCartConfig) HandlerAddItemToUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	cfg.handleCartItemOperation(
 		w, r, user.ID, "User ID is required",
@@ -39,11 +42,15 @@ func (cfg *HandlersCartConfig) HandlerAddItemToUserCart(w http.ResponseWriter, r
 }
 
 // HandlerAddItemToGuestCart handles HTTP requests to add an item to a guest cart (session-based).
-// Extracts the session ID, parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid session ID and CartItemRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Add item to guest cart
+// @Description  Adds an item to the guest cart (session-based)
+// @Tags         guest-cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  CartItemRequest  true  "Cart item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/items [post]
 func (cfg *HandlersCartConfig) HandlerAddItemToGuestCart(w http.ResponseWriter, r *http.Request) {
 	sessionID := getSessionIDFromRequest(r)
 	cfg.handleCartItemOperation(

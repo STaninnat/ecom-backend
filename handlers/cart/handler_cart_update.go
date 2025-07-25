@@ -15,12 +15,15 @@ import (
 // handler_cart_update.go: Provides handlers for updating cart item quantities for users and guests.
 
 // HandlerUpdateItemQuantity handles HTTP requests to update the quantity of an item in a user's cart.
-// Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid user and CartUpdateRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Update item quantity in user cart
+// @Description  Updates the quantity of an item in the authenticated user's cart
+// @Tags         cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  CartUpdateRequest  true  "Cart update payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [put]
 func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -50,8 +53,7 @@ func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, 
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	if err := cartService.UpdateItemQuantity(ctx, user.ID, req.ProductID, req.Quantity); err != nil {
+	if err := cfg.GetCartService().UpdateItemQuantity(ctx, user.ID, req.ProductID, req.Quantity); err != nil {
 		cfg.handleCartError(w, r, err, "update_item_quantity", ip, userAgent)
 		return
 	}
@@ -65,11 +67,15 @@ func (cfg *HandlersCartConfig) HandlerUpdateItemQuantity(w http.ResponseWriter, 
 }
 
 // HandlerUpdateGuestItemQuantity handles HTTP requests to update the quantity of an item in a guest cart (session-based).
-// Extracts the session ID, parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid session ID and CartUpdateRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Update item quantity in guest cart
+// @Description  Updates the quantity of an item in the guest cart (session-based)
+// @Tags         guest-cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  CartUpdateRequest  true  "Cart update payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/items [put]
 func (cfg *HandlersCartConfig) HandlerUpdateGuestItemQuantity(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -112,8 +118,7 @@ func (cfg *HandlersCartConfig) HandlerUpdateGuestItemQuantity(w http.ResponseWri
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	if err := cartService.UpdateGuestItemQuantity(ctx, sessionID, req.ProductID, req.Quantity); err != nil {
+	if err := cfg.GetCartService().UpdateGuestItemQuantity(ctx, sessionID, req.ProductID, req.Quantity); err != nil {
 		cfg.handleCartError(w, r, err, "update_guest_item_quantity", ip, userAgent)
 		return
 	}

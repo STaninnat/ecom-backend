@@ -20,12 +20,15 @@ type DeleteItemRequest struct {
 }
 
 // HandlerRemoveItemFromUserCart handles HTTP requests to remove an item from a user's cart.
-// Parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid user and DeleteItemRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Remove item from user cart
+// @Description  Removes an item from the authenticated user's cart
+// @Tags         cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  DeleteItemRequest  true  "Delete item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [delete]
 func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -55,8 +58,7 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWrit
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	if err := cartService.RemoveItem(ctx, user.ID, req.ProductID); err != nil {
+	if err := cfg.GetCartService().RemoveItem(ctx, user.ID, req.ProductID); err != nil {
 		cfg.handleCartError(w, r, err, "remove_item_from_cart", ip, userAgent)
 		return
 	}
@@ -70,18 +72,18 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWrit
 }
 
 // HandlerClearUserCart handles HTTP requests to clear all items from a user's cart.
-// Calls the service layer, logs the operation, and returns a JSON response indicating success or error.
-// Expects a valid user in the request context.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Clear user cart
+// @Description  Clears all items from the authenticated user's cart
+// @Tags         cart
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/ [delete]
 func (cfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	cartService := cfg.GetCartService()
-	if err := cartService.DeleteUserCart(ctx, user.ID); err != nil {
+	if err := cfg.GetCartService().DeleteUserCart(ctx, user.ID); err != nil {
 		cfg.handleCartError(w, r, err, "clear_cart", ip, userAgent)
 		return
 	}
@@ -95,11 +97,15 @@ func (cfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *ht
 }
 
 // HandlerRemoveItemFromGuestCart handles HTTP requests to remove an item from a guest cart (session-based).
-// Extracts the session ID, parses and validates the request body, calls the service layer, logs the operation, and returns a JSON response or error.
-// Expects a valid session ID and DeleteItemRequest in the request body.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Remove item from guest cart
+// @Description  Removes an item from the guest cart (session-based)
+// @Tags         guest-cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  DeleteItemRequest  true  "Delete item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/items [delete]
 func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -142,8 +148,7 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWri
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	if err := cartService.RemoveGuestItem(ctx, sessionID, req.ProductID); err != nil {
+	if err := cfg.GetCartService().RemoveGuestItem(ctx, sessionID, req.ProductID); err != nil {
 		cfg.handleCartError(w, r, err, "remove_item_from_guest_cart", ip, userAgent)
 		return
 	}
@@ -156,11 +161,13 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWri
 }
 
 // HandlerClearGuestCart handles HTTP requests to clear all items from a guest cart (session-based).
-// Extracts the session ID, calls the service layer, logs the operation, and returns a JSON response indicating success or error.
-// Expects a valid session ID in the request context.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
+// @Summary      Clear guest cart
+// @Description  Clears all items from the guest cart (session-based)
+// @Tags         guest-cart
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/ [delete]
 func (cfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -178,8 +185,7 @@ func (cfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r *h
 		return
 	}
 
-	cartService := cfg.GetCartService()
-	if err := cartService.DeleteGuestCart(ctx, sessionID); err != nil {
+	if err := cfg.GetCartService().DeleteGuestCart(ctx, sessionID); err != nil {
 		cfg.handleCartError(w, r, err, "clear_guest_cart", ip, userAgent)
 		return
 	}

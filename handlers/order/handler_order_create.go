@@ -15,11 +15,15 @@ import (
 // handler_order_create.go: Handles order creation requests. Validates input, delegates to service, logs the event, and returns the result or error.
 
 // HandlerCreateOrder handles HTTP POST requests to create a new order.
-// Validates the request payload, parses order creation parameters, calls the business logic service, logs the event, and responds with the created order details or error.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Create order
+// @Description  Creates a new order for the authenticated user
+// @Tags         orders
+// @Accept       json
+// @Produce      json
+// @Param        order  body  object{}  true  "Order payload"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/ [post]
 func (cfg *HandlersOrderConfig) HandlerCreateOrder(w http.ResponseWriter, r *http.Request, user database.User) {
 	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)

@@ -15,12 +15,15 @@ import (
 // handler_payment_confirm.go: HTTP handler for processing payment confirmation and responding with status.
 
 // HandlerConfirmPayment handles HTTP POST requests to confirm a payment.
-// Parses the request body for payment confirmation parameters, validates them, and delegates confirmation to the payment service.
-// On success, logs the event and responds with the payment status; on error, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
+// @Summary      Confirm payment
+// @Description  Confirms a payment for an order
+// @Tags         payments
+// @Accept       json
+// @Produce      json
+// @Param        payment  body  object{}  true  "Payment confirmation payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/payments/confirm [post]
 func (cfg *HandlersPaymentConfig) HandlerConfirmPayment(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
@@ -38,11 +41,8 @@ func (cfg *HandlersPaymentConfig) HandlerConfirmPayment(w http.ResponseWriter, r
 		return
 	}
 
-	// Get payment service
-	paymentService := cfg.GetPaymentService()
-
 	// Confirm payment using service
-	result, err := paymentService.ConfirmPayment(ctx, ConfirmPaymentParams{
+	result, err := cfg.GetPaymentService().ConfirmPayment(ctx, ConfirmPaymentParams{
 		OrderID: req.OrderID,
 		UserID:  user.ID,
 	})
