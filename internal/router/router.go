@@ -6,6 +6,11 @@ import (
 
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	authhandlers "github.com/STaninnat/ecom-backend/handlers/auth"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
@@ -18,10 +23,6 @@ import (
 	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
 	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/sirupsen/logrus"
 )
 
 // router.go: Main API router setup, middleware configuration, and route registration.
@@ -81,7 +82,7 @@ func (apicfg *Config) setupGlobalMiddleware(router *chi.Mux, logger *logrus.Logg
 	// - AllowCredentials: Disallows cookies/auth headers by default (set to true if needed)
 	// - MaxAge: Caches preflight response for 5 minutes
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedOrigins:   []string{"https://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		ExposedHeaders:   []string{"Link"},
@@ -139,6 +140,10 @@ func (apicfg *Config) createHandlerConfigs() *handlerConfigs {
 	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{Config: apicfg.Config}
 	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{Config: apicfg.Config}
 
+	// Initialize MongoDB-dependent configs as nil
+	var cartConfig *carthandlers.HandlersCartConfig
+	var reviewConfig *reviewhandlers.HandlersReviewConfig
+
 	return &handlerConfigs{
 		auth:     authHandlersConfig,
 		user:     userHandlersConfig,
@@ -146,6 +151,8 @@ func (apicfg *Config) createHandlerConfigs() *handlerConfigs {
 		category: categoryHandlersConfig,
 		order:    orderHandlersConfig,
 		payment:  paymentHandlersConfig,
+		cart:     cartConfig,
+		review:   reviewConfig,
 	}
 }
 
@@ -306,7 +313,8 @@ func (apicfg *Config) setupOrderRoutes(v1Router *chi.Mux, orderConfig *orderhand
 
 func (apicfg *Config) setupCartRoutes(v1Router *chi.Mux, cartConfig *carthandlers.HandlersCartConfig) {
 	// --- Cart Subrouter ---
-	if cartConfig != nil {
+	// Only register cart routes if MongoDB is configured and cart config is initialized
+	if apicfg.MongoDB != nil && cartConfig != nil {
 		cartRouter := chi.NewRouter()
 		cartRouter.Post("/items", WithUser(cartConfig.HandlerAddItemToUserCart))        // Add item to user cart
 		cartRouter.Put("/items", WithUser(cartConfig.HandlerUpdateItemQuantity))        // Update item quantity in user cart
@@ -317,7 +325,8 @@ func (apicfg *Config) setupCartRoutes(v1Router *chi.Mux, cartConfig *carthandler
 		v1Router.Mount("/cart", cartRouter)
 	}
 	// --- Guest Cart Subrouter ---
-	if cartConfig != nil {
+	// Only register guest cart routes if MongoDB is configured and cart config is initialized
+	if apicfg.MongoDB != nil && cartConfig != nil {
 		guestCartRouter := chi.NewRouter()
 		guestCartRouter.Post("/items", Adapt(cartConfig.HandlerAddItemToGuestCart))        // Add item to guest cart (no auth)
 		guestCartRouter.Get("/", Adapt(cartConfig.HandlerGetGuestCart))                    // Get guest cart (no auth)

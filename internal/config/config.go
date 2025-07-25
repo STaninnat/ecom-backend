@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // config.go: Main API configuration struct, loading, and environment integration.

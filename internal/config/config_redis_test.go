@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // config_redis_test.go: Tests for Redis connection helpers and error handling.
@@ -27,7 +28,7 @@ func TestInitRedisWithError_Error(t *testing.T) {
 	t.Setenv("REDIS_USERNAME", "")
 	t.Setenv("REDIS_PASSWORD", "")
 	cmdable, err := InitRedisWithError(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cmdable)
 }
 

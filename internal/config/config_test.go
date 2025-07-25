@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // config_test.go: Tests for main API configuration struct and environment integration.
@@ -36,7 +37,7 @@ func TestLoadConfigWithProviders_Success(t *testing.T) {
 		mockProvider,
 		nil, nil, nil, nil, nil,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "8080", cfg.Port)
 	assert.Equal(t, "test-jwt-secret", cfg.JWTSecret)
@@ -80,7 +81,7 @@ func TestLoadConfigWithProviders_MissingRequiredValue(t *testing.T) {
 		mockProvider,
 		nil, nil, nil, nil, nil,
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -88,7 +89,7 @@ func TestLoadConfigWithProviders_MissingRequiredValue(t *testing.T) {
 // It verifies that the testing configuration is properly loaded with default values.
 func TestLoadConfigForTesting(t *testing.T) {
 	cfg, err := LoadConfigForTesting(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "8080", cfg.Port)
 	assert.Equal(t, "test-jwt-secret", cfg.JWTSecret)
@@ -126,7 +127,7 @@ func TestMockConfigProvider_BoolAndInt(t *testing.T) {
 // It verifies that the function handles nil providers gracefully and returns appropriate errors.
 func TestLoadConfigWithProviders_AllNilProviders(t *testing.T) {
 	cfg, err := LoadConfigWithProviders(context.Background(), nil, nil, nil, nil, nil, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -154,7 +155,7 @@ func TestLoadConfigWithError_Success(t *testing.T) {
 		context.Background(),
 		mockProvider, nil, nil, nil, nil, nil,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 }
 
@@ -182,7 +183,7 @@ func TestLoadConfigWithError_MissingRequiredValue(t *testing.T) {
 		context.Background(),
 		mockProvider, nil, nil, nil, nil, nil,
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -205,8 +206,8 @@ func TestMockConfigProvider_GetRequiredString_Error(t *testing.T) {
 		values: map[string]string{},
 	}
 	val, err := mockProvider.GetRequiredString("NOT_SET")
-	assert.Error(t, err)
-	assert.Equal(t, "", val)
+	require.Error(t, err)
+	assert.Empty(t, val)
 }
 
 // TestMockConfigProvider_GetInt_Invalid tests the GetInt method of MockConfigProvider with invalid input.
@@ -241,7 +242,7 @@ func TestLoadConfigWithError_DirectCall(t *testing.T) {
 	cfg, err := LoadConfigWithError(ctx)
 	// This will likely fail due to missing env vars, but we're testing the function call
 	// The error is expected in a test environment
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -278,7 +279,7 @@ func TestLoadConfigWithProviders_ValidatorError(t *testing.T) {
 		nil, nil, nil, nil, nil,
 	)
 	// This should fail due to missing PORT in required string
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Contains(t, err.Error(), "required environment variable PORT is not set")
 }
@@ -292,7 +293,7 @@ func TestMockConfigProvider_GetString(t *testing.T) {
 		},
 	}
 	assert.Equal(t, "bar", mockProvider.GetString("FOO"))
-	assert.Equal(t, "", mockProvider.GetString("NOT_SET"))
+	assert.Empty(t, mockProvider.GetString("NOT_SET"))
 }
 
 // TestMockConfigProvider_GetIntOrDefault_EdgeCases tests the GetIntOrDefault method of MockConfigProvider with edge cases.

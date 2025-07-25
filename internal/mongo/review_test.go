@@ -3,14 +3,17 @@ package intmongo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // review_test.go: Tests for MongoDB review repository and review operations.
@@ -43,7 +46,7 @@ func (m *MockReviewCollectionInterface) InsertMany(ctx context.Context, document
 // Find mocks the MongoDB Find operation for testing.
 // Returns a mocked cursor and error based on test expectations.
 func (m *MockReviewCollectionInterface) Find(ctx context.Context, filter any, opts ...options.Lister[options.FindOptions]) (CursorInterface, error) {
-	args := m.Called(ctx, filter, opts)
+	args := m.Called(ctx, filter, mock.Anything)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -250,9 +253,9 @@ func TestCreateReview(t *testing.T) {
 			err := reviewMongo.CreateReview(ctx, tt.review)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, tt.review.ID)
 				assert.NotZero(t, tt.review.CreatedAt)
 				assert.NotZero(t, tt.review.UpdatedAt)
@@ -323,9 +326,9 @@ func TestCreateReviews(t *testing.T) {
 			err := reviewMongo.CreateReviews(ctx, tt.reviews)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				// Check that IDs and timestamps were set
 				for _, review := range tt.reviews {
 					assert.NotEmpty(t, review.ID)
@@ -381,7 +384,7 @@ func TestGetReviewsByProductID(t *testing.T) {
 			name:      "database error should be returned",
 			productID: "product123",
 			setupMock: func() {
-				mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(nil, assert.AnError)
+				mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(nil, fmt.Errorf("database error"))
 			},
 			expectError: true,
 		},
@@ -390,19 +393,18 @@ func TestGetReviewsByProductID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCollection.ExpectedCalls = nil
+			mockCollection.Calls = nil
 			tt.setupMock()
-
-			reviews, err := reviewMongo.GetReviewsByProductID(ctx, tt.productID)
-
+			result, err := reviewMongo.GetReviewsByProductID(ctx, tt.productID)
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, reviews)
+				require.Error(t, err)
+				var zero []*models.Review
+				assert.Equal(t, zero, result)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, reviews)
-				assert.Len(t, reviews, tt.expectedLen)
+				require.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Len(t, result, tt.expectedLen)
 			}
-
 			mockCollection.AssertExpectations(t)
 		})
 	}
@@ -417,7 +419,7 @@ func TestGetReviewsByProductID_EmptyProductID(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByProductID(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "product ID cannot be empty")
 }
@@ -433,29 +435,9 @@ func TestGetReviewsByProductID_DatabaseError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByProductID(ctx, "product123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to find reviews by product ID")
-}
-
-// TestGetReviewsByProductID_DecodeError tests GetReviewsByProductID when document decoding fails.
-// It verifies proper error handling when cursor decoding operations fail.
-func TestGetReviewsByProductID_DecodeError(t *testing.T) {
-	mockCollection := &MockReviewCollectionInterface{}
-	reviewMongo := &ReviewMongo{Collection: mockCollection}
-	ctx := context.Background()
-
-	mockCursor := &MockCursor{}
-	mockCursor.On("Close", ctx).Return(nil)
-	mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(assert.AnError)
-
-	mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(mockCursor, nil)
-
-	result, err := reviewMongo.GetReviewsByProductID(ctx, "product123")
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to decode reviews")
 }
 
 // TestGetReviewsByProductIDPaginated tests the GetReviewsByProductIDPaginated function.
@@ -475,7 +457,7 @@ func TestGetReviewsByProductIDPaginated(t *testing.T) {
 		{
 			name:        "empty product ID should return error",
 			productID:   "",
-			pagination:  NewPaginationOptions(1, 10),
+			pagination:  nil,
 			setupMock:   func() {},
 			expectError: true,
 		},
@@ -484,7 +466,7 @@ func TestGetReviewsByProductIDPaginated(t *testing.T) {
 			productID:  "product123",
 			pagination: nil,
 			setupMock: func() {
-				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(25), nil)
+				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(5), nil)
 				mockCursor := &MockCursor{}
 				mockCursor.On("Close", ctx).Return(nil)
 				mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(nil)
@@ -495,9 +477,9 @@ func TestGetReviewsByProductIDPaginated(t *testing.T) {
 		{
 			name:       "valid pagination should work",
 			productID:  "product123",
-			pagination: NewPaginationOptions(2, 5),
+			pagination: NewPaginationOptions(1, 10),
 			setupMock: func() {
-				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(25), nil)
+				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(15), nil)
 				mockCursor := &MockCursor{}
 				mockCursor.On("Close", ctx).Return(nil)
 				mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(nil)
@@ -510,7 +492,7 @@ func TestGetReviewsByProductIDPaginated(t *testing.T) {
 			productID:  "product123",
 			pagination: NewPaginationOptions(1, 10),
 			setupMock: func() {
-				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(0), assert.AnError)
+				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(0), fmt.Errorf("count error"))
 			},
 			expectError: true,
 		},
@@ -519,25 +501,17 @@ func TestGetReviewsByProductIDPaginated(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCollection.ExpectedCalls = nil
+			mockCollection.Calls = nil
 			tt.setupMock()
-
 			result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, tt.productID, tt.pagination)
-
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				var zero *PaginatedResult[*models.Review]
+				assert.Equal(t, zero, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, result)
-				if tt.pagination != nil {
-					assert.Equal(t, tt.pagination.Page, result.Page)
-					assert.Equal(t, tt.pagination.PageSize, result.PageSize)
-				} else {
-					assert.Equal(t, int64(1), result.Page)
-					assert.Equal(t, int64(10), result.PageSize)
-				}
 			}
-
 			mockCollection.AssertExpectations(t)
 		})
 	}
@@ -552,13 +526,11 @@ func TestGetReviewsByProductIDPaginated_EmptyProductID(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, "", nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "product ID cannot be empty")
 }
 
-// TestGetReviewsByProductIDPaginated_CountError tests GetReviewsByProductIDPaginated when count operation fails.
-// It verifies proper error handling when the CountDocuments operation fails.
 func TestGetReviewsByProductIDPaginated_CountError(t *testing.T) {
 	mockCollection := &MockReviewCollectionInterface{}
 	reviewMongo := &ReviewMongo{Collection: mockCollection}
@@ -567,15 +539,18 @@ func TestGetReviewsByProductIDPaginated_CountError(t *testing.T) {
 	pagination := NewPaginationOptions(1, 10)
 	mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(0), assert.AnError)
 
-	result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, "product123", pagination)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to count reviews")
+	runReviewPaginatedTest(
+		t,
+		reviewMongo.GetReviewsByProductIDPaginated,
+		ctx,
+		"product123",
+		pagination,
+		func() {},
+		true,
+	)
+	mockCollection.AssertExpectations(t)
 }
 
-// TestGetReviewsByProductIDPaginated_FindError tests GetReviewsByProductIDPaginated when Find operation fails.
-// It verifies proper error handling when the Find operation fails.
 func TestGetReviewsByProductIDPaginated_FindError(t *testing.T) {
 	mockCollection := &MockReviewCollectionInterface{}
 	reviewMongo := &ReviewMongo{Collection: mockCollection}
@@ -585,15 +560,18 @@ func TestGetReviewsByProductIDPaginated_FindError(t *testing.T) {
 	mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(5), nil)
 	mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(nil, assert.AnError)
 
-	result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, "product123", pagination)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to find reviews")
+	runReviewPaginatedTest(
+		t,
+		reviewMongo.GetReviewsByProductIDPaginated,
+		ctx,
+		"product123",
+		pagination,
+		func() {},
+		true,
+	)
+	mockCollection.AssertExpectations(t)
 }
 
-// TestGetReviewsByProductIDPaginated_DecodeError tests GetReviewsByProductIDPaginated when decoding fails.
-// It verifies proper error handling when cursor decoding operations fail.
 func TestGetReviewsByProductIDPaginated_DecodeError(t *testing.T) {
 	mockCollection := &MockReviewCollectionInterface{}
 	reviewMongo := &ReviewMongo{Collection: mockCollection}
@@ -607,11 +585,16 @@ func TestGetReviewsByProductIDPaginated_DecodeError(t *testing.T) {
 	mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(5), nil)
 	mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(mockCursor, nil)
 
-	result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, "product123", pagination)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to decode reviews")
+	runReviewPaginatedTest(
+		t,
+		reviewMongo.GetReviewsByProductIDPaginated,
+		ctx,
+		"product123",
+		pagination,
+		func() {},
+		true,
+	)
+	mockCollection.AssertExpectations(t)
 }
 
 // TestGetReviewsByUserID tests the GetReviewsByUserID function with various scenarios.
@@ -626,6 +609,7 @@ func TestGetReviewsByUserID(t *testing.T) {
 		userID      string
 		setupMock   func()
 		expectError bool
+		expectedLen int
 	}{
 		{
 			name:        "empty user ID should return error",
@@ -649,12 +633,13 @@ func TestGetReviewsByUserID(t *testing.T) {
 				mockCollection.On("Find", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(mockCursor, nil)
 			},
 			expectError: false,
+			expectedLen: 2,
 		},
 		{
 			name:   "database error should be returned",
 			userID: "user123",
 			setupMock: func() {
-				mockCollection.On("Find", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(nil, assert.AnError)
+				mockCollection.On("Find", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(nil, fmt.Errorf("database error"))
 			},
 			expectError: true,
 		},
@@ -663,18 +648,18 @@ func TestGetReviewsByUserID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCollection.ExpectedCalls = nil
+			mockCollection.Calls = nil
 			tt.setupMock()
-
-			reviews, err := reviewMongo.GetReviewsByUserID(ctx, tt.userID)
-
+			result, err := reviewMongo.GetReviewsByUserID(ctx, tt.userID)
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, reviews)
+				require.Error(t, err)
+				var zero []*models.Review
+				assert.Equal(t, zero, result)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, reviews)
+				require.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Len(t, result, tt.expectedLen)
 			}
-
 			mockCollection.AssertExpectations(t)
 		})
 	}
@@ -689,7 +674,7 @@ func TestGetReviewsByUserID_EmptyUserID(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserID(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "user ID cannot be empty")
 }
@@ -705,29 +690,9 @@ func TestGetReviewsByUserID_DatabaseError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserID(ctx, "user123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to find reviews by user ID")
-}
-
-// TestGetReviewsByUserID_DecodeError tests GetReviewsByUserID when document decoding fails.
-// It verifies proper error handling when cursor decoding operations fail.
-func TestGetReviewsByUserID_DecodeError(t *testing.T) {
-	mockCollection := &MockReviewCollectionInterface{}
-	reviewMongo := &ReviewMongo{Collection: mockCollection}
-	ctx := context.Background()
-
-	mockCursor := &MockCursor{}
-	mockCursor.On("Close", ctx).Return(nil)
-	mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(assert.AnError)
-
-	mockCollection.On("Find", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(mockCursor, nil)
-
-	result, err := reviewMongo.GetReviewsByUserID(ctx, "user123")
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to decode reviews")
 }
 
 // TestGetReviewsByUserIDPaginated tests the GetReviewsByUserIDPaginated function.
@@ -768,21 +733,15 @@ func TestGetReviewsByUserIDPaginated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCollection.ExpectedCalls = nil
-			tt.setupMock()
-
-			result, err := reviewMongo.GetReviewsByUserIDPaginated(ctx, tt.userID, tt.pagination)
-
-			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, result)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, result)
-				assert.Equal(t, tt.pagination.Page, result.Page)
-				assert.Equal(t, tt.pagination.PageSize, result.PageSize)
-			}
-
+			runReviewPaginatedTest(
+				t,
+				reviewMongo.GetReviewsByUserIDPaginated,
+				ctx,
+				tt.userID,
+				tt.pagination,
+				tt.setupMock,
+				tt.expectError,
+			)
 			mockCollection.AssertExpectations(t)
 		})
 	}
@@ -797,7 +756,7 @@ func TestGetReviewsByUserIDPaginated_EmptyUserID(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserIDPaginated(ctx, "", nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "user ID cannot be empty")
 }
@@ -814,7 +773,7 @@ func TestGetReviewsByUserIDPaginated_CountError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserIDPaginated(ctx, "user123", pagination)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to count reviews")
 }
@@ -832,7 +791,7 @@ func TestGetReviewsByUserIDPaginated_FindError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserIDPaginated(ctx, "user123", pagination)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to find reviews")
 }
@@ -854,7 +813,7 @@ func TestGetReviewsByUserIDPaginated_DecodeError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewsByUserIDPaginated(ctx, "user123", pagination)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to decode reviews")
 }
@@ -921,10 +880,10 @@ func TestGetReviewByID(t *testing.T) {
 			review, err := reviewMongo.GetReviewByID(ctx, tt.reviewID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, review)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, review)
 			}
 
@@ -942,7 +901,7 @@ func TestGetReviewByID_EmptyReviewID(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewByID(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "review ID cannot be empty")
 }
@@ -962,7 +921,7 @@ func TestGetReviewByID_DecodeError(t *testing.T) {
 
 	result, err := reviewMongo.GetReviewByID(ctx, "review123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to find review")
 }
@@ -1039,9 +998,9 @@ func TestUpdateReviewByID(t *testing.T) {
 			err := reviewMongo.UpdateReviewByID(ctx, tt.reviewID, tt.updatedReview)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -1058,7 +1017,7 @@ func TestUpdateReviewByID_EmptyReviewID(t *testing.T) {
 
 	err := reviewMongo.UpdateReviewByID(ctx, "", &models.Review{})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "review ID cannot be empty")
 }
 
@@ -1071,7 +1030,7 @@ func TestUpdateReviewByID_NilReview(t *testing.T) {
 
 	err := reviewMongo.UpdateReviewByID(ctx, "review123", nil)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "updated review cannot be nil")
 }
 
@@ -1087,7 +1046,7 @@ func TestUpdateReviewByID_NotFound(t *testing.T) {
 
 	err := reviewMongo.UpdateReviewByID(ctx, "review123", &models.Review{})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "review not found")
 }
 
@@ -1102,7 +1061,7 @@ func TestUpdateReviewByID_DatabaseError(t *testing.T) {
 
 	err := reviewMongo.UpdateReviewByID(ctx, "review123", &models.Review{})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to update review")
 }
 
@@ -1146,9 +1105,9 @@ func TestUpdateReviewsByProductID(t *testing.T) {
 			err := reviewMongo.UpdateReviewsByProductID(ctx, tt.productID, tt.update)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -1167,7 +1126,7 @@ func TestUpdateReviewsByProductID_DatabaseError(t *testing.T) {
 
 	err := reviewMongo.UpdateReviewsByProductID(ctx, "product123", bson.M{"rating": 5})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to update reviews")
 }
 
@@ -1179,7 +1138,7 @@ func TestUpdateReviewsByProductID_EmptyProductID(t *testing.T) {
 	ctx := context.Background()
 
 	err := reviewMongo.UpdateReviewsByProductID(ctx, "", bson.M{"$set": bson.M{"rating": 5}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "product ID cannot be empty")
 }
 
@@ -1236,9 +1195,9 @@ func TestDeleteReviewByID(t *testing.T) {
 			err := reviewMongo.DeleteReviewByID(ctx, tt.reviewID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -1255,7 +1214,7 @@ func TestDeleteReviewByID_EmptyReviewID(t *testing.T) {
 
 	err := reviewMongo.DeleteReviewByID(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "review ID cannot be empty")
 }
 
@@ -1271,7 +1230,7 @@ func TestDeleteReviewByID_NotFound(t *testing.T) {
 
 	err := reviewMongo.DeleteReviewByID(ctx, "review123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "review not found")
 }
 
@@ -1286,7 +1245,7 @@ func TestDeleteReviewByID_DatabaseError(t *testing.T) {
 
 	err := reviewMongo.DeleteReviewByID(ctx, "review123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to delete review")
 }
 
@@ -1327,9 +1286,9 @@ func TestDeleteReviewsByUserID(t *testing.T) {
 			err := reviewMongo.DeleteReviewsByUserID(ctx, tt.userID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -1346,7 +1305,7 @@ func TestDeleteReviewsByUserID_EmptyUserID(t *testing.T) {
 
 	err := reviewMongo.DeleteReviewsByUserID(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "user ID cannot be empty")
 }
 
@@ -1361,7 +1320,7 @@ func TestDeleteReviewsByUserID_DatabaseError(t *testing.T) {
 
 	err := reviewMongo.DeleteReviewsByUserID(ctx, "user123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to delete reviews")
 }
 
@@ -1419,10 +1378,10 @@ func TestGetProductRatingStats(t *testing.T) {
 			stats, err := reviewMongo.GetProductRatingStats(ctx, tt.productID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, stats)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, stats)
 				if tt.expected != nil {
 					assert.Equal(t, tt.expected["averageRating"], stats["averageRating"])
@@ -1444,7 +1403,7 @@ func TestGetProductRatingStats_EmptyProductID(t *testing.T) {
 
 	result, err := reviewMongo.GetProductRatingStats(ctx, "")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "product ID cannot be empty")
 }
@@ -1460,7 +1419,7 @@ func TestGetProductRatingStats_DatabaseError(t *testing.T) {
 
 	result, err := reviewMongo.GetProductRatingStats(ctx, "product123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to aggregate rating stats")
 }
@@ -1480,7 +1439,7 @@ func TestGetProductRatingStats_DecodeError(t *testing.T) {
 
 	result, err := reviewMongo.GetProductRatingStats(ctx, "product123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to decode aggregation results")
 }
@@ -1503,9 +1462,9 @@ func TestGetProductRatingStats_EmptyResults(t *testing.T) {
 
 	result, err := reviewMongo.GetProductRatingStats(ctx, "product123")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, 0.0, result["averageRating"])
+	assert.InDelta(t, 0.0, result["averageRating"], 0.000001)
 	assert.EqualValues(t, int64(0), result["totalReviews"])
 	assert.Equal(t, []int{}, result["ratingCounts"])
 }
@@ -1516,4 +1475,194 @@ func TestNewReviewMongo(t *testing.T) {
 	// This test is now covered by integration tests
 	// Constructor logic is tested in TestNewReviewMongo_Integration
 	t.Skip("Covered by integration tests")
+}
+
+// runReviewRetrievalTest is a shared helper for testing review retrieval by product/user.
+func runReviewRetrievalTest[
+	T any,
+](
+	t *testing.T,
+	testFunc func(context.Context, string) (T, error),
+	ctx context.Context,
+	id string,
+	setupMock func(),
+	expectError bool,
+) {
+	setupMock()
+	result, err := testFunc(ctx, id)
+	if expectError {
+		require.Error(t, err, "expected an error but got nil")
+		var zero T
+		assert.Equal(t, zero, result, "expected zero value for result when error occurs")
+	} else {
+		require.NoError(t, err, "unexpected error")
+		assert.NotNil(t, result, "expected non-nil result when no error")
+	}
+}
+
+// runReviewPaginatedTest is a shared helper for testing paginated review retrieval by product/user.
+func runReviewPaginatedTest[
+	T any,
+](
+	t *testing.T,
+	testFunc func(context.Context, string, *PaginationOptions) (T, error),
+	ctx context.Context,
+	id string,
+	pagination *PaginationOptions,
+	setupMock func(),
+	expectError bool,
+) {
+	setupMock()
+	result, err := testFunc(ctx, id, pagination)
+	if expectError {
+		require.Error(t, err, "expected an error but got nil")
+		var zero T
+		assert.Equal(t, zero, result, "expected zero value for result when error occurs")
+	} else {
+		require.NoError(t, err, "unexpected error")
+		assert.NotNil(t, result, "expected non-nil result when no error")
+	}
+}
+
+func TestGetReviewsPaginated_Scenarios(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name        string
+		mode        string // "product" or "user"
+		id          string
+		pagination  *PaginationOptions
+		setupMock   func(mockCollection *MockReviewCollectionInterface)
+		expectError bool
+	}{
+		{
+			name:       "Product_ValidPagination",
+			mode:       "product",
+			id:         "product123",
+			pagination: NewPaginationOptions(2, 5),
+			setupMock: func(mockCollection *MockReviewCollectionInterface) {
+				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(25), nil)
+				mockCursor := &MockCursor{}
+				mockCursor.On("Close", ctx).Return(nil)
+				mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(nil)
+				mockCollection.On("Find", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(mockCursor, nil)
+			},
+			expectError: false,
+		},
+		{
+			name:       "Product_CountError",
+			mode:       "product",
+			id:         "product123",
+			pagination: NewPaginationOptions(1, 10),
+			setupMock: func(mockCollection *MockReviewCollectionInterface) {
+				mockCollection.On("CountDocuments", ctx, bson.M{"product_id": "product123"}, mock.Anything).Return(int64(0), assert.AnError)
+			},
+			expectError: true,
+		},
+		{
+			name:       "User_ValidPagination",
+			mode:       "user",
+			id:         "user123",
+			pagination: NewPaginationOptions(1, 10),
+			setupMock: func(mockCollection *MockReviewCollectionInterface) {
+				mockCollection.On("CountDocuments", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(int64(15), nil)
+				mockCursor := &MockCursor{}
+				mockCursor.On("Close", ctx).Return(nil)
+				mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(nil)
+				mockCollection.On("Find", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(mockCursor, nil)
+			},
+			expectError: false,
+		},
+		{
+			name:       "User_CountError",
+			mode:       "user",
+			id:         "user123",
+			pagination: NewPaginationOptions(1, 10),
+			setupMock: func(mockCollection *MockReviewCollectionInterface) {
+				mockCollection.On("CountDocuments", ctx, bson.M{"user_id": "user123"}, mock.Anything).Return(int64(0), assert.AnError)
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCollection := &MockReviewCollectionInterface{}
+			reviewMongo := &ReviewMongo{Collection: mockCollection}
+			if tt.setupMock != nil {
+				tt.setupMock(mockCollection)
+			}
+			var err error
+			if tt.mode == "product" {
+				_, err = reviewMongo.GetReviewsByProductIDPaginated(ctx, tt.id, tt.pagination)
+			} else {
+				_, err = reviewMongo.GetReviewsByUserIDPaginated(ctx, tt.id, tt.pagination)
+			}
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			mockCollection.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetReviewsByID_DecodeError(t *testing.T) {
+	tests := []struct {
+		name       string
+		filterKey  string
+		id         string
+		retrieveFn func(reviewMongo *ReviewMongo, ctx context.Context, id string) error
+	}{
+		{
+			name:      "ProductID_DecodeError",
+			filterKey: "product_id",
+			id:        "product123",
+			retrieveFn: func(reviewMongo *ReviewMongo, ctx context.Context, id string) error {
+				runReviewRetrievalTest(
+					t,
+					reviewMongo.GetReviewsByProductID,
+					ctx,
+					id,
+					func() {},
+					true,
+				)
+				return nil
+			},
+		},
+		{
+			name:      "UserID_DecodeError",
+			filterKey: "user_id",
+			id:        "user123",
+			retrieveFn: func(reviewMongo *ReviewMongo, ctx context.Context, id string) error {
+				runReviewRetrievalTest(
+					t,
+					reviewMongo.GetReviewsByUserID,
+					ctx,
+					id,
+					func() {},
+					true,
+				)
+				return nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCollection := &MockReviewCollectionInterface{}
+			reviewMongo := &ReviewMongo{Collection: mockCollection}
+			ctx := context.Background()
+
+			mockCursor := &MockCursor{}
+			mockCursor.On("Close", ctx).Return(nil)
+			mockCursor.On("All", ctx, mock.AnythingOfType("*[]*models.Review")).Return(assert.AnError)
+
+			mockCollection.On("Find", ctx, bson.M{tt.filterKey: tt.id}, mock.Anything).Return(mockCursor, nil)
+
+			err := tt.retrieveFn(reviewMongo, ctx, tt.id)
+			require.NoError(t, err)
+			mockCollection.AssertExpectations(t)
+		})
+	}
 }

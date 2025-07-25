@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // config_db_test.go: Tests for PostgreSQL database connection helpers and error handling.
@@ -42,7 +43,7 @@ func TestConnectDB_MissingDatabaseURL(t *testing.T) {
 func TestConnectDBWithError_MissingDatabaseURL(t *testing.T) {
 	cfg := &APIConfig{}
 	err := cfg.ConnectDBWithError(context.TODO())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database URL is not set")
 }
 

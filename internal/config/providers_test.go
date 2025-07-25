@@ -14,6 +14,7 @@ import (
 	redismock "github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -35,7 +36,7 @@ func TestEnvironmentProvider_GetString(t *testing.T) {
 		}
 	})
 	assert.Equal(t, "bar", provider.GetString("FOO"))
-	assert.Equal(t, "", provider.GetString("NOT_SET"))
+	assert.Empty(t, provider.GetString("NOT_SET"))
 }
 
 // TestEnvironmentProvider_GetStringOrDefault tests the GetStringOrDefault method of EnvironmentProvider.
@@ -67,7 +68,7 @@ func TestEnvironmentProvider_GetRequiredString(t *testing.T) {
 		}
 	})
 	val, err := provider.GetRequiredString("FOO")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
 	_, err = provider.GetRequiredString("NOT_SET")
 	assert.Error(t, err)
@@ -181,7 +182,7 @@ func TestEnvironmentProvider_GetBoolOrDefault(t *testing.T) {
 // It verifies that the provider can establish a connection and return valid database and queries objects.
 func TestPostgresProvider_Connect_Success(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mock.ExpectPing()
 	mock.ExpectClose()
 	defer func() {
@@ -195,7 +196,7 @@ func TestPostgresProvider_Connect_Success(t *testing.T) {
 	}}
 
 	dbOut, queries, err := provider.Connect(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, dbOut)
 	assert.NotNil(t, queries)
 }
@@ -208,7 +209,7 @@ func TestPostgresProvider_Connect_OpenError(t *testing.T) {
 	}}
 
 	dbOut, queries, err := provider.Connect(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, dbOut)
 	assert.Nil(t, queries)
 }
@@ -217,7 +218,7 @@ func TestPostgresProvider_Connect_OpenError(t *testing.T) {
 // It verifies that the provider returns an error when the database ping operation fails.
 func TestPostgresProvider_Connect_PingError(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mock.ExpectClose()
 	err = db.Close() // Close the db to force ping to fail
 	if err != nil {
@@ -229,7 +230,7 @@ func TestPostgresProvider_Connect_PingError(t *testing.T) {
 	}}
 
 	dbOut, queries, err := provider.Connect(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, dbOut)
 	assert.Nil(t, queries)
 }
@@ -238,7 +239,7 @@ func TestPostgresProvider_Connect_PingError(t *testing.T) {
 // It verifies that the provider can close the database connection without errors.
 func TestPostgresProvider_Close(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mock.ExpectClose()
 	provider := &PostgresProvider{db: db}
 	assert.NoError(t, provider.Close())
@@ -255,7 +256,7 @@ func TestPostgresProvider_Close_NilDB(t *testing.T) {
 // It verifies that the provider returns an error when the database close operation fails.
 func TestPostgresProvider_Close_Error(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mock.ExpectClose().WillReturnError(errors.New("close error"))
 	provider := &PostgresProvider{db: db}
 	assert.Error(t, provider.Close())
@@ -275,7 +276,7 @@ func TestRedisProviderImpl_Connect_Success(t *testing.T) {
 	}
 
 	cmdable, err := provider.Connect(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cmdable)
 }
 
@@ -293,7 +294,7 @@ func TestRedisProviderImpl_Connect_PingError(t *testing.T) {
 	}
 
 	cmdable, err := provider.Connect(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cmdable)
 }
 
@@ -331,7 +332,7 @@ func TestMongoProviderImpl_Connect_ConnectError(t *testing.T) {
 		},
 	}
 	client, db, err := provider.Connect(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, client)
 	assert.Nil(t, db)
 }
@@ -349,7 +350,7 @@ func TestMongoProviderImpl_Connect_PingError(t *testing.T) {
 	}
 	client, db, err := provider.Connect(context.Background())
 	// This will likely fail due to ping error, but we test the function call
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, client)
 	assert.Nil(t, db)
 }
@@ -379,7 +380,7 @@ func TestS3ProviderImpl_CreateClient_Success(t *testing.T) {
 		},
 	}
 	client, err := provider.CreateClient(context.Background(), "us-east-1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -392,7 +393,7 @@ func TestS3ProviderImpl_CreateClient_ConfigError(t *testing.T) {
 		},
 	}
 	client, err := provider.CreateClient(context.Background(), "us-east-1")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, client)
 }
 
@@ -406,7 +407,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_Success(t *testing.T) {
 		},
 	}
 	cfg, err := provider.LoadGoogleConfig("/safe/path/creds.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.NotNil(t, cfg.Google)
 }
@@ -420,7 +421,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_FileError(t *testing.T) {
 		},
 	}
 	cfg, err := provider.LoadGoogleConfig("/safe/path/creds.json")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -433,7 +434,7 @@ func TestOAuthProviderImpl_LoadGoogleConfig_ParseError(t *testing.T) {
 		},
 	}
 	cfg, err := provider.LoadGoogleConfig("/safe/path/creds.json")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -446,6 +447,6 @@ func TestOAuthProviderImpl_LoadGoogleConfig_UnsafePath(t *testing.T) {
 		},
 	}
 	cfg, err := provider.LoadGoogleConfig("../unsafe/creds.json")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }

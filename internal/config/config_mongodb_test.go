@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // config_mongodb_test.go: Tests for MongoDB connection helpers and error handling.
@@ -25,7 +26,7 @@ func TestConnectMongoDB_Error(_ *testing.T) {
 func TestConnectMongoDBWithError_Error(t *testing.T) {
 	// Use a bad URI to trigger an error
 	client, db, err := ConnectMongoDBWithError(context.TODO(), "mongodb://bad_uri:27017")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, client)
 	assert.Nil(t, db)
 }

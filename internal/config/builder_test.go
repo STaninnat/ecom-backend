@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // builder_test.go: Tests for configuration builder logic and provider integration.
@@ -129,7 +131,7 @@ func (m *mockOAuthProvider) LoadGoogleConfig(_ string) (*OAuthConfig, error) {
 func TestBuilder_NilProvider(t *testing.T) {
 	builder := NewConfigBuilder()
 	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Contains(t, err.Error(), "config provider is required")
 }
@@ -140,7 +142,7 @@ func TestBuilder_MissingRequiredValue(t *testing.T) {
 	provider := &mockProvider{values: map[string]string{}}
 	builder := NewConfigBuilder().WithProvider(provider)
 	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
 
@@ -154,7 +156,7 @@ func TestBuilder_MissingPort(t *testing.T) {
 	}}
 	builder := NewConfigBuilder().WithProvider(provider)
 	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Contains(t, err.Error(), "failed to get PORT")
 }
@@ -169,7 +171,7 @@ func TestBuilder_MissingJWTSecret(t *testing.T) {
 	}}
 	builder := NewConfigBuilder().WithProvider(provider)
 	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Contains(t, err.Error(), "failed to get JWT_SECRET")
 }
@@ -272,48 +274,50 @@ func TestBuilder_RedisWithEmptyAddress(t *testing.T) {
 	}
 }
 
-// TestBuilder_S3ClientCreationError tests the config builder when S3 client creation fails.
-// It verifies proper error handling when S3 provider returns an error.
-func TestBuilder_S3ClientCreationError(t *testing.T) {
-	provider := &mockProvider{values: map[string]string{
-		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
-		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
-		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
-	}}
+// TestBuilder_ProviderErrorScenarios tests the config builder with various provider errors.
+func TestBuilder_ProviderErrorScenarios(t *testing.T) {
+	testCases := []struct {
+		name           string
+		builderSetup   func() Builder
+		expectedErrSub string
+	}{
+		{
+			name: "S3ClientCreationError",
+			builderSetup: func() Builder {
+				provider := &mockProvider{values: map[string]string{
+					"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+					"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+					"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+				}}
+				mockS3Provider := &mockS3ProviderWithError{}
+				return NewConfigBuilder().WithProvider(provider).WithS3(mockS3Provider)
+			},
+			expectedErrSub: "failed to create S3 client",
+		},
+		{
+			name: "OAuthConfigLoadingError",
+			builderSetup: func() Builder {
+				provider := &mockProvider{values: map[string]string{
+					"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+					"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+					"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+				}}
+				mockOAuthProvider := &mockOAuthProviderWithError{}
+				return NewConfigBuilder().WithProvider(provider).WithOAuth(mockOAuthProvider)
+			},
+			expectedErrSub: "failed to load OAuth config",
+		},
+	}
 
-	// Create a mock S3 provider that returns error
-	mockS3Provider := &mockS3ProviderWithError{}
-
-	builder := NewConfigBuilder().
-		WithProvider(provider).
-		WithS3(mockS3Provider)
-
-	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.Contains(t, err.Error(), "failed to create S3 client")
-}
-
-// TestBuilder_OAuthConfigLoadingError tests the config builder when OAuth config loading fails.
-// It verifies proper error handling when OAuth provider returns an error.
-func TestBuilder_OAuthConfigLoadingError(t *testing.T) {
-	provider := &mockProvider{values: map[string]string{
-		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
-		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
-		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
-	}}
-
-	// Create a mock OAuth provider that returns error
-	mockOAuthProvider := &mockOAuthProviderWithError{}
-
-	builder := NewConfigBuilder().
-		WithProvider(provider).
-		WithOAuth(mockOAuthProvider)
-
-	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.Contains(t, err.Error(), "failed to load OAuth config")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			builder := tc.builderSetup()
+			cfg, err := builder.Build(context.Background())
+			require.Error(t, err)
+			assert.Nil(t, cfg)
+			assert.Contains(t, err.Error(), tc.expectedErrSub)
+		})
+	}
 }
 
 // TestBuilder_IndividualRequiredStringFailures tests each required string field individually.
@@ -347,7 +351,7 @@ func TestBuilder_IndividualRequiredStringFailures(t *testing.T) {
 
 			builder := NewConfigBuilder().WithProvider(provider)
 			cfg, err := builder.Build(context.Background())
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Nil(t, cfg)
 			assert.Contains(t, err.Error(), field.message)
 		})
@@ -380,20 +384,48 @@ func (e *errorS3Provider) CreateClient(ctx context.Context, region string) (*s3.
 	return nil, errors.New("s3 error")
 }
 
-// TestBuilder_Build_S3ProviderError verifies that the builder returns an error when the S3 client creation fails.
-func TestBuilder_Build_S3ProviderError(t *testing.T) {
-	provider := &mockProvider{values: map[string]string{
-		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
-		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
-		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
-	}}
-	builder := NewConfigBuilder().
-		WithProvider(provider).
-		WithS3(&errorS3Provider{})
-	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.Contains(t, err.Error(), "failed to create S3 client")
+// TestBuilder_Build_ProviderErrorScenarios tests the config builder with various provider errors.
+func TestBuilder_Build_ProviderErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name           string
+		builderSetup   func() *BuilderImpl
+		expectedErrMsg string
+	}{
+		{
+			name: "S3ProviderError",
+			builderSetup: func() *BuilderImpl {
+				provider := &mockProvider{values: map[string]string{
+					"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+					"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+					"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+				}}
+				return NewConfigBuilder().WithProvider(provider).WithS3(&errorS3Provider{}).(*BuilderImpl)
+			},
+			expectedErrMsg: "failed to create S3 client",
+		},
+		{
+			name: "OAuthProviderError",
+			builderSetup: func() *BuilderImpl {
+				provider := &mockProvider{values: map[string]string{
+					"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
+					"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
+					"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
+				}}
+				return NewConfigBuilder().WithProvider(provider).WithOAuth(&errorOAuthProvider{}).(*BuilderImpl)
+			},
+			expectedErrMsg: "failed to load OAuth config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := tt.builderSetup()
+			cfg, err := builder.Build(context.Background())
+			require.Error(t, err)
+			assert.Nil(t, cfg)
+			assert.Contains(t, err.Error(), tt.expectedErrMsg)
+		})
+	}
 }
 
 // TestBuilder_connectRedis_NoAddress tests that Redis is not connected when no address is provided.
@@ -406,7 +438,7 @@ func TestBuilder_connectRedis_NoAddress(t *testing.T) {
 	}
 	config := &APIConfig{}
 	err := b.connectRedis(context.Background(), config)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, config.RedisClient)
 }
 
@@ -431,7 +463,7 @@ func TestBuilder_connectRedis_Error(t *testing.T) {
 	}
 	config := &APIConfig{}
 	err := b.connectRedis(context.Background(), config)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, config.RedisClient)
 }
 
@@ -454,7 +486,7 @@ func TestBuilder_connectMongo_Error(t *testing.T) {
 	}
 	config := &APIConfig{}
 	err := b.connectMongo(context.Background(), config, "mongodb://localhost:27017")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, config.MongoClient)
 	assert.Nil(t, config.MongoDB)
 }
@@ -483,7 +515,7 @@ func TestBuilder_connectMongo_Success(t *testing.T) {
 	}
 	config := &APIConfig{}
 	err := b.connectMongo(context.Background(), config, "mongodb://localhost:27017")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, client, config.MongoClient)
 	assert.Equal(t, db, config.MongoDB)
 }
@@ -496,22 +528,6 @@ func (e *errorOAuthProvider) LoadGoogleConfig(credsPath string) (*OAuthConfig, e
 	return nil, errors.New("oauth error")
 }
 
-// TestBuilder_Build_OAuthProviderError verifies that the builder returns an error when loading the OAuth config fails.
-func TestBuilder_Build_OAuthProviderError(t *testing.T) {
-	provider := &mockProvider{values: map[string]string{
-		"PORT": "8080", "JWT_SECRET": "jwt", "REFRESH_SECRET": "refresh", "ISSUER": "issuer", "AUDIENCE": "aud",
-		"GOOGLE_CREDENTIALS_PATH": "creds.json", "S3_BUCKET": "bucket", "S3_REGION": "region", "STRIPE_SECRET_KEY": "sk",
-		"STRIPE_WEBHOOK_SECRET": "wh", "MONGO_URI": "mongodb://localhost:27017",
-	}}
-	builder := NewConfigBuilder().
-		WithProvider(provider).
-		WithOAuth(&errorOAuthProvider{})
-	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.Contains(t, err.Error(), "failed to load OAuth config")
-}
-
 // TestBuilder_Build_ValidatorError verifies that the builder returns an error when required environment variables are missing.
 func TestBuilder_Build_ValidatorError(t *testing.T) {
 	provider := &mockProvider{values: map[string]string{
@@ -522,7 +538,7 @@ func TestBuilder_Build_ValidatorError(t *testing.T) {
 	}}
 	builder := NewConfigBuilder().WithProvider(provider)
 	cfg, err := builder.Build(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Contains(t, err.Error(), "failed to get PORT")
 }

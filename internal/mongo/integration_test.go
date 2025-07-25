@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -17,6 +16,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // integration_test.go: Integration tests for MongoDB repositories and adapters.
@@ -115,11 +116,11 @@ func cleanupTestContainer(t *testing.T, tc *TestContainer) {
 	if tc != nil {
 		if tc.Client != nil {
 			err := tc.Client.Disconnect(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		if tc.Container != nil {
 			err := tc.Container.Terminate(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 }
@@ -198,25 +199,25 @@ func TestMongoCollectionAdapter_Integration(t *testing.T) {
 	// Test InsertOne
 	doc := bson.M{"test": "value", "number": 42}
 	result, err := adapter.InsertOne(ctx, doc)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 
 	// Test FindOne
 	var found bson.M
 	singleResult := adapter.FindOne(ctx, bson.M{"test": "value"})
 	err = singleResult.Decode(&found)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "value", found["test"])
 	assert.Equal(t, int32(42), found["number"])
 
 	// Test UpdateOne
 	updateResult, err := adapter.UpdateOne(ctx, bson.M{"test": "value"}, bson.M{"$set": bson.M{"updated": true}})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(1), updateResult.MatchedCount)
 
 	// Test DeleteOne
 	deleteResult, err := adapter.DeleteOne(ctx, bson.M{"test": "value"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(1), deleteResult.DeletedCount)
 }
 
@@ -254,7 +255,7 @@ func TestMongoCursorAdapter_Integration(t *testing.T) {
 	for adapter.Next(ctx) {
 		var doc bson.M
 		err := adapter.Decode(&doc)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		results = append(results, doc)
 	}
 
@@ -265,7 +266,7 @@ func TestMongoCursorAdapter_Integration(t *testing.T) {
 
 	// Test Err
 	err = adapter.Err()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test All method
 	cursor2, err := collection.Find(ctx, bson.M{})
@@ -279,7 +280,7 @@ func TestMongoCursorAdapter_Integration(t *testing.T) {
 	adapter2 := &MongoCursorAdapter{Inner: cursor2}
 	var allResults []bson.M
 	err = adapter2.All(ctx, &allResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, allResults, 3)
 }
 
@@ -303,7 +304,7 @@ func TestMongoSingleResultAdapter_Integration(t *testing.T) {
 
 	var found bson.M
 	err = adapter.Decode(&found)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "test", found["name"])
 	assert.Equal(t, int32(123), found["value"])
 
@@ -320,19 +321,19 @@ func TestCreateIndexes_Integration(t *testing.T) {
 
 	// Test index creation
 	err := CreateIndexes(tc.Database)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify indexes were created
 	ctx := context.Background()
 
 	// Check cart indexes
 	cartIndexes, err := tc.Database.Collection("carts").Indexes().List(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cartIndexes)
 
 	// Check review indexes
 	reviewIndexes, err := tc.Database.Collection("reviews").Indexes().List(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, reviewIndexes)
 }
 
@@ -347,7 +348,7 @@ func TestCartMongo_Integration(t *testing.T) {
 
 	// Test GetCartByUserID with non-existent cart
 	cart, err := cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cart)
 	assert.Equal(t, "user123", cart.UserID)
 	assert.Empty(t, cart.Items)
@@ -359,50 +360,50 @@ func TestCartMongo_Integration(t *testing.T) {
 		Price:     29.99,
 	}
 	err = cartMongo.AddItemToCart(ctx, "user123", item)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test GetCartByUserID with existing cart
 	cart, err = cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cart)
 	assert.Len(t, cart.Items, 1)
 	assert.Equal(t, "product123", cart.Items[0].ProductID)
 
 	// Test UpdateItemQuantity
 	err = cartMongo.UpdateItemQuantity(ctx, "user123", "product123", 5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify quantity was updated
 	cart, err = cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 5, cart.Items[0].Quantity)
 
 	// Test RemoveItemFromCart
 	err = cartMongo.RemoveItemFromCart(ctx, "user123", "product123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify item was removed
 	cart, err = cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, cart.Items)
 
 	// Test ClearCart
 	err = cartMongo.AddItemToCart(ctx, "user123", item)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = cartMongo.ClearCart(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cart, err = cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, cart.Items)
 
 	// Test DeleteCart
 	err = cartMongo.DeleteCart(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify cart was deleted
 	cart, err = cartMongo.GetCartByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, cart.Items) // Should return empty cart for non-existent user
 }
 
@@ -423,25 +424,25 @@ func TestReviewMongo_Integration(t *testing.T) {
 		Comment:   "Great product!",
 	}
 	err := reviewMongo.CreateReview(ctx, review)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, review.ID)
 
 	// Test GetReviewByID
 	foundReview, err := reviewMongo.GetReviewByID(ctx, review.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, review.ID, foundReview.ID)
 	assert.Equal(t, "user123", foundReview.UserID)
 	assert.Equal(t, "product123", foundReview.ProductID)
 
 	// Test GetReviewsByProductID
 	reviews, err := reviewMongo.GetReviewsByProductID(ctx, "product123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, reviews, 1)
 	assert.Equal(t, review.ID, reviews[0].ID)
 
 	// Test GetReviewsByUserID
 	userReviews, err := reviewMongo.GetReviewsByUserID(ctx, "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, userReviews, 1)
 	assert.Equal(t, review.ID, userReviews[0].ID)
 
@@ -451,28 +452,28 @@ func TestReviewMongo_Integration(t *testing.T) {
 		Comment: "Updated comment",
 	}
 	err = reviewMongo.UpdateReviewByID(ctx, review.ID, updatedReview)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify update
 	foundReview, err = reviewMongo.GetReviewByID(ctx, review.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, foundReview.Rating)
 	assert.Equal(t, "Updated comment", foundReview.Comment)
 
 	// Test GetProductRatingStats
 	stats, err := reviewMongo.GetProductRatingStats(ctx, "product123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, stats)
-	assert.Equal(t, float64(4), stats["averageRating"])
+	assert.InEpsilon(t, float64(4), stats["averageRating"], 0.001)
 	assert.EqualValues(t, 1, stats["totalReviews"])
 
 	// Test DeleteReviewByID
 	err = reviewMongo.DeleteReviewByID(ctx, review.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify deletion
 	_, err = reviewMongo.GetReviewByID(ctx, review.ID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "review not found")
 }
 
@@ -494,13 +495,13 @@ func TestPagination_Integration(t *testing.T) {
 			Comment:   fmt.Sprintf("Review %d", i),
 		}
 		err := reviewMongo.CreateReview(ctx, review)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Test pagination
 	pagination := NewPaginationOptions(1, 10)
 	result, err := reviewMongo.GetReviewsByProductIDPaginated(ctx, "product123", pagination)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Len(t, result.Data, 10)
 	assert.Equal(t, int64(15), result.TotalCount)
@@ -511,7 +512,7 @@ func TestPagination_Integration(t *testing.T) {
 	// Test second page
 	pagination.Page = 2
 	result, err = reviewMongo.GetReviewsByProductIDPaginated(ctx, "product123", pagination)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Len(t, result.Data, 5)
 	assert.False(t, result.HasNext)

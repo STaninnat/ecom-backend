@@ -7,11 +7,12 @@ import (
 	"maps"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // review.go: MongoDB repository and operations for product reviews.
@@ -84,172 +85,94 @@ func (r *ReviewMongo) CreateReviews(ctx context.Context, reviews []*models.Revie
 	return nil
 }
 
-// GetReviewsByProductID retrieves all reviews for a specific product.
+// getReviewsByField is a shared helper for retrieving reviews by a specific field (e.g., product_id, user_id).
+func (r *ReviewMongo) getReviewsByField(ctx context.Context, filterKey, displayName, value string) ([]*models.Review, error) {
+	if value == "" {
+		return nil, fmt.Errorf("%s cannot be empty", displayName)
+	}
+	filter := bson.M{filterKey: value}
+	cursor, err := r.Collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find reviews by %s: %w", displayName, err)
+	}
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
+	var reviews []*models.Review
+	if err := cursor.All(ctx, &reviews); err != nil {
+		return nil, fmt.Errorf("failed to decode reviews: %w", err)
+	}
+	return reviews, nil
+}
+
+// getReviewsByFieldPaginated is a shared helper for retrieving paginated reviews by a specific field.
+func (r *ReviewMongo) getReviewsByFieldPaginated(ctx context.Context, filterKey, displayName, value string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
+	if value == "" {
+		return nil, fmt.Errorf("%s cannot be empty", displayName)
+	}
+	if pagination == nil {
+		pagination = NewPaginationOptions(1, 10)
+	}
+	filter := bson.M{filterKey: value}
+	if pagination.Filter != nil {
+		maps.Copy(filter, pagination.Filter)
+	}
+	// Get total count
+	totalCount, err := r.Collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count reviews: %w", err)
+	}
+	// Calculate pagination
+	skip := (pagination.Page - 1) * pagination.PageSize
+	findOptions := options.Find().
+		SetLimit(pagination.PageSize).
+		SetSkip(skip).
+		SetSort(pagination.Sort)
+	cursor, err := r.Collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find reviews by %s: %w", displayName, err)
+	}
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			fmt.Printf("cursor.Close failed: %v\n", err)
+		}
+	}()
+	var reviews []*models.Review
+	if err := cursor.All(ctx, &reviews); err != nil {
+		return nil, fmt.Errorf("failed to decode reviews: %w", err)
+	}
+	// Calculate pagination metadata
+	totalPages := (totalCount + pagination.PageSize - 1) / pagination.PageSize
+	hasNext := pagination.Page < totalPages
+	hasPrev := pagination.Page > 1
+	return &PaginatedResult[*models.Review]{
+		Data:       reviews,
+		TotalCount: totalCount,
+		Page:       pagination.Page,
+		PageSize:   pagination.PageSize,
+		TotalPages: totalPages,
+		HasNext:    hasNext,
+		HasPrev:    hasPrev,
+	}, nil
+}
+
+// Refactored public methods to use the shared helpers
 func (r *ReviewMongo) GetReviewsByProductID(ctx context.Context, productID string) ([]*models.Review, error) {
-	if productID == "" {
-		return nil, fmt.Errorf("product ID cannot be empty")
-	}
-
-	filter := bson.M{"product_id": productID}
-
-	cursor, err := r.Collection.Find(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find reviews by product ID: %w", err)
-	}
-	defer func() {
-		if err := cursor.Close(ctx); err != nil {
-			fmt.Printf("cursor.Close failed: %v\n", err)
-		}
-	}()
-
-	var reviews []*models.Review
-	if err := cursor.All(ctx, &reviews); err != nil {
-		return nil, fmt.Errorf("failed to decode reviews: %w", err)
-	}
-
-	return reviews, nil
+	return r.getReviewsByField(ctx, "product_id", "product ID", productID)
 }
 
-// GetReviewsByProductIDPaginated retrieves paginated reviews for a specific product.
-func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, productID string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
-	if productID == "" {
-		return nil, fmt.Errorf("product ID cannot be empty")
-	}
-	if pagination == nil {
-		pagination = NewPaginationOptions(1, 10)
-	}
-
-	filter := bson.M{"product_id": productID}
-	if pagination.Filter != nil {
-		maps.Copy(filter, pagination.Filter)
-	}
-
-	// Get total count
-	totalCount, err := r.Collection.CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count reviews: %w", err)
-	}
-
-	// Calculate pagination
-	skip := (pagination.Page - 1) * pagination.PageSize
-	findOptions := options.Find().
-		SetLimit(pagination.PageSize).
-		SetSkip(skip).
-		SetSort(pagination.Sort)
-
-	cursor, err := r.Collection.Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find reviews: %w", err)
-	}
-	defer func() {
-		if err := cursor.Close(ctx); err != nil {
-			fmt.Printf("cursor.Close failed: %v\n", err)
-		}
-	}()
-
-	var reviews []*models.Review
-	if err := cursor.All(ctx, &reviews); err != nil {
-		return nil, fmt.Errorf("failed to decode reviews: %w", err)
-	}
-
-	// Calculate pagination metadata
-	totalPages := (totalCount + pagination.PageSize - 1) / pagination.PageSize
-	hasNext := pagination.Page < totalPages
-	hasPrev := pagination.Page > 1
-
-	return &PaginatedResult[*models.Review]{
-		Data:       reviews,
-		TotalCount: totalCount,
-		Page:       pagination.Page,
-		PageSize:   pagination.PageSize,
-		TotalPages: totalPages,
-		HasNext:    hasNext,
-		HasPrev:    hasPrev,
-	}, nil
-}
-
-// GetReviewsByUserID retrieves all reviews by a specific user.
 func (r *ReviewMongo) GetReviewsByUserID(ctx context.Context, userID string) ([]*models.Review, error) {
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
-	}
-
-	filter := bson.M{"user_id": userID}
-
-	cursor, err := r.Collection.Find(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find reviews by user ID: %w", err)
-	}
-	defer func() {
-		if err := cursor.Close(ctx); err != nil {
-			fmt.Printf("cursor.Close failed: %v\n", err)
-		}
-	}()
-
-	var reviews []*models.Review
-	if err := cursor.All(ctx, &reviews); err != nil {
-		return nil, fmt.Errorf("failed to decode reviews: %w", err)
-	}
-
-	return reviews, nil
+	return r.getReviewsByField(ctx, "user_id", "user ID", userID)
 }
 
-// GetReviewsByUserIDPaginated retrieves paginated reviews by a specific user.
+func (r *ReviewMongo) GetReviewsByProductIDPaginated(ctx context.Context, productID string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
+	return r.getReviewsByFieldPaginated(ctx, "product_id", "product ID", productID, pagination)
+}
+
 func (r *ReviewMongo) GetReviewsByUserIDPaginated(ctx context.Context, userID string, pagination *PaginationOptions) (*PaginatedResult[*models.Review], error) {
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
-	}
-	if pagination == nil {
-		pagination = NewPaginationOptions(1, 10)
-	}
-
-	filter := bson.M{"user_id": userID}
-	if pagination.Filter != nil {
-		maps.Copy(filter, pagination.Filter)
-	}
-
-	// Get total count
-	totalCount, err := r.Collection.CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count reviews: %w", err)
-	}
-
-	// Calculate pagination
-	skip := (pagination.Page - 1) * pagination.PageSize
-	findOptions := options.Find().
-		SetLimit(pagination.PageSize).
-		SetSkip(skip).
-		SetSort(pagination.Sort)
-
-	cursor, err := r.Collection.Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find reviews: %w", err)
-	}
-	defer func() {
-		if err := cursor.Close(ctx); err != nil {
-			fmt.Printf("cursor.Close failed: %v\n", err)
-		}
-	}()
-
-	var reviews []*models.Review
-	if err := cursor.All(ctx, &reviews); err != nil {
-		return nil, fmt.Errorf("failed to decode reviews: %w", err)
-	}
-
-	// Calculate pagination metadata
-	totalPages := (totalCount + pagination.PageSize - 1) / pagination.PageSize
-	hasNext := pagination.Page < totalPages
-	hasPrev := pagination.Page > 1
-
-	return &PaginatedResult[*models.Review]{
-		Data:       reviews,
-		TotalCount: totalCount,
-		Page:       pagination.Page,
-		PageSize:   pagination.PageSize,
-		TotalPages: totalPages,
-		HasNext:    hasNext,
-		HasPrev:    hasPrev,
-	}, nil
+	return r.getReviewsByFieldPaginated(ctx, "user_id", "user ID", userID, pagination)
 }
 
 // GetReviewByID retrieves a specific review by its ID.

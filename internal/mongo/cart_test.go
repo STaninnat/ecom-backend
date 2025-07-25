@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // cart_test.go: Tests for MongoDB cart repository and cart operations.
@@ -251,10 +253,10 @@ func TestGetCartByUserID(t *testing.T) {
 			cart, err := cartMongo.GetCartByUserID(ctx, tt.userID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, cart)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, cart)
 				assert.Equal(t, tt.userID, cart.UserID)
 				if tt.expectedCart.Items != nil {
@@ -323,10 +325,10 @@ func TestGetCartsByUserIDs(t *testing.T) {
 			carts, err := cartMongo.GetCartsByUserIDs(ctx, tt.userIDs)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, carts)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, carts)
 				assert.Len(t, carts, tt.expectedLen)
 			}
@@ -346,9 +348,9 @@ func TestGetCartsByUserIDs_EmptySlice(t *testing.T) {
 	// Test with empty userIDs slice
 	result, err := cartMongo.GetCartsByUserIDs(ctx, []string{})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Len(t, result, 0)
+	assert.Empty(t, result)
 }
 
 // TestGetCartsByUserIDs_DatabaseError tests GetCartsByUserIDs when database operations fail.
@@ -366,7 +368,7 @@ func TestGetCartsByUserIDs_DatabaseError(t *testing.T) {
 
 	result, err := cartMongo.GetCartsByUserIDs(ctx, []string{"user1", "user2"})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to decode carts")
 }
@@ -382,7 +384,7 @@ func TestGetCartsByUserIDs_FindError(t *testing.T) {
 
 	result, err := cartMongo.GetCartsByUserIDs(ctx, []string{"user1"})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to find carts")
 }
@@ -430,16 +432,15 @@ func TestAddItemToCart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.setupMock()
-
-			err := cartMongo.AddItemToCart(ctx, tt.userID, tt.item)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
+			runCartItemTest(
+				t,
+				cartMongo.AddItemToCart,
+				ctx,
+				tt.userID,
+				tt.item,
+				tt.setupMock,
+				tt.expectError,
+			)
 			mockCollection.AssertExpectations(t)
 		})
 	}
@@ -498,9 +499,9 @@ func TestAddItemsToCart(t *testing.T) {
 			err := cartMongo.AddItemsToCart(ctx, tt.userID, tt.items)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -549,9 +550,9 @@ func TestRemoveItemFromCart(t *testing.T) {
 			err := cartMongo.RemoveItemFromCart(ctx, tt.userID, tt.productID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -598,9 +599,9 @@ func TestRemoveItemsFromCart(t *testing.T) {
 			err := cartMongo.RemoveItemsFromCart(ctx, tt.userID, tt.productIDs)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -616,7 +617,7 @@ func TestRemoveItemsFromCart_EmptyProductIDs(t *testing.T) {
 	ctx := context.Background()
 
 	err := cartMongo.RemoveItemsFromCart(ctx, "user123", []string{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "product IDs slice cannot be empty")
 }
 
@@ -631,7 +632,7 @@ func TestRemoveItemsFromCart_DatabaseError(t *testing.T) {
 
 	err := cartMongo.RemoveItemsFromCart(ctx, "user123", []string{"product1", "product2"})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to remove items from cart")
 }
 
@@ -673,9 +674,9 @@ func TestClearCart(t *testing.T) {
 			err := cartMongo.ClearCart(ctx, tt.userID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -719,9 +720,9 @@ func TestClearCarts(t *testing.T) {
 			err := cartMongo.ClearCarts(ctx, tt.userIDs)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -737,7 +738,7 @@ func TestClearCarts_EmptyUserIDs(t *testing.T) {
 	ctx := context.Background()
 
 	err := cartMongo.ClearCarts(ctx, []string{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "user IDs slice cannot be empty")
 }
 
@@ -752,7 +753,7 @@ func TestClearCarts_DatabaseError(t *testing.T) {
 
 	err := cartMongo.ClearCarts(ctx, []string{"user1", "user2"})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to clear carts")
 }
 
@@ -820,9 +821,9 @@ func TestUpdateItemQuantity(t *testing.T) {
 			err := cartMongo.UpdateItemQuantity(ctx, tt.userID, tt.productID, tt.quantity)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -889,7 +890,7 @@ func TestUpdateItemQuantity_ItemNotFound(t *testing.T) {
 
 	err := cartMongo.UpdateItemQuantity(ctx, "user123", "product123", 5)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "item not found in cart")
 }
 
@@ -907,7 +908,7 @@ func TestUpdateItemQuantity_DatabaseError(t *testing.T) {
 
 	err := cartMongo.UpdateItemQuantity(ctx, "user123", "product123", 5)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to update item quantity")
 }
 
@@ -955,9 +956,9 @@ func TestUpdateItemQuantities(t *testing.T) {
 			err := cartMongo.UpdateItemQuantities(ctx, tt.userID, tt.updates)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -993,7 +994,7 @@ func TestUpdateItemQuantities_IndividualError(t *testing.T) {
 
 	err := cartMongo.UpdateItemQuantities(ctx, "user123", updates)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to update item product2")
 }
 
@@ -1005,44 +1006,72 @@ func TestUpdateItemQuantities_EmptyUpdates(t *testing.T) {
 	ctx := context.Background()
 
 	err := cartMongo.UpdateItemQuantities(ctx, "user123", map[string]int{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "updates map cannot be empty")
 }
 
-// TestUpsertCart tests the UpsertCart function with various scenarios.
-// It verifies successful cart upsertion and database error handling.
-func TestUpsertCart(t *testing.T) {
+// TestCart_AddItemAndUpsertCart tests the AddItemToCart and UpsertCart functions with various scenarios.
+// It verifies successful item addition and cart upsertion and database error handling.
+func TestCart_AddItemAndUpsertCart(t *testing.T) {
 	mockCollection := &MockCartCollectionInterface{}
 	cartMongo := &CartMongo{Collection: mockCollection}
 	ctx := context.Background()
 
-	cart := models.Cart{
-		UserID: "user123",
-		Items: []models.CartItem{
-			{ProductID: "product1", Quantity: 1, Price: 10.99, Name: "Product 1"},
-		},
-	}
+	item := models.CartItem{ProductID: "product1", Quantity: 1, Price: 10.99, Name: "Product 1"}
+	cart := models.Cart{UserID: "user123", Items: []models.CartItem{item}}
 
 	tests := []struct {
 		name        string
 		userID      string
-		cart        models.Cart
+		item        *models.CartItem
+		cart        *models.Cart
+		callFunc    func(ctx context.Context, userID string, item *models.CartItem, cart *models.Cart) error
 		setupMock   func()
 		expectError bool
 	}{
 		{
-			name:   "valid cart should be upserted",
+			name:   "AddItemToCart: valid item should be added",
 			userID: "user123",
-			cart:   cart,
+			item:   &item,
+			callFunc: func(ctx context.Context, userID string, item *models.CartItem, _ *models.Cart) error {
+				return cartMongo.AddItemToCart(ctx, userID, *item)
+			},
 			setupMock: func() {
 				mockCollection.On("UpdateOne", ctx, bson.M{"user_id": "user123"}, mock.AnythingOfType("bson.M"), mock.Anything).Return(&mongo.UpdateResult{}, nil).Once()
 			},
 			expectError: false,
 		},
 		{
-			name:   "database error should be returned",
+			name:   "AddItemToCart: database error should be returned",
 			userID: "user123",
-			cart:   cart,
+			item:   &item,
+			callFunc: func(ctx context.Context, userID string, item *models.CartItem, _ *models.Cart) error {
+				return cartMongo.AddItemToCart(ctx, userID, *item)
+			},
+			setupMock: func() {
+				mockCollection.On("UpdateOne", ctx, bson.M{"user_id": "user123"}, mock.AnythingOfType("bson.M"), mock.Anything).Return(nil, assert.AnError).Once()
+			},
+			expectError: true,
+		},
+		{
+			name:   "UpsertCart: valid cart should be upserted",
+			userID: "user123",
+			cart:   &cart,
+			callFunc: func(ctx context.Context, userID string, _ *models.CartItem, cart *models.Cart) error {
+				return cartMongo.UpsertCart(ctx, userID, *cart)
+			},
+			setupMock: func() {
+				mockCollection.On("UpdateOne", ctx, bson.M{"user_id": "user123"}, mock.AnythingOfType("bson.M"), mock.Anything).Return(&mongo.UpdateResult{}, nil).Once()
+			},
+			expectError: false,
+		},
+		{
+			name:   "UpsertCart: database error should be returned",
+			userID: "user123",
+			cart:   &cart,
+			callFunc: func(ctx context.Context, userID string, _ *models.CartItem, cart *models.Cart) error {
+				return cartMongo.UpsertCart(ctx, userID, *cart)
+			},
 			setupMock: func() {
 				mockCollection.On("UpdateOne", ctx, bson.M{"user_id": "user123"}, mock.AnythingOfType("bson.M"), mock.Anything).Return(nil, assert.AnError).Once()
 			},
@@ -1053,17 +1082,33 @@ func TestUpsertCart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
-
-			err := cartMongo.UpsertCart(ctx, tt.userID, tt.cart)
-
+			err := tt.callFunc(ctx, tt.userID, tt.item, tt.cart)
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-
 			mockCollection.AssertExpectations(t)
 		})
+	}
+}
+
+// runCartItemTest is a shared helper for testing AddItemToCart and UpsertCart.
+func runCartItemTest(
+	t *testing.T,
+	testFunc func(ctx context.Context, userID string, item models.CartItem) error,
+	ctx context.Context,
+	userID string,
+	item models.CartItem,
+	setupMock func(),
+	expectError bool,
+) {
+	setupMock()
+	err := testFunc(ctx, userID, item)
+	if expectError {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
 	}
 }
 
@@ -1111,10 +1156,10 @@ func TestGetCartStats(t *testing.T) {
 			stats, err := cartMongo.GetCartStats(ctx)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, stats)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, stats)
 				if tt.expected != nil {
 					assert.Equal(t, tt.expected["totalCarts"], stats["totalCarts"])
@@ -1139,7 +1184,7 @@ func TestGetCartStats_DatabaseError(t *testing.T) {
 
 	result, err := cartMongo.GetCartStats(ctx)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to aggregate cart stats")
 }
@@ -1159,7 +1204,7 @@ func TestGetCartStats_DecodeError(t *testing.T) {
 
 	result, err := cartMongo.GetCartStats(ctx)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to decode aggregation results")
 }
@@ -1182,11 +1227,11 @@ func TestGetCartStats_EmptyResults(t *testing.T) {
 
 	result, err := cartMongo.GetCartStats(ctx)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.EqualValues(t, int64(0), result["totalCarts"])
 	assert.EqualValues(t, int64(0), result["totalItems"])
-	assert.Equal(t, 0.0, result["avgItemsPerCart"])
+	assert.InDelta(t, 0.0, result["avgItemsPerCart"], 0.000001)
 }
 
 // TestDeleteCart tests the DeleteCart function with various scenarios.
@@ -1235,9 +1280,9 @@ func TestDeleteCart(t *testing.T) {
 			err := cartMongo.DeleteCart(ctx, tt.userID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockCollection.AssertExpectations(t)
@@ -1257,7 +1302,7 @@ func TestDeleteCart_NotFound(t *testing.T) {
 
 	err := cartMongo.DeleteCart(ctx, "user123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cart not found")
 }
 
@@ -1272,7 +1317,7 @@ func TestDeleteCart_DatabaseError(t *testing.T) {
 
 	err := cartMongo.DeleteCart(ctx, "user123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to delete cart")
 }
 

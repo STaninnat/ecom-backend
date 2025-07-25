@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -18,6 +17,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/oauth2/google"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // providers.go: Environment, database, Redis, MongoDB, S3, and OAuth provider implementations.

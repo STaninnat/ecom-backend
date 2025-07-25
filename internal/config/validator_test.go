@@ -6,6 +6,7 @@ import (
 
 	redismock "github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -48,7 +49,7 @@ func TestValidator_MissingRequiredFields(t *testing.T) {
 	v := NewConfigValidator()
 	cfg := &APIConfig{}
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "PORT is required")
 	assert.Contains(t, err.Error(), "JWT_SECRET is required")
 	assert.Contains(t, err.Error(), "GOOGLE_CREDENTIALS_PATH is required")
@@ -61,7 +62,7 @@ func TestValidator_InvalidUploadBackend(t *testing.T) {
 	cfg := validAPIConfig()
 	cfg.UploadBackend = "ftp"
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "UPLOAD_BACKEND must be either 's3' or 'local'")
 }
 
@@ -73,7 +74,7 @@ func TestValidator_MissingUploadPathForLocal(t *testing.T) {
 	cfg.UploadBackend = "local"
 	cfg.UploadPath = ""
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "UPLOAD_PATH is required when using local upload backend")
 }
 
@@ -85,7 +86,7 @@ func TestValidator_MissingS3ClientForS3Backend(t *testing.T) {
 	cfg.UploadBackend = "s3"
 	cfg.S3Client = nil
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "S3_CLIENT is required when using S3 upload backend")
 }
 
@@ -96,7 +97,7 @@ func TestValidator_MissingRedisClient(t *testing.T) {
 	cfg := validAPIConfig()
 	cfg.RedisClient = nil
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Redis client is required")
 }
 
@@ -108,7 +109,7 @@ func TestValidator_MissingMongoClients(t *testing.T) {
 	cfg.MongoClient = nil
 	cfg.MongoDB = nil
 	err := v.Validate(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MongoDB client is required")
 	assert.Contains(t, err.Error(), "MongoDB database is required")
 }
@@ -123,11 +124,11 @@ func TestValidator_ValidatePartial(t *testing.T) {
 	cfg.MongoDB = nil
 	cfg.S3Client = nil
 	err := v.ValidatePartial(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cfg.Port = ""
 	err = v.ValidatePartial(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "PORT is required")
 }
 
@@ -136,7 +137,7 @@ func TestValidator_ValidatePartial(t *testing.T) {
 func TestValidator_ValidatePartial_NilConfig(t *testing.T) {
 	v := NewConfigValidator()
 	err := v.ValidatePartial(nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "config cannot be nil")
 }
 
@@ -172,7 +173,7 @@ func TestValidator_ValidatePartial_IndividualFieldErrors(t *testing.T) {
 			cfgCopy := *cfg
 			field.setter(&cfgCopy)
 			err := v.ValidatePartial(&cfgCopy)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), field.message)
 		})
 	}
@@ -191,21 +192,21 @@ func TestValidator_ValidatePartial_UploadBackendEdgeCases(t *testing.T) {
 	// Test empty upload backend (should be valid)
 	cfg.UploadBackend = ""
 	err := v.ValidatePartial(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test "s3" upload backend (should be valid)
 	cfg.UploadBackend = "s3"
 	err = v.ValidatePartial(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test "local" upload backend (should be valid)
 	cfg.UploadBackend = "local"
 	err = v.ValidatePartial(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test invalid upload backend
 	cfg.UploadBackend = "invalid"
 	err = v.ValidatePartial(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "UPLOAD_BACKEND must be either 's3' or 'local'")
 }

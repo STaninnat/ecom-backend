@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -208,7 +209,7 @@ func TestNewDatabaseManager(t *testing.T) {
 			}
 
 			if !tt.expectError {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, manager)
 				assert.NotNil(t, manager.GetDatabase())
 				assert.NotNil(t, manager.GetClient())
@@ -239,7 +240,7 @@ func TestNewDatabaseManager_Error(t *testing.T) {
 	manager, err := NewDatabaseManager(config)
 
 	// This should fail due to invalid URI
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, manager)
 	assert.Contains(t, err.Error(), "mongo connect error")
 }
@@ -364,7 +365,7 @@ func TestPaginatedResult(t *testing.T) {
 		HasPrev:    false,
 	}
 
-	assert.Equal(t, 2, len(result.Data))
+	assert.Len(t, result.Data, 2)
 	assert.Equal(t, int64(10), result.TotalCount)
 	assert.Equal(t, int64(1), result.Page)
 	assert.Equal(t, int64(2), result.PageSize)
@@ -429,14 +430,14 @@ func testCollectionInsertOperations(ctx context.Context, t *testing.T, mockColle
 	// Test InsertOne
 	mockCollection.On("InsertOne", ctx, document).Return(&mongo.InsertOneResult{}, nil)
 	result, err := mockCollection.InsertOne(ctx, document)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 
 	// Test InsertMany
 	documents := []any{document}
 	mockCollection.On("InsertMany", ctx, documents).Return(&mongo.InsertManyResult{}, nil)
 	resultMany, err := mockCollection.InsertMany(ctx, documents)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resultMany)
 }
 
@@ -445,7 +446,7 @@ func testCollectionFindOperations(ctx context.Context, t *testing.T, mockCollect
 	mockCursor := &MockCursorInterface{}
 	mockCollection.On("Find", ctx, filter, mock.Anything).Return(mockCursor, nil)
 	cursor, err := mockCollection.Find(ctx, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cursor)
 
 	// Test FindOne
@@ -459,13 +460,13 @@ func testCollectionUpdateOperations(ctx context.Context, t *testing.T, mockColle
 	// Test UpdateOne
 	mockCollection.On("UpdateOne", ctx, filter, update, mock.Anything).Return(&mongo.UpdateResult{}, nil)
 	updateResult, err := mockCollection.UpdateOne(ctx, filter, update)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, updateResult)
 
 	// Test UpdateMany
 	mockCollection.On("UpdateMany", ctx, filter, update, mock.Anything).Return(&mongo.UpdateResult{}, nil)
 	updateManyResult, err := mockCollection.UpdateMany(ctx, filter, update)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, updateManyResult)
 }
 
@@ -473,13 +474,13 @@ func testCollectionDeleteOperations(ctx context.Context, t *testing.T, mockColle
 	// Test DeleteOne
 	mockCollection.On("DeleteOne", ctx, filter, mock.Anything).Return(&mongo.DeleteResult{}, nil)
 	deleteResult, err := mockCollection.DeleteOne(ctx, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, deleteResult)
 
 	// Test DeleteMany
 	mockCollection.On("DeleteMany", ctx, filter, mock.Anything).Return(&mongo.DeleteResult{}, nil)
 	deleteManyResult, err := mockCollection.DeleteMany(ctx, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, deleteManyResult)
 }
 
@@ -487,7 +488,7 @@ func testCollectionCountAndAggregate(ctx context.Context, t *testing.T, mockColl
 	// Test CountDocuments
 	mockCollection.On("CountDocuments", ctx, filter, mock.Anything).Return(int64(10), nil)
 	count, err := mockCollection.CountDocuments(ctx, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, int64(10), count)
 
 	// Test Aggregate
@@ -495,7 +496,7 @@ func testCollectionCountAndAggregate(ctx context.Context, t *testing.T, mockColl
 	mockAggCursor := &MockCursorInterface{}
 	mockCollection.On("Aggregate", ctx, pipeline, mock.Anything).Return(mockAggCursor, nil)
 	aggCursor, err := mockCollection.Aggregate(ctx, pipeline)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, aggCursor)
 }
 
@@ -523,22 +524,22 @@ func TestCursorInterfaceMethods(t *testing.T) {
 	// Test Decode
 	mockCursor.On("Decode", val).Return(nil)
 	err := mockCursor.Decode(val)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test All
 	mockCursor.On("All", ctx, &results).Return(nil)
 	err = mockCursor.All(ctx, &results)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test Close
 	mockCursor.On("Close", ctx).Return(nil)
 	err = mockCursor.Close(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test Err
 	mockCursor.On("Err").Return(nil)
 	err = mockCursor.Err()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockCursor.AssertExpectations(t)
 }
@@ -553,12 +554,12 @@ func TestSingleResultInterfaceMethods(t *testing.T) {
 	// Test Decode
 	mockResult.On("Decode", val).Return(nil)
 	err := mockResult.Decode(val)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test Err
 	mockResult.On("Err").Return(nil)
 	err = mockResult.Err()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockResult.AssertExpectations(t)
 }

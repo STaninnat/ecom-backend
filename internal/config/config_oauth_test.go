@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // config_oauth_test.go: Tests for Google OAuth2 configuration helpers and path validation.
@@ -21,6 +22,6 @@ func TestIsSafePath(t *testing.T) {
 // It verifies that the function returns an error when an unsafe credentials path is provided.
 func TestNewOAuthConfig_UnsafePath(t *testing.T) {
 	cfg, err := NewOAuthConfig("../unsafe/creds.json")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 }
