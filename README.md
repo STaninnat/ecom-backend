@@ -1,6 +1,6 @@
 # ecom-backend
 
-[![Build Status](https://github.com/STaninnat/ecom-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/STaninnat/ecom-backend/actions)
+[![Build Status](https://github.com/STaninnat/ecom-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/STaninnat/ecom-backend/actions)
 [![Coverage Status](https://img.shields.io/codecov/c/github/STaninnat/ecom-backend/main.svg)](https://codecov.io/gh/STaninnat/ecom-backend)
 
 Welcome to my personal e-commerce backend project. This is more than just a codebase—it's my playground for learning, experimenting, and building something real from scratch. I wanted to see how far I could take a Go backend, and this is the result!
