@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
 )
 
 // handler_review_update.go: Handles updating a review by ID: validates input, checks ownership, updates via service, and sends response.

@@ -11,13 +11,14 @@ import (
 
 	"errors"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentintent"
 	"github.com/stripe/stripe-go/v82/refund"
 	"github.com/stripe/stripe-go/v82/webhook"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // payment_service.go: Implements payment database query adapters, transaction handling, and Stripe client interface.

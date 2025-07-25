@@ -7,9 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
 )
 
 // cart_wrapper_test.go: Tests for cart service initialization, error handling, DTOs, and service creation.
@@ -22,7 +24,7 @@ func TestInitCartService_Success(t *testing.T) {
 	mockService := new(MockCartService)
 
 	err := cfg.InitCartService(mockService)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg.GetCartService())
 }
 
@@ -34,7 +36,7 @@ func TestInitCartService_Error(t *testing.T) {
 	mockService := new(MockCartService)
 
 	err := cfg.InitCartService(mockService)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not initialized")
 }
 
@@ -45,7 +47,7 @@ func TestGetCartService_ReturnsCorrectInstance(t *testing.T) {
 	cfg := &HandlersCartConfig{Config: &handlers.Config{}}
 	mockService := new(MockCartService)
 	err := cfg.InitCartService(mockService)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	service := cfg.GetCartService()
 	assert.NotNil(t, service)

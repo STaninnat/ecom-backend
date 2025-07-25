@@ -8,7 +8,7 @@ import (
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
-	"github.com/STaninnat/ecom-backend/middlewares"
+	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
 )
 
 // auth_wrapper.go: Provides configuration and initialization logic for auth handlers, including service setup and error handling.
@@ -100,26 +100,25 @@ func (cfg *HandlersAuthConfig) GetAuthService() AuthService {
 // handleAuthError handles authentication-specific errors with proper logging and responses.
 // Categorizes errors and provides appropriate HTTP status codes and messages.
 func (cfg *HandlersAuthConfig) handleAuthError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
-	ctx := r.Context()
-
-	var appErr *handlers.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "name_exists", "email_exists", "user_not_found", "invalid_password":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "database_error", "transaction_error", "create_user_error", "hash_error", "token_generation_error", "redis_error", "commit_error", "update_user_error", "uuid_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		case "invalid_state", "token_exchange_error", "google_api_error", "no_refresh_token", "google_token_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
+	codeMap := map[string]userhandlers.ErrorResponseConfig{
+		"name_exists":            {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"email_exists":           {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"user_not_found":         {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"invalid_password":       {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"database_error":         {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"transaction_error":      {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"create_user_error":      {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"hash_error":             {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"token_generation_error": {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"redis_error":            {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"commit_error":           {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"update_user_error":      {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"uuid_error":             {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"invalid_state":          {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"token_exchange_error":   {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"google_api_error":       {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"no_refresh_token":       {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"google_token_error":     {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
 	}
+	userhandlers.HandleErrorWithCodeMap(cfg.Logger, w, r, err, operation, ip, userAgent, codeMap, http.StatusInternalServerError, "Internal server error")
 }

@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_product_delete_test.go: Tests the delete product handler for success, missing ID, and service error with expected responses and logging.

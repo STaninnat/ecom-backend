@@ -5,9 +5,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/mock"
 )
 
 // user_helper_test.go: Provides mocks, test doubles, and helpers for unit testing user handlers, services, middleware, and logging.

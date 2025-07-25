@@ -153,27 +153,9 @@ func (s *reviewServiceImpl) DeleteReviewByID(ctx context.Context, reviewID strin
 	return nil
 }
 
-// GetReviewsByProductIDPaginated fetches paginated, filtered, and sorted reviews for a product.
-// Builds MongoDB filter based on provided parameters and delegates to the MongoDB API.
-// Supports filtering by rating, date range, media presence, and various sort options.
-// Parameters:
-//   - ctx: context.Context for the operation
-//   - productID: string identifier of the product
-//   - page: int representing the page number
-//   - pageSize: int representing the number of items per page
-//   - rating: *int for exact rating filter (1-5), nil if not provided
-//   - minRating: *int for minimum rating filter (1-5), nil if not provided
-//   - maxRating: *int for maximum rating filter (1-5), nil if not provided
-//   - from: *time.Time for start date filter, nil if not provided
-//   - to: *time.Time for end date filter, nil if not provided
-//   - hasMedia: *bool for media filter, nil if not provided
-//   - sort: string for sort option
-//
-// Returns:
-//   - any: PaginatedReviewsResponse with review data and pagination metadata
-//   - error: nil on success, AppError with "get_failed" code on failure
-func (s *reviewServiceImpl) GetReviewsByProductIDPaginated(ctx context.Context, productID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
-	filter := map[string]any{"product_id": productID}
+// buildReviewFilter constructs a MongoDB filter for reviews based on the root key and common filter parameters.
+func buildReviewFilter(rootKey, rootValue string, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool) map[string]any {
+	filter := map[string]any{rootKey: rootValue}
 	if rating != nil {
 		filter["rating"] = *rating
 	}
@@ -204,15 +186,30 @@ func (s *reviewServiceImpl) GetReviewsByProductIDPaginated(ctx context.Context, 
 			filter["media_urls"] = map[string]any{"$size": 0}
 		}
 	}
+	return filter
+}
+
+// getReviewsByFieldPaginated is a shared helper for paginated review retrieval by a field (product_id or user_id).
+func (s *reviewServiceImpl) getReviewsByFieldPaginated(
+	ctx context.Context,
+	rootKey, id string,
+	mongoFunc func(context.Context, string, *intmongo.PaginationOptions) (*intmongo.PaginatedResult[*models.Review], error),
+	page, pageSize int,
+	rating, minRating, maxRating *int,
+	from, to *time.Time,
+	hasMedia *bool,
+	sort, errMsg string,
+) (any, error) {
+	filter := buildReviewFilter(rootKey, id, rating, minRating, maxRating, from, to, hasMedia)
 	findSort := parseSortOption(sort)
-	result, err := s.reviewMongo.GetReviewsByProductIDPaginated(ctx, productID, &intmongo.PaginationOptions{
+	result, err := mongoFunc(ctx, id, &intmongo.PaginationOptions{
 		Page:     int64(page),
 		PageSize: int64(pageSize),
 		Sort:     findSort,
 		Filter:   filter,
 	})
 	if err != nil {
-		return nil, &handlers.AppError{Code: "get_failed", Message: "Failed to get reviews by product (paginated)", Err: err}
+		return nil, &handlers.AppError{Code: "get_failed", Message: errMsg, Err: err}
 	}
 	return PaginatedReviewsResponse{
 		Data:       result.Data,
@@ -225,76 +222,26 @@ func (s *reviewServiceImpl) GetReviewsByProductIDPaginated(ctx context.Context, 
 	}, nil
 }
 
-// GetReviewsByUserIDPaginated fetches paginated, filtered, and sorted reviews for a user.
-// Builds MongoDB filter based on provided parameters and delegates to the MongoDB API.
-// Supports filtering by rating, date range, media presence, and various sort options.
-// Parameters:
-//   - ctx: context.Context for the operation
-//   - userID: string identifier of the user
-//   - page: int representing the page number
-//   - pageSize: int representing the number of items per page
-//   - rating: *int for exact rating filter (1-5), nil if not provided
-//   - minRating: *int for minimum rating filter (1-5), nil if not provided
-//   - maxRating: *int for maximum rating filter (1-5), nil if not provided
-//   - from: *time.Time for start date filter, nil if not provided
-//   - to: *time.Time for end date filter, nil if not provided
-//   - hasMedia: *bool for media filter, nil if not provided
-//   - sort: string for sort option
-//
-// Returns:
-//   - any: PaginatedReviewsResponse with review data and pagination metadata
-//   - error: nil on success, AppError with "get_failed" code on failure
+func (s *reviewServiceImpl) GetReviewsByProductIDPaginated(ctx context.Context, productID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
+	return s.getReviewsByFieldPaginated(
+		ctx,
+		"product_id",
+		productID,
+		s.reviewMongo.GetReviewsByProductIDPaginated,
+		page, pageSize, rating, minRating, maxRating, from, to, hasMedia, sort,
+		"Failed to get reviews by product (paginated)",
+	)
+}
+
 func (s *reviewServiceImpl) GetReviewsByUserIDPaginated(ctx context.Context, userID string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
-	filter := map[string]any{"user_id": userID}
-	if rating != nil {
-		filter["rating"] = *rating
-	}
-	if minRating != nil || maxRating != nil {
-		ratingRange := map[string]any{}
-		if minRating != nil {
-			ratingRange["$gte"] = *minRating
-		}
-		if maxRating != nil {
-			ratingRange["$lte"] = *maxRating
-		}
-		filter["rating"] = ratingRange
-	}
-	if from != nil || to != nil {
-		dateRange := map[string]any{}
-		if from != nil {
-			dateRange["$gte"] = *from
-		}
-		if to != nil {
-			dateRange["$lte"] = *to
-		}
-		filter["created_at"] = dateRange
-	}
-	if hasMedia != nil {
-		if *hasMedia {
-			filter["media_urls.0"] = map[string]any{"$exists": true}
-		} else {
-			filter["media_urls"] = map[string]any{"$size": 0}
-		}
-	}
-	findSort := parseSortOption(sort)
-	result, err := s.reviewMongo.GetReviewsByUserIDPaginated(ctx, userID, &intmongo.PaginationOptions{
-		Page:     int64(page),
-		PageSize: int64(pageSize),
-		Sort:     findSort,
-		Filter:   filter,
-	})
-	if err != nil {
-		return nil, &handlers.AppError{Code: "get_failed", Message: "Failed to get reviews by user (paginated)", Err: err}
-	}
-	return PaginatedReviewsResponse{
-		Data:       result.Data,
-		TotalCount: result.TotalCount,
-		Page:       int(result.Page),
-		PageSize:   int(result.PageSize),
-		TotalPages: int(result.TotalPages),
-		HasNext:    result.HasNext,
-		HasPrev:    result.HasPrev,
-	}, nil
+	return s.getReviewsByFieldPaginated(
+		ctx,
+		"user_id",
+		userID,
+		s.reviewMongo.GetReviewsByUserIDPaginated,
+		page, pageSize, rating, minRating, maxRating, from, to, hasMedia, sort,
+		"Failed to get reviews by user (paginated)",
+	)
 }
 
 // parseSortOption converts a sort string to a mongo sort option.

@@ -9,11 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // category_service_test.go: Tests for category DB query interfaces, adapters, and business logic service with transaction handling.
@@ -101,12 +103,7 @@ func TestCategoryServiceImpl_CreateCategory(t *testing.T) {
 				Name:        "Test Category",
 				Description: "Test Description",
 			},
-			setupMocks: func(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
-				mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
-				mockTx.On("Rollback").Return(nil)
-				mockDB.On("WithTx", mockTx).Return(mockDB)
-				mockDB.On("CreateCategory", mock.Anything, mock.Anything).Return(errors.New("database error"))
-			},
+			setupMocks:    setupDatabaseErrorForCreate,
 			expectedError: true,
 			errorCode:     "create_category_error",
 		},
@@ -114,36 +111,16 @@ func TestCategoryServiceImpl_CreateCategory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockCategoryDBQueries{}
-			mockConn := &MockCategoryDBConn{}
-			mockTx := &MockCategoryDBTx{}
-
-			if tt.setupMocks != nil {
-				tt.setupMocks(mockDB, mockConn, mockTx)
-			}
-
-			service := &categoryServiceImpl{
-				db:     mockDB,
-				dbConn: mockConn,
-			}
-
-			id, err := service.CreateCategory(context.Background(), tt.params)
-
-			if tt.expectedError {
-				assert.Error(t, err)
-				appErr := &handlers.AppError{}
-				if errors.As(err, &appErr) {
-					assert.Equal(t, tt.errorCode, appErr.Code)
-				}
-				assert.Empty(t, id)
-			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, id)
-			}
-
-			mockDB.AssertExpectations(t)
-			mockConn.AssertExpectations(t)
-			mockTx.AssertExpectations(t)
+			runCategoryServiceTest(
+				t,
+				func(s *categoryServiceImpl, ctx context.Context, p CategoryRequest) (string, error) {
+					return s.CreateCategory(ctx, p)
+				},
+				tt.params,
+				tt.setupMocks,
+				tt.expectedError,
+				tt.errorCode,
+			)
 		})
 	}
 }
@@ -204,12 +181,7 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 				ID:   "test-id",
 				Name: "Test Category",
 			},
-			setupMocks: func(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
-				mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil) // Mock BeginTx to return nil Tx
-				mockTx.On("Rollback").Return(nil)
-				mockDB.On("WithTx", mockTx).Return(mockDB)
-				mockDB.On("UpdateCategories", mock.Anything, mock.Anything).Return(errors.New("database error"))
-			},
+			setupMocks:    setupDatabaseErrorForUpdate,
 			expectedError: true,
 			errorCode:     "update_category_error",
 		},
@@ -217,34 +189,17 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockCategoryDBQueries{}
-			mockConn := &MockCategoryDBConn{}
-			mockTx := &MockCategoryDBTx{}
-
-			if tt.setupMocks != nil {
-				tt.setupMocks(mockDB, mockConn, mockTx)
-			}
-
-			service := &categoryServiceImpl{
-				db:     mockDB,
-				dbConn: mockConn,
-			}
-
-			err := service.UpdateCategory(context.Background(), tt.params)
-
-			if tt.expectedError {
-				assert.Error(t, err)
-				appErr := &handlers.AppError{}
-				if errors.As(err, &appErr) {
-					assert.Equal(t, tt.errorCode, appErr.Code)
-				}
-			} else {
-				assert.NoError(t, err)
-			}
-
-			mockDB.AssertExpectations(t)
-			mockConn.AssertExpectations(t)
-			mockTx.AssertExpectations(t)
+			runCategoryServiceTest(
+				t,
+				func(s *categoryServiceImpl, ctx context.Context, p CategoryRequest) (string, error) {
+					err := s.UpdateCategory(ctx, p)
+					return "", err
+				},
+				tt.params,
+				tt.setupMocks,
+				tt.expectedError,
+				tt.errorCode,
+			)
 		})
 	}
 }
@@ -312,13 +267,13 @@ func TestCategoryServiceImpl_DeleteCategory(t *testing.T) {
 			err := service.DeleteCategory(context.Background(), tt.categoryID)
 
 			if tt.expectedError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				appErr := &handlers.AppError{}
 				if errors.As(err, &appErr) {
 					assert.Equal(t, tt.errorCode, appErr.Code)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockDB.AssertExpectations(t)
@@ -405,13 +360,13 @@ func TestCategoryServiceImpl_GetAllCategories(t *testing.T) {
 			result, err := service.GetAllCategories(context.Background())
 
 			if tt.expectedError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				appErr := &handlers.AppError{}
 				if errors.As(err, &appErr) {
 					assert.Equal(t, tt.errorCode, appErr.Code)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Len(t, result, len(tt.expectedResult))
 			}
 
@@ -434,7 +389,7 @@ func TestCategoryServiceImpl_CreateCategory_NilDBConn(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -457,7 +412,7 @@ func TestCategoryServiceImpl_UpdateCategory_NilDBConn(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -476,7 +431,7 @@ func TestCategoryServiceImpl_DeleteCategory_NilDBConn(t *testing.T) {
 
 	err := service.DeleteCategory(context.Background(), "test-id")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -495,7 +450,7 @@ func TestCategoryServiceImpl_GetAllCategories_NilDB(t *testing.T) {
 
 	_, err := service.GetAllCategories(context.Background())
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "database_error", appErr.Code)
@@ -523,7 +478,7 @@ func TestCategoryServiceImpl_CreateCategory_TransactionError(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -559,7 +514,7 @@ func TestCategoryServiceImpl_CreateCategory_CommitError(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "commit_error", appErr.Code)
@@ -591,7 +546,7 @@ func TestCategoryServiceImpl_UpdateCategory_TransactionError(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -628,7 +583,7 @@ func TestCategoryServiceImpl_UpdateCategory_CommitError(t *testing.T) {
 		Description: "Test Description",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "commit_error", appErr.Code)
@@ -656,7 +611,7 @@ func TestCategoryServiceImpl_DeleteCategory_TransactionError(t *testing.T) {
 
 	err := service.DeleteCategory(context.Background(), "test-id")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)
@@ -689,7 +644,7 @@ func TestCategoryServiceImpl_DeleteCategory_CommitError(t *testing.T) {
 
 	err := service.DeleteCategory(context.Background(), "test-id")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "commit_error", appErr.Code)
@@ -698,4 +653,115 @@ func TestCategoryServiceImpl_DeleteCategory_CommitError(t *testing.T) {
 	mockDBConn.AssertExpectations(t)
 	mockDB.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
+}
+
+// TestCategoryService_DatabaseErrorScenarios tests the CreateCategory and UpdateCategory methods for database errors.
+func TestCategoryService_DatabaseErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name       string
+		operation  string // "create" or "update"
+		params     any
+		setupMocks func(mockService *MockCategoryService)
+		errorCode  string
+	}{
+		{
+			name:      "CreateCategory_DatabaseError",
+			operation: "create",
+			params: CategoryRequest{
+				Name:        "Test Category",
+				Description: "Test Description",
+			},
+			setupMocks: func(mockService *MockCategoryService) {
+				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("", &handlers.AppError{Code: "create_category_error", Message: "database error"})
+			},
+			errorCode: "create_category_error",
+		},
+		{
+			name:      "UpdateCategory_DatabaseError",
+			operation: "update",
+			params: CategoryRequest{
+				ID:   "test-id",
+				Name: "Test Category",
+			},
+			setupMocks: func(mockService *MockCategoryService) {
+				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{Code: "update_category_error", Message: "database error"})
+			},
+			errorCode: "update_category_error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService := new(MockCategoryService)
+			tt.setupMocks(mockService)
+
+			var err error
+			switch tt.operation {
+			case "create":
+				_, err = mockService.CreateCategory(context.Background(), tt.params.(CategoryRequest))
+			case "update":
+				err = mockService.UpdateCategory(context.Background(), tt.params.(CategoryRequest))
+			}
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
+			assert.True(t, ok)
+			assert.Equal(t, tt.errorCode, appErr.Code)
+		})
+	}
+}
+
+// runCategoryServiceTest is a shared helper for testing category service create/update methods.
+func runCategoryServiceTest(
+	t *testing.T,
+	serviceMethod func(*categoryServiceImpl, context.Context, CategoryRequest) (string, error),
+	params CategoryRequest,
+	setupMocks func(*MockCategoryDBQueries, *MockCategoryDBConn, *MockCategoryDBTx),
+	expectedError bool,
+	errorCode string,
+) {
+	mockDB := &MockCategoryDBQueries{}
+	mockConn := &MockCategoryDBConn{}
+	mockTx := &MockCategoryDBTx{}
+
+	if setupMocks != nil {
+		setupMocks(mockDB, mockConn, mockTx)
+	}
+
+	service := &categoryServiceImpl{
+		db:     mockDB,
+		dbConn: mockConn,
+	}
+
+	id, err := serviceMethod(service, context.Background(), params)
+
+	if expectedError {
+		require.Error(t, err)
+		appErr := &handlers.AppError{}
+		if errors.As(err, &appErr) {
+			assert.Equal(t, errorCode, appErr.Code)
+		}
+		assert.Empty(t, id)
+	} else {
+		require.NoError(t, err)
+		// Do not assert NotEmpty on id for UpdateCategory, since it always returns ""
+	}
+
+	mockDB.AssertExpectations(t)
+	mockConn.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
+}
+
+// Shared helper for database error setupMocks
+func setupDatabaseErrorForCreate(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
+	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
+	mockTx.On("Rollback").Return(nil)
+	mockDB.On("WithTx", mockTx).Return(mockDB)
+	mockDB.On("CreateCategory", mock.Anything, mock.Anything).Return(errors.New("database error"))
+}
+
+func setupDatabaseErrorForUpdate(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
+	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
+	mockTx.On("Rollback").Return(nil)
+	mockDB.On("WithTx", mockTx).Return(mockDB)
+	mockDB.On("UpdateCategories", mock.Anything, mock.Anything).Return(errors.New("database error"))
 }

@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
 )
 
 // user_service_test.go: Tests for user business logic including retrieval, updates, role promotion, and transaction management.
@@ -37,7 +39,7 @@ func TestUserService_GetUser(t *testing.T) {
 	}
 
 	resp, err := service.GetUser(context.Background(), dbUser)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &UserResponse{
 		ID:      "u1",
 		Name:    "Alice",
@@ -57,44 +59,53 @@ func TestUserService_UpdateUser_TransactionError(t *testing.T) {
 	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
 
 	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
 }
 
-// TestUserService_UpdateUser_UpdateUserInfoError tests that UpdateUser returns an error
-// when the database update operation fails
-func TestUserService_UpdateUser_UpdateUserInfoError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
+// TestUserService_UpdateUser_ErrorScenarios tests that UpdateUser returns an error
+// when the database update operation fails or the transaction commit fails.
+func TestUserService_UpdateUser_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name           string
+		mockSetup      func(mock sqlmock.Sqlmock)
+		expectedErrMsg string
+	}{
+		{
+			name: "UpdateUserInfoError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users").WillReturnError(errors.New("update error"))
+				mock.ExpectRollback()
+			},
+			expectedErrMsg: "DB update error",
+		},
+		{
+			name: "CommitError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+			},
+			expectedErrMsg: "Error committing transaction",
+		},
+	}
 
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WillReturnError(errors.New("update error"))
-	mock.ExpectRollback()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, _ := sqlmock.New()
+			queries := database.New(db)
+			service := &userServiceImpl{db: queries, dbConn: db}
+			user := database.User{ID: "u1"}
+			params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
 
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "DB update error")
-}
+			tt.mockSetup(mock)
 
-// TestUserService_UpdateUser_CommitError tests that UpdateUser returns an error
-// when the transaction commit fails
-func TestUserService_UpdateUser_CommitError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
-
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
-
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Error committing transaction")
+			err := service.UpdateUser(context.Background(), user, params)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedErrMsg)
+		})
+	}
 }
 
 // TestUserError_Unwrap tests that AppError correctly unwraps to the underlying error
@@ -126,7 +137,7 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 	)
 
 	user, err := service.GetUserByID(context.Background(), "u1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedUser.ID, user.ID)
 	assert.Equal(t, expectedUser.Name, user.Name)
 	assert.Equal(t, expectedUser.Email, user.Email)
@@ -138,7 +149,7 @@ func TestUserService_GetUserByID_NilDB(t *testing.T) {
 	service := &userServiceImpl{db: nil, dbConn: nil}
 
 	user, err := service.GetUserByID(context.Background(), "u1")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Contains(t, err.Error(), "db is nil")
 }
@@ -154,49 +165,46 @@ func TestUserService_GetUserByID_DBError(t *testing.T) {
 	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("u1").WillReturnError(errors.New("database error"))
 
 	user, err := service.GetUserByID(context.Background(), "u1")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Contains(t, err.Error(), "database error")
 }
 
-// TestUserService_UpdateUser_Success tests that UpdateUser successfully updates
+// TestUserService_UpdateUser_SuccessScenarios tests that UpdateUser successfully updates
 // a user with valid parameters
-func TestUserService_UpdateUser_Success(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com", Phone: "123", Address: "Addr"}
+func TestUserService_UpdateUser_SuccessScenarios(t *testing.T) {
+	tests := []struct {
+		name   string
+		params UpdateUserParams
+	}{
+		{
+			name:   "Success_FullParams",
+			params: UpdateUserParams{Name: "Bob", Email: "bob@example.com", Phone: "123", Address: "Addr"},
+		},
+		{
+			name:   "Success_EmptyParams",
+			params: UpdateUserParams{Name: "", Email: "", Phone: "", Address: ""},
+		},
+	}
 
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WithArgs(
-		user.ID, params.Name, params.Email,
-		sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-	).WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, _ := sqlmock.New()
+			queries := database.New(db)
+			service := &userServiceImpl{db: queries, dbConn: db}
+			user := database.User{ID: "u1"}
 
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.NoError(t, err)
-}
+			mock.ExpectBegin()
+			mock.ExpectExec("UPDATE users").WithArgs(
+				user.ID, tt.params.Name, tt.params.Email,
+				sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			).WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectCommit()
 
-// TestUserService_UpdateUser_EmptyParams tests that UpdateUser successfully handles
-// empty parameters without errors
-func TestUserService_UpdateUser_EmptyParams(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "", Email: "", Phone: "", Address: ""}
-
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WithArgs(
-		user.ID, params.Name, params.Email,
-		sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-	).WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
-
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.NoError(t, err)
+			err := service.UpdateUser(context.Background(), user, tt.params)
+			assert.NoError(t, err)
+		})
+	}
 }
 
 // TestUserService_UpdateUser_PartialParams tests that UpdateUser successfully handles
@@ -231,44 +239,8 @@ func TestUserService_UpdateUser_BeginTxError(t *testing.T) {
 	mock.ExpectBegin().WillReturnError(errors.New("begin transaction error"))
 
 	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error starting transaction")
-}
-
-// TestUserService_UpdateUser_UpdateUserInfoError_WithRollback tests that UpdateUser
-// properly rolls back the transaction when the update fails
-func TestUserService_UpdateUser_UpdateUserInfoError_WithRollback(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
-
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WillReturnError(errors.New("update error"))
-	mock.ExpectRollback()
-
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "DB update error")
-}
-
-// TestUserService_UpdateUser_CommitError_WithRollback tests that UpdateUser
-// properly handles commit errors
-func TestUserService_UpdateUser_CommitError_WithRollback(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
-	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
-
-	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE users").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
-
-	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Error committing transaction")
 }
 
 // Note: This test file uses sqlmock for database mocking as recommended for unit tests.
@@ -301,7 +273,7 @@ func TestUserService_PromoteUserToAdmin_Unauthorized(t *testing.T) {
 	service := &userServiceImpl{}
 	nonAdmin := database.User{ID: "u1", Role: "user"}
 	err := service.PromoteUserToAdmin(context.Background(), nonAdmin, "target")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Admin privileges required")
 }
 
@@ -323,7 +295,7 @@ func TestUserService_PromoteUserToAdmin_AlreadyAdmin(t *testing.T) {
 	mock.ExpectRollback()
 
 	err := service.PromoteUserToAdmin(context.Background(), adminUser, targetUserID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already admin")
 }
 
@@ -341,7 +313,7 @@ func TestUserService_PromoteUserToAdmin_UserNotFound(t *testing.T) {
 	mock.ExpectRollback()
 
 	err := service.PromoteUserToAdmin(context.Background(), adminUser, targetUserID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Target user not found")
 }
 
@@ -351,7 +323,7 @@ func TestUserService_PromoteUserToAdmin_TransactionError(t *testing.T) {
 	service := &userServiceImpl{db: &database.Queries{}, dbConn: nil}
 	adminUser := database.User{ID: "admin1", Role: "admin"}
 	err := service.PromoteUserToAdmin(context.Background(), adminUser, "target")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
 }
 
@@ -373,7 +345,7 @@ func TestUserService_PromoteUserToAdmin_UpdateError(t *testing.T) {
 	mock.ExpectRollback()
 
 	err := service.PromoteUserToAdmin(context.Background(), adminUser, targetUserID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update user role")
 }
 
@@ -395,7 +367,7 @@ func TestUserService_PromoteUserToAdmin_CommitError(t *testing.T) {
 	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
 
 	err := service.PromoteUserToAdmin(context.Background(), adminUser, targetUserID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
 }
 
@@ -409,7 +381,7 @@ func TestUserService_GetUserByID_UserNotFound(t *testing.T) {
 	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("u404").WillReturnError(sql.ErrNoRows)
 
 	user, err := service.GetUserByID(context.Background(), "u404")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Contains(t, err.Error(), "no rows")
 }
@@ -428,7 +400,7 @@ func TestUserService_GetUser_EmptyFields(t *testing.T) {
 	service := &userServiceImpl{}
 	dbUser := database.User{ID: "u2"} // All other fields zero values
 	resp, err := service.GetUser(context.Background(), dbUser)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &UserResponse{ID: "u2", Name: "", Email: "", Phone: "", Address: ""}, resp)
 }
 
@@ -439,6 +411,6 @@ func TestUserService_UpdateUser_NilDBAndDBConn(t *testing.T) {
 	user := database.User{ID: "u1"}
 	params := UpdateUserParams{Name: "Test", Email: "test@example.com"}
 	err := service.UpdateUser(context.Background(), user, params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
 }

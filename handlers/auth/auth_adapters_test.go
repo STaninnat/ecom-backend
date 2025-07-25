@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
 )
 
 // auth_adapters_test.go: Tests for covering DBQueriesAdapter, DBConnAdapter, and AuthConfigAdapter methods,
@@ -28,11 +30,11 @@ func TestDBQueriesAdapter_Instantiation(t *testing.T) {
 func TestAuthConfigAdapter_HashPassword(t *testing.T) {
 	adapter := &AuthConfigAdapter{AuthConfig: &auth.Config{}}
 	hash, err := adapter.HashPassword("short")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, hash)
 
 	hash, err = adapter.HashPassword("longenoughpassword")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, hash)
 }
 
@@ -50,20 +52,20 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 	ctx := context.Background()
 	// No httpRequest in context
 	err := adapter.StoreRefreshTokenInRedis(ctx, "u1", "rt", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires *http.Request")
 
 	// With httpRequest in context, but nil APIConfig
 	r, _ := http.NewRequest("GET", "/", nil)
 	ctx2 := context.WithValue(ctx, HTTPRequestKey, r)
 	err = adapter.StoreRefreshTokenInRedis(ctx2, "u1", "rt", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "APIConfig is nil")
 
 	// New: Test with nil embedded AuthConfig
 	nilAdapter := &AuthConfigAdapter{AuthConfig: nil}
 	err = nilAdapter.StoreRefreshTokenInRedis(ctx2, "u1", "rt", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AuthConfig is nil")
 }
 
@@ -115,36 +117,36 @@ func TestDBQueriesAdapter_Methods(t *testing.T) {
 
 	ok, err := adapter.CheckUserExistsByName(ctx, "exists")
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ok, err = adapter.CheckUserExistsByEmail(ctx, "exists@example.com")
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = adapter.CreateUser(ctx, database.CreateUserParams{ID: "id"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = adapter.CreateUser(ctx, database.CreateUserParams{})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, err = adapter.GetUserByEmail(ctx, "found@example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = adapter.GetUserByEmail(ctx, "notfound@example.com")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	err = adapter.UpdateUserStatusByID(ctx, database.UpdateUserStatusByIDParams{ID: "id"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = adapter.UpdateUserStatusByID(ctx, database.UpdateUserStatusByIDParams{})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_ = adapter.WithTx(nil)
 
 	_, err = adapter.CheckExistsAndGetIDByEmail(ctx, "exists@example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = adapter.CheckExistsAndGetIDByEmail(ctx, "notfound@example.com")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	err = adapter.UpdateUserSigninStatusByEmail(ctx, database.UpdateUserSigninStatusByEmailParams{Email: "e"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = adapter.UpdateUserSigninStatusByEmail(ctx, database.UpdateUserSigninStatusByEmailParams{})
 	assert.Error(t, err)
 }
@@ -153,7 +155,7 @@ func TestDBQueriesAdapter_Methods(t *testing.T) {
 func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		if err := db.Close(); err != nil {
 			t.Errorf("Failed to close database: %v", err)
@@ -169,13 +171,13 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 	// Test CheckUserExistsByName - use exact SQL pattern
 	mock.ExpectQuery("SELECT EXISTS \\(SELECT name FROM users WHERE name = \\$1\\)").WithArgs("testuser").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 	exists, err := adapter.CheckUserExistsByName(ctx, "testuser")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, exists)
 
 	// Test CheckUserExistsByEmail - use exact SQL pattern
 	mock.ExpectQuery("SELECT EXISTS \\(SELECT email FROM users WHERE email = \\$1\\)").WithArgs("test@example.com").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 	exists, err = adapter.CheckUserExistsByEmail(ctx, "test@example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, exists)
 
 	// Test CreateUser - use exact SQL pattern
@@ -193,7 +195,7 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test GetUserByEmail - use exact SQL pattern
 	mock.ExpectQuery("SELECT id, name, email, password, provider, provider_id, phone, address, role, created_at, updated_at FROM users").WithArgs("test@example.com").WillReturnRows(
@@ -201,7 +203,7 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 			AddRow("user-id", "Test User", "test@example.com", "hashed", "local", nil, nil, nil, "user", time.Now(), time.Now()),
 	)
 	user, err := adapter.GetUserByEmail(ctx, "test@example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "user-id", user.ID)
 
 	// Test UpdateUserStatusByID - use exact SQL pattern
@@ -211,14 +213,14 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 		Provider:  "local",
 		UpdatedAt: time.Now(),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test CheckExistsAndGetIDByEmail - use exact SQL pattern
 	mock.ExpectQuery("SELECT \\(id IS NOT NULL\\)::boolean AS exists, COALESCE\\(id, ''\\) AS id FROM users").WithArgs("test@example.com").WillReturnRows(
 		sqlmock.NewRows([]string{"exists", "id"}).AddRow(true, "user-id"),
 	)
 	result, err := adapter.CheckExistsAndGetIDByEmail(ctx, "test@example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, result.Exists)
 	assert.Equal(t, "user-id", result.ID)
 
@@ -230,12 +232,12 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 		ProviderID: sql.NullString{String: "google-id", Valid: true},
 		UpdatedAt:  time.Now(),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test WithTx
 	mock.ExpectBegin()
 	tx, err := db.Begin()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resultAdapter := adapter.WithTx(tx)
 	assert.NotNil(t, resultAdapter)
@@ -249,7 +251,7 @@ func TestDBQueriesAdapter_WithSqlMock(t *testing.T) {
 func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		if err := db.Close(); err != nil {
 			t.Errorf("Failed to close database: %v", err)
@@ -262,13 +264,13 @@ func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Test BeginTx with default options
 	mock.ExpectBegin()
 	tx, err := adapter.BeginTx(ctx, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tx)
 
 	// Test BeginTx with custom options
 	mock.ExpectBegin()
 	tx, err = adapter.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tx)
 
 	// Verify all expectations were met
@@ -307,7 +309,7 @@ func TestAuthConfigAdapter_GenerateTokens(t *testing.T) {
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
 	expiresAt := time.Now().Add(time.Hour)
 	access, refresh, err := adapter.GenerateTokens("user-id", expiresAt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, access)
 	assert.NotEmpty(t, refresh)
 }
@@ -318,7 +320,7 @@ func TestAuthConfigAdapter_GenerateAccessToken(t *testing.T) {
 	adapter := &AuthConfigAdapter{AuthConfig: authCfg}
 	expiresAt := time.Now().Add(time.Hour)
 	token, err := adapter.GenerateAccessToken("user-id", expiresAt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, token)
 }
 
@@ -355,7 +357,7 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilAPIConfig(t *testing.
 
 	// This should fail because APIConfig is nil
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "APIConfig is nil")
 }
 
@@ -370,7 +372,7 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithWrongContextType(t *test
 	ctx := context.WithValue(context.Background(), HTTPRequestKey, "not-a-request")
 
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires *http.Request")
 }
 
@@ -385,6 +387,6 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_WithNilRequest(t *testing.T)
 	ctx := context.WithValue(context.Background(), HTTPRequestKey, (*http.Request)(nil))
 
 	err := adapter.StoreRefreshTokenInRedis(ctx, "user-id", "refresh-token", "local", time.Minute)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires *http.Request")
 }

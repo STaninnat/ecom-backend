@@ -10,10 +10,12 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // upload_service_test.go: Tests for UploadService and ProductDBAdapter covering success and failure cases of image upload, update,
@@ -43,7 +45,7 @@ func TestUploadServiceImpl_UploadProductImage_Success(t *testing.T) {
 	// Patch ParseAndGetImageFile to use the real function (since it is pure)
 	ctx := context.Background()
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "/static/test.jpg", imageURL)
 	mockStorage.AssertExpectations(t)
 }
@@ -58,7 +60,7 @@ func TestUploadServiceImpl_UploadProductImage_InvalidForm(t *testing.T) {
 	req := httptest.NewRequest("POST", "/upload", nil) // No body
 	ctx := context.Background()
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -86,7 +88,7 @@ func TestUploadServiceImpl_UploadProductImage_InvalidMIME(t *testing.T) {
 	// Patch Save should not be called
 	ctx := context.Background()
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -116,7 +118,7 @@ func TestUploadServiceImpl_UploadProductImage_SaveError(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UploadProductImage(ctx, "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -150,7 +152,7 @@ func TestUploadServiceImpl_UpdateProductImage_Success(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "/static/test.png", imageURL)
 	mockDB.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
@@ -168,7 +170,7 @@ func TestUpdateProductImage_ProductNotFound(t *testing.T) {
 	req, _ := newMultipartImageRequest(t, "image", "test.png", imgContent)
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod404", "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -189,7 +191,7 @@ func TestUpdateProductImage_InvalidForm(t *testing.T) {
 	req := httptest.NewRequest("POST", "/update", nil)
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -218,7 +220,7 @@ func TestUpdateProductImage_InvalidMIME(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -250,7 +252,7 @@ func TestUpdateProductImage_SaveError(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -285,7 +287,7 @@ func TestUpdateProductImage_DBUpdateError(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, imageURL)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -323,7 +325,7 @@ func TestUpdateProductImage_DeletesOldImage(t *testing.T) {
 
 	ctx := context.Background()
 	imageURL, err := service.UpdateProductImage(ctx, "prod123", "user123", req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "/static/test.png", imageURL)
 	mockStorage.AssertCalled(t, "Delete", "/static/old.png", "/tmp/uploads")
 }
@@ -416,7 +418,7 @@ func TestProductDBAdapter_GetProductByID_Success(t *testing.T) {
 	}
 	a := newTestProductDBAdapter(q)
 	prod, err := a.GetProductByID(context.Background(), "p1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "p1", prod.ID)
 	assert.Equal(t, "img.png", prod.ImageURL.String)
 	assert.True(t, prod.ImageURL.Valid)
@@ -433,7 +435,7 @@ func TestProductDBAdapter_GetProductByID_Error(t *testing.T) {
 	}
 	a := newTestProductDBAdapter(q)
 	prod, err := a.GetProductByID(context.Background(), "badid")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, dbErr, err)
 	assert.Empty(t, prod.ID)
 }
@@ -467,6 +469,6 @@ func TestProductDBAdapter_UpdateProductImageURL_Error(t *testing.T) {
 	a := newTestProductDBAdapter(q)
 	params := UpdateProductImageURLParams{ID: "p1"}
 	err := a.UpdateProductImageURL(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, dbErr, err)
 }

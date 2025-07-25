@@ -9,11 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // handler_cart_update_test.go: Tests handlers for updating cart item quantities for users and guests.
@@ -87,7 +89,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 				bodyBytes = []byte(v)
 			default:
 				bodyBytes, err = json.Marshal(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			req := httptest.NewRequest("PUT", "/cart/item", bytes.NewReader(bodyBytes))
@@ -99,7 +101,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			case tt.name == "invalid json":
 				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "invalid request body", "Failed to parse body", mock.Anything, mock.Anything, mock.Anything).Return()
 			case tt.name == "missing fields":
-				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "missing fields", "Required fields are missing", mock.Anything, mock.Anything, nil).Return()
+				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "missing fields", "Required fields are missing", mock.Anything, mock.Anything, mock.Anything).Return()
 			case tt.name == "service error":
 				mockLogger.On("LogHandlerError", mock.Anything, "update_item_quantity", "product_not_found", "Product not found", mock.Anything, mock.Anything, mock.Anything).Return()
 			}
@@ -107,19 +109,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 			config.HandlerUpdateItemQuantity(w, req, tt.user)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})
@@ -208,7 +198,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 				bodyBytes = []byte(v)
 			default:
 				bodyBytes, err = json.Marshal(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			req := httptest.NewRequest("PUT", "/cart/guest/item", bytes.NewReader(bodyBytes))
@@ -223,19 +213,7 @@ func TestHandlerUpdateGuestItemQuantity(t *testing.T) {
 			config.HandlerUpdateGuestItemQuantity(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})

@@ -9,10 +9,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_product_create_test.go: Tests the product creation handler for success, invalid input, and service error scenarios with proper responses and logging.
@@ -41,34 +43,64 @@ func TestHandlerCreateProduct_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var resp productResponse
 	err := json.NewDecoder(w.Body).Decode(&resp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Product created successfully", resp.Message)
 	assert.Equal(t, "pid1", resp.ProductID)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
 }
 
-// TestHandlerCreateProduct_InvalidPayload tests the handler's response to an invalid JSON payload.
-// It checks that the handler returns HTTP 400 and logs the appropriate error.
-func TestHandlerCreateProduct_InvalidPayload(t *testing.T) {
-	mockService := new(MockProductService)
-	mockLog := new(mockLogger)
-	cfg := &HandlersProductConfig{
-		DB:             nil,
-		DBConn:         nil,
-		Logger:         mockLog,
-		productService: mockService,
+// TestHandlerProduct_InvalidPayload tests invalid JSON payloads for both create and update product handlers.
+func TestHandlerProduct_InvalidPayload(t *testing.T) {
+	tests := []struct {
+		name        string
+		handlerFunc func(cfg *HandlersProductConfig, w http.ResponseWriter, req *http.Request, user database.User)
+		logOp       string
+		method      string
+		url         string
+	}{
+		{
+			name: "CreateProduct_InvalidPayload",
+			handlerFunc: func(cfg *HandlersProductConfig, w http.ResponseWriter, req *http.Request, user database.User) {
+				cfg.HandlerCreateProduct(w, req, user)
+			},
+			logOp:  "create_product",
+			method: "POST",
+			url:    "/products",
+		},
+		{
+			name: "UpdateProduct_InvalidPayload",
+			handlerFunc: func(cfg *HandlersProductConfig, w http.ResponseWriter, req *http.Request, user database.User) {
+				cfg.HandlerUpdateProduct(w, req, user)
+			},
+			logOp:  "update_product",
+			method: "PUT",
+			url:    "/products/pid1",
+		},
 	}
-	user := database.User{ID: "u1"}
-	badBody := []byte(`{"bad":}`)
-	mockLog.On("LogHandlerError", mock.Anything, "create_product", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	req := httptest.NewRequest("POST", "/products", bytes.NewBuffer(badBody))
-	w := httptest.NewRecorder()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockService := new(MockProductService)
+			mockLog := new(mockLogger)
+			cfg := &HandlersProductConfig{
+				DB:             nil,
+				DBConn:         nil,
+				Logger:         mockLog,
+				productService: mockService,
+			}
+			user := database.User{ID: "u1"}
+			badBody := []byte(`{"bad":}`)
+			mockLog.On("LogHandlerError", mock.Anything, tc.logOp, "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	cfg.HandlerCreateProduct(w, req, user)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockLog.AssertExpectations(t)
+			req := httptest.NewRequest(tc.method, tc.url, bytes.NewBuffer(badBody))
+			w := httptest.NewRecorder()
+
+			tc.handlerFunc(cfg, w, req, user)
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+			mockLog.AssertExpectations(t)
+		})
+	}
 }
 
 // TestHandlerCreateProduct_ServiceError tests the handler's behavior when the product service returns an error.

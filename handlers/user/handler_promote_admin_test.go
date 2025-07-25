@@ -9,11 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_promote_admin_test.go: Tests for HandlerPromoteUserToAdmin covering success, authorization, input validation, error handling, and context user presence.
@@ -42,88 +44,63 @@ func TestHandlerPromoteUserToAdmin_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.HandlerResponse
 	err := json.NewDecoder(w.Body).Decode(&resp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "User promoted to admin", resp.Message)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }
 
-// TestHandlerPromoteUserToAdmin_NonAdminForbidden tests that HandlerPromoteUserToAdmin
-// returns a forbidden error when a non-admin user attempts to promote another user
-func TestHandlerPromoteUserToAdmin_NonAdminForbidden(t *testing.T) {
-	mockService := new(mockPromoteUserService)
-	mockLogger := new(mockPromoteLogger)
-	cfg := &HandlersUserConfig{
-		Config:      &handlers.Config{Logger: logrus.New()},
-		Logger:      mockLogger,
-		userService: mockService,
+func TestHandlerPromoteUserToAdmin_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name           string
+		actingUser     database.User
+		mockReturn     *handlers.AppError
+		expectedStatus int
+	}{
+		{
+			name:           "NonAdminForbidden",
+			actingUser:     database.User{ID: "u1", Role: "user"},
+			mockReturn:     &handlers.AppError{Code: "unauthorized_user", Message: "Admin privileges required"},
+			expectedStatus: http.StatusForbidden,
+		},
+		{
+			name:           "AlreadyAdmin",
+			actingUser:     database.User{ID: "admin1", Role: "admin"},
+			mockReturn:     &handlers.AppError{Code: "already_admin", Message: "User is already admin"},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "TargetUserNotFound",
+			actingUser:     database.User{ID: "admin1", Role: "admin"},
+			mockReturn:     &handlers.AppError{Code: "user_not_found", Message: "Target user not found"},
+			expectedStatus: http.StatusNotFound,
+		},
 	}
-	nonAdmin := database.User{ID: "u1", Role: "user"}
-	params := map[string]string{"user_id": "user2"}
-	body, _ := json.Marshal(params)
-	mockService.On("PromoteUserToAdmin", mock.Anything, nonAdmin, "user2").Return(&handlers.AppError{Code: "unauthorized_user", Message: "Admin privileges required"})
-	mockLogger.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
-	r := httptest.NewRequest("POST", "/admin/user/promote", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, nonAdmin))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService := new(mockPromoteUserService)
+			mockLogger := new(mockPromoteLogger)
+			cfg := &HandlersUserConfig{
+				Config:      &handlers.Config{Logger: logrus.New()},
+				Logger:      mockLogger,
+				userService: mockService,
+			}
+			params := map[string]string{"user_id": "user2"}
+			body, _ := json.Marshal(params)
+			mockService.On("PromoteUserToAdmin", mock.Anything, tt.actingUser, "user2").Return(tt.mockReturn)
+			mockLogger.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
-	cfg.HandlerPromoteUserToAdmin(w, r)
-	assert.Equal(t, http.StatusForbidden, w.Code)
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
+			r := httptest.NewRequest("POST", "/admin/user/promote", bytes.NewBuffer(body))
+			w := httptest.NewRecorder()
+			r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, tt.actingUser))
 
-// TestHandlerPromoteUserToAdmin_AlreadyAdmin tests that HandlerPromoteUserToAdmin
-// returns an error when attempting to promote a user who is already an admin
-func TestHandlerPromoteUserToAdmin_AlreadyAdmin(t *testing.T) {
-	mockService := new(mockPromoteUserService)
-	mockLogger := new(mockPromoteLogger)
-	cfg := &HandlersUserConfig{
-		Config:      &handlers.Config{Logger: logrus.New()},
-		Logger:      mockLogger,
-		userService: mockService,
+			cfg.HandlerPromoteUserToAdmin(w, r)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockService.AssertExpectations(t)
+			mockLogger.AssertExpectations(t)
+		})
 	}
-	admin := database.User{ID: "admin1", Role: "admin"}
-	params := map[string]string{"user_id": "user2"}
-	body, _ := json.Marshal(params)
-	mockService.On("PromoteUserToAdmin", mock.Anything, admin, "user2").Return(&handlers.AppError{Code: "already_admin", Message: "User is already admin"})
-	mockLogger.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-
-	r := httptest.NewRequest("POST", "/admin/user/promote", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, admin))
-
-	cfg.HandlerPromoteUserToAdmin(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
-
-// TestHandlerPromoteUserToAdmin_TargetUserNotFound tests that HandlerPromoteUserToAdmin
-// returns a not found error when the target user doesn't exist
-func TestHandlerPromoteUserToAdmin_TargetUserNotFound(t *testing.T) {
-	mockService := new(mockPromoteUserService)
-	mockLogger := new(mockPromoteLogger)
-	cfg := &HandlersUserConfig{
-		Config:      &handlers.Config{Logger: logrus.New()},
-		Logger:      mockLogger,
-		userService: mockService,
-	}
-	admin := database.User{ID: "admin1", Role: "admin"}
-	params := map[string]string{"user_id": "user2"}
-	body, _ := json.Marshal(params)
-	mockService.On("PromoteUserToAdmin", mock.Anything, admin, "user2").Return(&handlers.AppError{Code: "user_not_found", Message: "Target user not found"})
-	mockLogger.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-
-	r := httptest.NewRequest("POST", "/admin/user/promote", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	r = r.WithContext(context.WithValue(r.Context(), contextKeyUser, admin))
-
-	cfg.HandlerPromoteUserToAdmin(w, r)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
 }
 
 // TestHandlerPromoteUserToAdmin_InvalidPayload tests that HandlerPromoteUserToAdmin

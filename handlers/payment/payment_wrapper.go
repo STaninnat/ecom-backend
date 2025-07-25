@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/stripe/stripe-go/v82"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
 )
 
 // payment_wrapper.go: Provides payment handler configuration, service initialization, and error handling.
@@ -101,37 +102,30 @@ func (cfg *HandlersPaymentConfig) SetupStripeAPI() {
 // handlePaymentError handles payment-specific errors with proper logging and responses.
 // Categorizes errors and provides appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersPaymentConfig) handlePaymentError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
-	ctx := r.Context()
-
-	var appErr *handlers.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "invalid_request", "missing_order_id", "missing_user_id", "invalid_currency", "payment_exists":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "order_not_found", "payment_not_found":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusNotFound, appErr.Message)
-		case "unauthorized":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusForbidden, appErr.Message)
-		case "invalid_order_status", "invalid_status", "invalid_amount", "invalid_payment":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "database_error", "transaction_error", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		case "stripe_error", "webhook_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Payment service error")
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
+	codeMap := map[string]userhandlers.ErrorResponseConfig{
+		"invalid_request":      {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"missing_order_id":     {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"missing_user_id":      {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"invalid_currency":     {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"payment_exists":       {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+		"order_not_found":      {Status: http.StatusNotFound, Message: "", UseAppErr: true},
+		"payment_not_found":    {Status: http.StatusNotFound, Message: "", UseAppErr: true},
+		"unauthorized":         {Status: http.StatusForbidden, Message: "", UseAppErr: true},
+		"invalid_order_status": {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"invalid_status":       {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"invalid_amount":       {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"invalid_payment":      {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
+		"database_error":       {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"transaction_error":    {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"commit_error":         {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"stripe_error":         {Status: http.StatusInternalServerError, Message: "Payment service error", UseAppErr: true},
+		"webhook_error":        {Status: http.StatusInternalServerError, Message: "Payment service error", UseAppErr: true},
+		"unauthorized_payment": {Status: http.StatusForbidden, Message: "", UseAppErr: true},
+		"unauthorized_order":   {Status: http.StatusForbidden, Message: "", UseAppErr: true},
+		"unauthorized_user":    {Status: http.StatusForbidden, Message: "", UseAppErr: true},
+		"user_not_found":       {Status: http.StatusNotFound, Message: "", UseAppErr: true},
 	}
+	userhandlers.HandleErrorWithCodeMap(cfg.Logger, w, r, err, operation, ip, userAgent, codeMap, http.StatusInternalServerError, "Internal server error")
 }
 
 // CreatePaymentIntentRequest represents the request structure for creating a payment intent.

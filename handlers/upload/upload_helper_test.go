@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // upload_helper_test.go: Mocks for logger, upload service, storage (local and S3), product DB, and helpers for multipart file requests,
@@ -166,9 +167,9 @@ func newMultipartImageRequest(t *testing.T, _ string, fileName string, fileConte
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	fw, err := w.CreateFormFile("image", fileName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = fw.Write(fileContent)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if err := w.Close(); err != nil {
 		t.Errorf("Failed to close multipart writer: %v", err)
 	}
@@ -178,7 +179,7 @@ func newMultipartImageRequest(t *testing.T, _ string, fileName string, fileConte
 
 	// Parse to get the file header for mocking
 	err = req.ParseMultipartForm(10 << 20)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, fileHeader, err := req.FormFile("image")
 	assert.NoError(t, err)
 	return req, fileHeader

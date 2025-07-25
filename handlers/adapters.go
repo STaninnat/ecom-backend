@@ -5,10 +5,11 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/sirupsen/logrus"
 )
 
 // adapters.go: Provides adapter implementations to integrate various services with handler middleware, including both current and legacy systems.

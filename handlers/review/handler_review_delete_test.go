@@ -8,12 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // handler_review_delete_test.go: Tests for review deletion handler with success, error, and edge case coverage.
@@ -62,7 +64,7 @@ func TestHandlerDeleteReviewByID_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.APIResponse
 	err := json.NewDecoder(w.Body).Decode(&resp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "success", resp.Code)
 	assert.Equal(t, "Review deleted successfully", resp.Message)
 	mockService.AssertExpectations(t)

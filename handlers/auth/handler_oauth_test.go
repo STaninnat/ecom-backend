@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/auth"
-	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/handlers"
 )
 
 // handler_oauth_test.go: Test handlers and unit tests for Google OAuth signin and callback flow.
@@ -307,29 +308,66 @@ func TestRealHandlerGoogleSignIn_AuthURLGenerationFailed(t *testing.T) {
 	mockHandlersConfig.AssertExpectations(t)
 }
 
-// TestRealHandlerGoogleCallback_MissingParameters checks the real handler for missing parameters and proper error handling.
-func TestRealHandlerGoogleCallback_MissingParameters(t *testing.T) {
-	mockHandlersConfig := &MockHandlersConfig{}
-	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.Config{}
-
-	cfg := &HandlersAuthConfig{
-		Config: &handlers.Config{
-			Auth: realAuthConfig,
+// TestRealHandler_MissingOrInvalidParameters covers missing/invalid parameter scenarios for real handlers (Google callback and refresh token).
+func TestRealHandler_MissingOrInvalidParameters(t *testing.T) {
+	tests := []struct {
+		name         string
+		handlerFunc  func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request)
+		request      *http.Request
+		logOp        string
+		logCode      string
+		logMsg       string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name: "GoogleCallback_MissingParameters",
+			handlerFunc: func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request) {
+				cfg.HandlerGoogleCallback(w, req)
+			},
+			request:      httptest.NewRequest("GET", "/auth/google/callback", nil),
+			logOp:        "callback-google",
+			logCode:      "missing_parameters",
+			logMsg:       "Missing state or code parameter",
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "Missing required parameters",
 		},
-		Logger:      mockHandlersConfig,
-		authService: mockAuthService,
+		{
+			name: "RefreshToken_InvalidToken",
+			handlerFunc: func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request) {
+				cfg.HandlerRefreshToken(w, req)
+			},
+			request:      httptest.NewRequest("POST", "/refresh", nil),
+			logOp:        "refresh_token",
+			logCode:      "invalid_token",
+			logMsg:       "Error validating authentication token",
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: "http: named cookie not present",
+		},
 	}
 
-	req := httptest.NewRequest("GET", "/auth/google/callback", nil)
-	w := httptest.NewRecorder()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandlersConfig := &MockHandlersConfig{}
+			mockAuthService := &MockAuthService{}
+			realAuthConfig := &auth.Config{}
 
-	// Set up mock expectations for the missing parameters error path
-	mockHandlersConfig.On("LogHandlerError", mock.Anything, "callback-google", "missing_parameters", "Missing state or code parameter", mock.Anything, mock.Anything, mock.Anything).Return()
+			cfg := &HandlersAuthConfig{
+				Config: &handlers.Config{
+					Auth: realAuthConfig,
+				},
+				Logger:      mockHandlersConfig,
+				authService: mockAuthService,
+			}
 
-	cfg.HandlerGoogleCallback(w, req)
+			mockHandlersConfig.On("LogHandlerError", mock.Anything, tc.logOp, tc.logCode, tc.logMsg, mock.Anything, mock.Anything, mock.Anything).Return()
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Missing required parameters")
-	mockHandlersConfig.AssertExpectations(t)
+			w := httptest.NewRecorder()
+			tc.handlerFunc(cfg, w, tc.request)
+
+			assert.Equal(t, tc.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tc.expectedBody)
+			mockHandlersConfig.AssertExpectations(t)
+		})
+	}
 }

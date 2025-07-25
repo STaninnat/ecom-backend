@@ -10,13 +10,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/oauth2"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
-	"golang.org/x/oauth2"
 )
 
 // auth_service.go: Implements authentication service with local and Google OAuth, token management, user registration, and session/cart merging.

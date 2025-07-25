@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 )
 
 // interfaces_test.go: Tests for HandlerConfig, related interfaces, and config validation to ensure proper setup and functionality.
@@ -38,7 +40,8 @@ func TestNewHandlerConfig_Interfaces(t *testing.T) {
 		return nil
 	}
 
-	cfg := NewHandlerConfig(
+	runNewHandlerConfigTest(
+		t,
 		mockAuthService,
 		mockUserService,
 		mockLoggerService,
@@ -50,18 +53,6 @@ func TestNewHandlerConfig_Interfaces(t *testing.T) {
 		oauthConfig,
 		customTokenSource,
 	)
-
-	assert.NotNil(t, cfg)
-	assert.Equal(t, mockAuthService, cfg.AuthService)
-	assert.Equal(t, mockUserService, cfg.UserService)
-	assert.Equal(t, mockLoggerService, cfg.LoggerService)
-	assert.Equal(t, mockRequestMetadataService, cfg.RequestMetadataService)
-	assert.Equal(t, jwtSecret, cfg.JWTSecret)
-	assert.Equal(t, refreshSecret, cfg.RefreshSecret)
-	assert.Equal(t, issuer, cfg.Issuer)
-	assert.Equal(t, audience, cfg.Audience)
-	assert.Equal(t, oauthConfig, cfg.OAuth)
-	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
 // TestHandlerConfig_Complete tests creation of HandlerConfig with all fields set.
@@ -204,7 +195,7 @@ func TestHandlersConfig_ValidateConfig_MissingLogger(t *testing.T) {
 	}
 
 	err := cfg.ValidateConfig()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "logger is required")
 }
 
@@ -221,7 +212,7 @@ func TestHandlersConfig_ValidateConfig_MissingAuth(t *testing.T) {
 	}
 
 	err := cfg.ValidateConfig()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "auth configuration is required")
 }
 
@@ -236,7 +227,7 @@ func TestHandlersConfig_ValidateConfig_MissingAPIConfig(t *testing.T) {
 	}
 
 	err := cfg.ValidateConfig()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "API configuration is required")
 }
 

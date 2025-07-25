@@ -9,11 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_get_user_test.go: Tests HandlerGetUser for success, service errors, missing user context, and empty user fields.
@@ -42,7 +44,7 @@ func TestHandlerGetUser_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var got UserResponse
 	err := json.NewDecoder(w.Body).Decode(&got)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, *resp, got)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -73,7 +75,7 @@ func TestHandlerGetUser_ServiceError(t *testing.T) {
 	// Check that we get an error response
 	var errorResp map[string]any
 	err := json.NewDecoder(w.Body).Decode(&errorResp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, errorResp, "error")
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -102,7 +104,7 @@ func TestHandlerGetUser_UserNotFoundInContext(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	var errorResp map[string]any
 	err := json.NewDecoder(w.Body).Decode(&errorResp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, errorResp, "error")
 	mockLogger.AssertExpectations(t)
 }
@@ -133,10 +135,10 @@ func TestHandlerGetUser_EmptyUserData(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var response UserResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "u1", response.ID)
-	assert.Equal(t, "", response.Name)
-	assert.Equal(t, "", response.Email)
+	assert.Empty(t, response.Name)
+	assert.Empty(t, response.Email)
 	mockService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }

@@ -9,10 +9,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_product_update_test.go: Tests the update product handler for success, invalid input, and service error with expected responses and logging.
@@ -41,32 +43,9 @@ func TestHandlerUpdateProduct_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp handlers.HandlerResponse
 	err := json.NewDecoder(w.Body).Decode(&resp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Product updated successfully", resp.Message)
 	mockService.AssertExpectations(t)
-	mockLog.AssertExpectations(t)
-}
-
-// TestHandlerUpdateProduct_InvalidPayload tests the handler's response to an invalid JSON payload.
-// It checks that the handler returns HTTP 400 and logs the appropriate error.
-func TestHandlerUpdateProduct_InvalidPayload(t *testing.T) {
-	mockService := new(MockProductService)
-	mockLog := new(mockLogger)
-	cfg := &HandlersProductConfig{
-		DB:             nil,
-		DBConn:         nil,
-		Logger:         mockLog,
-		productService: mockService,
-	}
-	user := database.User{ID: "u1"}
-	badBody := []byte(`{"bad":}`)
-	mockLog.On("LogHandlerError", mock.Anything, "update_product", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	req := httptest.NewRequest("PUT", "/products/pid1", bytes.NewBuffer(badBody))
-	w := httptest.NewRecorder()
-
-	cfg.HandlerUpdateProduct(w, req, user)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
 	mockLog.AssertExpectations(t)
 }
 

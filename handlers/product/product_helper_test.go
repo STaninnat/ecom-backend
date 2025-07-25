@@ -5,8 +5,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // product_helper_test.go: Provides testify-based mocks for ProductService, Logger, and database queries to support unit testing without real dependencies.

@@ -3,13 +3,9 @@ package categoryhandlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
-	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // handler_category_update.go: Provides HTTP handler for updating categories.
@@ -22,38 +18,16 @@ import (
 //   - r: *http.Request containing the request data
 //   - user: database.User representing the authenticated user
 func (cfg *HandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	var params CategoryRequest
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"update_category",
-			"invalid_request_body",
-			"Failed to parse request body",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	// Get the category service
-	categoryService := cfg.GetCategoryService()
-
-	// Call the service to update the category
-	err := categoryService.UpdateCategory(ctx, params)
-	if err != nil {
-		cfg.handleCategoryError(w, r, err, "update_category", ip, userAgent)
-		return
-	}
-
-	// Log success
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
-
-	// Return success response
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Category updated successfully",
-	})
+	HandleCategoryRequest(
+		w, r, user,
+		cfg.Logger,
+		cfg.GetCategoryService,
+		cfg.handleCategoryError,
+		"update_category",
+		func(ctx context.Context, service CategoryService, params CategoryRequest) (string, error) {
+			return "", service.UpdateCategory(ctx, params)
+		},
+		"Category updated successfully",
+		http.StatusOK,
+	)
 }

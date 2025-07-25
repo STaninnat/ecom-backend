@@ -9,11 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_category_create_integration_test.go: Integration tests for HandlerCreateCategory, including success, errors, and validation edge cases.
@@ -194,7 +196,7 @@ func TestIntegration_HandlerCreateCategory(t *testing.T) {
 				body = []byte(str)
 			} else {
 				body, err = json.Marshal(tt.requestBody)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			// Create request
@@ -299,7 +301,7 @@ func TestIntegration_HandlerCreateCategory_EdgeCases(t *testing.T) {
 
 			// Create request body
 			body, err := json.Marshal(tt.requestBody)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Create request
 			req := httptest.NewRequest(http.MethodPost, "/categories", bytes.NewBuffer(body))

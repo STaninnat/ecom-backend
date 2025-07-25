@@ -5,11 +5,12 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
 )
 
 // handler_order_get.go: HTTP handlers for fetching orders and order items, with service calls and structured logging.

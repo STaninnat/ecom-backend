@@ -10,12 +10,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // handler_review_update_test.go: Tests for HandlerUpdateReviewByID covering success, error cases, validation, authorization, and service behavior.
@@ -269,7 +271,7 @@ func TestReviewUpdateRequest_Validate_EdgeCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.request.Validate()
 			if tc.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				appErr := &handlers.AppError{}
 				ok := errors.As(err, &appErr)
 				assert.True(t, ok)

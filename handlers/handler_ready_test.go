@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // handler_ready_test.go: Tests for basic HTTP handlers for service readiness, health status, and error responses.
@@ -26,7 +27,7 @@ func TestHandlerReadiness(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, "ok", response["status"])
 	assert.Equal(t, "ecom-backend", response["service"])
@@ -45,7 +46,7 @@ func TestHandlerError(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, "Internal server error", response["error"])
 	assert.Equal(t, "INTERNAL_ERROR", response["code"])
@@ -65,7 +66,7 @@ func TestHandlerHealth(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, "healthy", response["status"])
 	assert.Equal(t, "ecom-backend", response["service"])
@@ -87,7 +88,7 @@ func TestHandlerReadiness_ResponseStructure(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that response has exactly the expected fields
 	expectedKeys := []string{"status", "service"}
@@ -107,7 +108,7 @@ func TestHandlerError_ResponseStructure(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that response has exactly the expected fields
 	expectedKeys := []string{"error", "code", "message"}
@@ -127,7 +128,7 @@ func TestHandlerHealth_ResponseStructure(t *testing.T) {
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that response has exactly the expected fields
 	expectedKeys := []string{"status", "service", "version", "timestamp"}
@@ -193,409 +194,171 @@ func TestHandlerHealth_DifferentMethods(t *testing.T) {
 
 // Edge case tests for handler_ready.go
 
-// TestHandlerReadiness_EdgeCases tests HandlerReadiness for edge cases such as nil requests and response writers.
-// It checks that the function panics or not as expected for each case.
+// runHandlerEdgeCasesTest is a shared helper for edge case tests for readiness, error, and health handlers.
+func runHandlerEdgeCasesTest(
+	t *testing.T,
+	handler func(http.ResponseWriter, *http.Request),
+	baseURL string,
+) {
+	tests := []struct {
+		name           string
+		request        *http.Request
+		responseWriter http.ResponseWriter
+		expectPanic    bool
+	}{
+		{
+			name:           "nil request",
+			request:        nil,
+			responseWriter: httptest.NewRecorder(),
+			expectPanic:    false,
+		},
+		{
+			name:           "nil response writer",
+			request:        httptest.NewRequest("GET", baseURL, nil),
+			responseWriter: nil,
+			expectPanic:    true,
+		},
+		{
+			name:           "both nil",
+			request:        nil,
+			responseWriter: nil,
+			expectPanic:    true,
+		},
+		{
+			name:           "request with nil body",
+			request:        httptest.NewRequest("GET", baseURL, nil),
+			responseWriter: httptest.NewRecorder(),
+			expectPanic:    false,
+		},
+		{
+			name:           "request with empty body",
+			request:        httptest.NewRequest("GET", baseURL, http.NoBody),
+			responseWriter: httptest.NewRecorder(),
+			expectPanic:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					handler(tt.responseWriter, tt.request)
+				})
+			} else {
+				assert.NotPanics(t, func() {
+					handler(tt.responseWriter, tt.request)
+				})
+			}
+		})
+	}
+}
+
+// runHandlerResponseConsistencyTest is a shared helper for response consistency tests for readiness, error, and health handlers.
+func runHandlerResponseConsistencyTest(
+	t *testing.T,
+	handler func(http.ResponseWriter, *http.Request),
+	req *http.Request,
+) {
+	responses := make([]map[string]any, 5)
+	for i := range 5 {
+		w := httptest.NewRecorder()
+		handler(w, req)
+		var response map[string]any
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		responses[i] = response
+	}
+	for i := 1; i < len(responses); i++ {
+		assert.Equal(t, responses[0], responses[i])
+	}
+}
+
 func TestHandlerReadiness_EdgeCases(t *testing.T) {
-	tests := []struct {
-		name           string
-		request        *http.Request
-		responseWriter http.ResponseWriter
-		expectPanic    bool
-	}{
-		{
-			name:           "nil request",
-			request:        nil,
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-		{
-			name:           "nil response writer",
-			request:        httptest.NewRequest("GET", "/healthz", nil),
-			responseWriter: nil,
-			expectPanic:    true,
-		},
-		{
-			name:           "both nil",
-			request:        nil,
-			responseWriter: nil,
-			expectPanic:    true,
-		},
-		{
-			name:           "request with nil body",
-			request:        httptest.NewRequest("GET", "/healthz", nil),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-		{
-			name:           "request with empty body",
-			request:        httptest.NewRequest("GET", "/healthz", http.NoBody),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectPanic {
-				assert.Panics(t, func() {
-					HandlerReadiness(tt.responseWriter, tt.request)
-				})
-			} else {
-				assert.NotPanics(t, func() {
-					HandlerReadiness(tt.responseWriter, tt.request)
-				})
-			}
-		})
-	}
+	runHandlerEdgeCasesTest(t, HandlerReadiness, "/healthz")
 }
 
-// TestHandlerError_EdgeCases tests HandlerError for edge cases such as nil requests and response writers.
-// It checks that the function panics or not as expected for each case.
 func TestHandlerError_EdgeCases(t *testing.T) {
-	tests := []struct {
-		name           string
-		request        *http.Request
-		responseWriter http.ResponseWriter
-		expectPanic    bool
-	}{
-		{
-			name:           "nil request",
-			request:        nil,
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-		{
-			name:           "nil response writer",
-			request:        httptest.NewRequest("GET", "/error", nil),
-			responseWriter: nil,
-			expectPanic:    true,
-		},
-		{
-			name:           "both nil",
-			request:        nil,
-			responseWriter: nil,
-			expectPanic:    true,
-		},
-		{
-			name:           "request with nil body",
-			request:        httptest.NewRequest("GET", "/error", nil),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-		{
-			name:           "request with empty body",
-			request:        httptest.NewRequest("GET", "/error", http.NoBody),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectPanic {
-				assert.Panics(t, func() {
-					HandlerError(tt.responseWriter, tt.request)
-				})
-			} else {
-				assert.NotPanics(t, func() {
-					HandlerError(tt.responseWriter, tt.request)
-				})
-			}
-		})
-	}
+	runHandlerEdgeCasesTest(t, HandlerError, "/error")
 }
 
-// TestHandlerHealth_EdgeCases tests HandlerHealth for edge cases such as nil requests and response writers.
-// It checks that the function panics or not as expected for each case.
 func TestHandlerHealth_EdgeCases(t *testing.T) {
+	runHandlerEdgeCasesTest(t, HandlerHealth, "/health")
+}
+
+// Helper for malformed request tests
+func testMalformedRequests(t *testing.T, handler func(http.ResponseWriter, *http.Request), baseURL string) {
 	tests := []struct {
-		name           string
-		request        *http.Request
-		responseWriter http.ResponseWriter
-		expectPanic    bool
+		name   string
+		url    string
+		method string
+		body   any
 	}{
 		{
-			name:           "nil request",
-			request:        nil,
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
+			name:   "request with large body",
+			url:    baseURL,
+			method: "POST",
+			body:   string(make([]byte, 1000000)), // 1MB body
 		},
 		{
-			name:           "nil response writer",
-			request:        httptest.NewRequest("GET", "/health", nil),
-			responseWriter: nil,
-			expectPanic:    true,
+			name:   "request with special characters in URL",
+			url:    baseURL + "?param=test%20value",
+			method: "GET",
+			body:   nil,
 		},
 		{
-			name:           "both nil",
-			request:        nil,
-			responseWriter: nil,
-			expectPanic:    true,
-		},
-		{
-			name:           "request with nil body",
-			request:        httptest.NewRequest("GET", "/health", nil),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
-		},
-		{
-			name:           "request with empty body",
-			request:        httptest.NewRequest("GET", "/health", http.NoBody),
-			responseWriter: httptest.NewRecorder(),
-			expectPanic:    false,
+			name:   "request with query parameters",
+			url:    baseURL + "?param1=value1&param2=value2",
+			method: "GET",
+			body:   nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectPanic {
-				assert.Panics(t, func() {
-					HandlerHealth(tt.responseWriter, tt.request)
-				})
-			} else {
-				assert.NotPanics(t, func() {
-					HandlerHealth(tt.responseWriter, tt.request)
-				})
+			req, err := http.NewRequest(tt.method, tt.url, nil)
+			if err != nil {
+				t.Skipf("Could not create request: %v", err)
 			}
+			w := httptest.NewRecorder()
+			assert.NotPanics(t, func() {
+				handler(w, req)
+			})
+			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 		})
 	}
 }
 
-// TestHandlerReadiness_MalformedRequests tests HandlerReadiness with malformed or unusual requests.
-// It checks that the function does not panic and returns a valid response.
 func TestHandlerReadiness_MalformedRequests(t *testing.T) {
-	tests := []struct {
-		name   string
-		url    string
-		method string
-		body   any
-	}{
-		{
-			name:   "request with large body",
-			url:    "/healthz",
-			method: "POST",
-			body:   string(make([]byte, 1000000)), // 1MB body
-		},
-		{
-			name:   "request with special characters in URL",
-			url:    "/healthz?param=test%20value",
-			method: "GET",
-			body:   nil,
-		},
-		{
-			name:   "request with query parameters",
-			url:    "/healthz?param1=value1&param2=value2",
-			method: "GET",
-			body:   nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var req *http.Request
-			var err error
-
-			req, err = http.NewRequest(tt.method, tt.url, nil)
-
-			if err != nil {
-				// Skip tests that can't create valid requests
-				t.Skipf("Could not create request: %v", err)
-			}
-
-			w := httptest.NewRecorder()
-
-			// Should not panic even with malformed requests
-			assert.NotPanics(t, func() {
-				HandlerReadiness(w, req)
-			})
-
-			// Should still return a valid response
-			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-		})
-	}
+	testMalformedRequests(t, HandlerReadiness, "/healthz")
 }
 
-// TestHandlerError_MalformedRequests tests HandlerError with malformed or unusual requests.
-// It checks that the function does not panic and returns a valid response.
 func TestHandlerError_MalformedRequests(t *testing.T) {
-	tests := []struct {
-		name   string
-		url    string
-		method string
-		body   any
-	}{
-		{
-			name:   "request with large body",
-			url:    "/error",
-			method: "POST",
-			body:   string(make([]byte, 1000000)), // 1MB body
-		},
-		{
-			name:   "request with special characters in URL",
-			url:    "/error?param=test%20value",
-			method: "GET",
-			body:   nil,
-		},
-		{
-			name:   "request with query parameters",
-			url:    "/error?param1=value1&param2=value2",
-			method: "GET",
-			body:   nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var req *http.Request
-			var err error
-
-			req, err = http.NewRequest(tt.method, tt.url, nil)
-
-			if err != nil {
-				// Skip tests that can't create valid requests
-				t.Skipf("Could not create request: %v", err)
-			}
-
-			w := httptest.NewRecorder()
-
-			// Should not panic even with malformed requests
-			assert.NotPanics(t, func() {
-				HandlerError(w, req)
-			})
-
-			// Should still return a valid response
-			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-		})
-	}
+	testMalformedRequests(t, HandlerError, "/error")
 }
 
-// TestHandlerHealth_MalformedRequests tests HandlerHealth with malformed or unusual requests.
-// It checks that the function does not panic and returns a valid response.
 func TestHandlerHealth_MalformedRequests(t *testing.T) {
-	tests := []struct {
-		name   string
-		url    string
-		method string
-		body   any
-	}{
-		{
-			name:   "request with large body",
-			url:    "/health",
-			method: "POST",
-			body:   string(make([]byte, 1000000)), // 1MB body
-		},
-		{
-			name:   "request with special characters in URL",
-			url:    "/health?param=test%20value",
-			method: "GET",
-			body:   nil,
-		},
-		{
-			name:   "request with query parameters",
-			url:    "/health?param1=value1&param2=value2",
-			method: "GET",
-			body:   nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var req *http.Request
-			var err error
-
-			req, err = http.NewRequest(tt.method, tt.url, nil)
-
-			if err != nil {
-				// Skip tests that can't create valid requests
-				t.Skipf("Could not create request: %v", err)
-			}
-
-			w := httptest.NewRecorder()
-
-			// Should not panic even with malformed requests
-			assert.NotPanics(t, func() {
-				HandlerHealth(w, req)
-			})
-
-			// Should still return a valid response
-			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-		})
-	}
+	testMalformedRequests(t, HandlerHealth, "/health")
 }
 
 // TestHandlerReadiness_ResponseConsistency tests that HandlerReadiness returns consistent responses across multiple calls.
 // It checks that all responses are identical.
 func TestHandlerReadiness_ResponseConsistency(t *testing.T) {
-	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/healthz", nil)
-
-	responses := make([]map[string]any, 5)
-
-	for i := 0; i < 5; i++ {
-		w := httptest.NewRecorder()
-		HandlerReadiness(w, req)
-
-		var response map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-
-		responses[i] = response
-	}
-
-	// All responses should be identical
-	for i := 1; i < len(responses); i++ {
-		assert.Equal(t, responses[0], responses[i])
-	}
+	runHandlerResponseConsistencyTest(t, HandlerReadiness, req)
 }
 
 // TestHandlerError_ResponseConsistency tests that HandlerError returns consistent responses across multiple calls.
 // It checks that all responses are identical.
 func TestHandlerError_ResponseConsistency(t *testing.T) {
-	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/error", nil)
-
-	responses := make([]map[string]any, 5)
-
-	for i := 0; i < 5; i++ {
-		w := httptest.NewRecorder()
-		HandlerError(w, req)
-
-		var response map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-
-		responses[i] = response
-	}
-
-	// All responses should be identical
-	for i := 1; i < len(responses); i++ {
-		assert.Equal(t, responses[0], responses[i])
-	}
+	runHandlerResponseConsistencyTest(t, HandlerError, req)
 }
 
 // TestHandlerHealth_ResponseConsistency tests that HandlerHealth returns consistent responses across multiple calls.
 // It checks that all responses are identical.
 func TestHandlerHealth_ResponseConsistency(t *testing.T) {
-	// Test that multiple calls return consistent responses
 	req := httptest.NewRequest("GET", "/health", nil)
-
-	responses := make([]map[string]any, 5)
-
-	for i := 0; i < 5; i++ {
-		w := httptest.NewRecorder()
-		HandlerHealth(w, req)
-
-		var response map[string]any
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-
-		responses[i] = response
-	}
-
-	// All responses should be identical
-	for i := 1; i < len(responses); i++ {
-		assert.Equal(t, responses[0], responses[i])
-	}
+	runHandlerResponseConsistencyTest(t, HandlerHealth, req)
 }
 
 // TestHandlerReadiness_Headers tests the headers set by HandlerReadiness.

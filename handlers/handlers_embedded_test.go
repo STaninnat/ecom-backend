@@ -7,15 +7,53 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 )
 
 // handlers_embedded_test.go: Tests for handler configuration, initialization, validation, and related data structures.
+
+// runNewHandlerConfigTest tests creating a new HandlerConfig with given dependencies.
+func runNewHandlerConfigTest(
+	t *testing.T,
+	auth AuthService,
+	user UserService,
+	logger LoggerService,
+	requestMetadata RequestMetadataService,
+	jwtSecret, refreshSecret, issuer, audience string,
+	oauth *OAuthConfig,
+	customTokenSource func(context.Context, string) oauth2.TokenSource,
+) {
+	cfg := NewHandlerConfig(
+		auth,
+		user,
+		logger,
+		requestMetadata,
+		jwtSecret,
+		refreshSecret,
+		issuer,
+		audience,
+		oauth,
+		customTokenSource,
+	)
+	assert.NotNil(t, cfg)
+	assert.Equal(t, auth, cfg.AuthService)
+	assert.Equal(t, user, cfg.UserService)
+	assert.Equal(t, logger, cfg.LoggerService)
+	assert.Equal(t, requestMetadata, cfg.RequestMetadataService)
+	assert.Equal(t, jwtSecret, cfg.JWTSecret)
+	assert.Equal(t, refreshSecret, cfg.RefreshSecret)
+	assert.Equal(t, issuer, cfg.Issuer)
+	assert.Equal(t, audience, cfg.Audience)
+	assert.Equal(t, oauth, cfg.OAuth)
+	assert.NotNil(t, cfg.CustomTokenSource)
+}
 
 // TestNewHandlerConfig tests the NewHandlerConfig function for proper initialization.
 // It checks that all fields are set as expected and not nil.
@@ -40,7 +78,8 @@ func TestNewHandlerConfig(t *testing.T) {
 		return nil
 	}
 
-	cfg := NewHandlerConfig(
+	runNewHandlerConfigTest(
+		t,
 		mockAuth,
 		mockUser,
 		mockLogger,
@@ -52,18 +91,6 @@ func TestNewHandlerConfig(t *testing.T) {
 		oauth,
 		customTokenSource,
 	)
-
-	assert.NotNil(t, cfg)
-	assert.Equal(t, mockAuth, cfg.AuthService)
-	assert.Equal(t, mockUser, cfg.UserService)
-	assert.Equal(t, mockLogger, cfg.LoggerService)
-	assert.Equal(t, mockRequestMetadata, cfg.RequestMetadataService)
-	assert.Equal(t, jwtSecret, cfg.JWTSecret)
-	assert.Equal(t, refreshSecret, cfg.RefreshSecret)
-	assert.Equal(t, issuer, cfg.Issuer)
-	assert.Equal(t, audience, cfg.Audience)
-	assert.Equal(t, oauth, cfg.OAuth)
-	assert.NotNil(t, cfg.CustomTokenSource)
 }
 
 // TestHandlersConfig_ValidateConfig tests the ValidateConfig method of Config.
@@ -121,7 +148,7 @@ func TestHandlersConfig_ValidateConfig(t *testing.T) {
 			err := tt.config.ValidateConfig()
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.errorMsg, err.Error())
 			} else {
 				assert.NoError(t, err)
@@ -136,7 +163,7 @@ func TestErrInvalidConfig(t *testing.T) {
 	errorMsg := "test error message"
 	err := ErrInvalidConfig(errorMsg)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, errorMsg, err.Error())
 }
 
@@ -407,7 +434,7 @@ func TestHandlersConfig_ValidateConfig_EdgeCases(t *testing.T) {
 				err := tt.config.ValidateConfig()
 
 				if tt.expectError {
-					assert.Error(t, err)
+					require.Error(t, err)
 					assert.Equal(t, tt.errorMsg, err.Error())
 				} else {
 					assert.NoError(t, err)
@@ -445,7 +472,7 @@ func TestErrInvalidConfig_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ErrInvalidConfig(tt.errorMsg)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Equal(t, tt.errorMsg, err.Error())
 		})
 	}
@@ -533,8 +560,6 @@ func TestOAuthConfig_EdgeCases(t *testing.T) {
 					assert.Nil(t, tt.oauth.Google)
 				} else {
 					assert.NotNil(t, tt.oauth.Google)
-					assert.Equal(t, tt.oauth.Google.ClientID, tt.oauth.Google.ClientID)
-					assert.Equal(t, tt.oauth.Google.ClientSecret, tt.oauth.Google.ClientSecret)
 				}
 			}
 		})
@@ -622,18 +647,18 @@ func TestRefreshTokenData_EdgeCases(t *testing.T) {
 // It checks that the constants are positive and within reasonable bounds.
 func TestTokenTTLConstants_EdgeCases(t *testing.T) {
 	// Test that constants are positive values
-	assert.True(t, AccessTokenTTL > 0)
-	assert.True(t, RefreshTokenTTL > 0)
+	assert.Positive(t, AccessTokenTTL)
+	assert.Positive(t, RefreshTokenTTL)
 
 	// Test that refresh token TTL is longer than access token TTL
-	assert.True(t, RefreshTokenTTL > AccessTokenTTL)
+	assert.Greater(t, RefreshTokenTTL, AccessTokenTTL)
 
 	// Test that constants are reasonable values (not too short or too long)
-	assert.True(t, AccessTokenTTL >= 5*time.Minute)  // At least 5 minutes
-	assert.True(t, AccessTokenTTL <= 60*time.Minute) // At most 1 hour
+	assert.GreaterOrEqual(t, AccessTokenTTL, 5*time.Minute) // At least 5 minutes
+	assert.LessOrEqual(t, AccessTokenTTL, 60*time.Minute)   // At most 1 hour
 
-	assert.True(t, RefreshTokenTTL >= 24*time.Hour)    // At least 1 day
-	assert.True(t, RefreshTokenTTL <= 30*24*time.Hour) // At most 30 days
+	assert.GreaterOrEqual(t, RefreshTokenTTL, 24*time.Hour) // At least 1 day
+	assert.LessOrEqual(t, RefreshTokenTTL, 30*24*time.Hour) // At most 30 days
 }
 
 // TestHandlerTypes_EdgeCases tests handler types for edge cases.

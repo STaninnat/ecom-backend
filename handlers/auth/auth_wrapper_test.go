@@ -7,14 +7,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/auth"
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/config"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/go-redis/redismock/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // auth_wrapper_test.go: Tests for auth handler configuration, ensuring correct service setup and error handling behavior.
@@ -39,7 +41,7 @@ func TestInitAuthService_Success(t *testing.T) {
 
 	// Test successful initialization
 	err := cfg.InitAuthService()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg.authService)
 }
 
@@ -57,7 +59,7 @@ func TestInitAuthService_MissingDB(t *testing.T) {
 
 	// Test initialization with missing DB should return an error, not panic
 	err := cfg.InitAuthService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not initialized")
 }
 
@@ -77,7 +79,7 @@ func TestInitAuthService_MissingAuth(t *testing.T) {
 
 	// Test initialization with missing Auth
 	err := cfg.InitAuthService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "database not initialized", err.Error())
 }
 
@@ -195,38 +197,6 @@ func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 		t.Run("BadRequest_"+code, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			appErr := &handlers.AppError{Code: code, Message: "Test error"}
-			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", nil).Return()
-
-			cfg.handleAuthError(w, req, appErr, "test_op", "", "")
-
-			assert.Equal(t, http.StatusBadRequest, w.Code)
-			assert.Contains(t, w.Body.String(), "Test error")
-			mockHandlersConfig.AssertExpectations(t)
-		})
-	}
-
-	// Test all error codes that should return 500 Internal Server Error
-	internalErrorCodes := []string{"database_error", "transaction_error", "create_user_error", "hash_error", "token_generation_error", "redis_error", "commit_error", "update_user_error", "uuid_error"}
-	for _, code := range internalErrorCodes {
-		t.Run("InternalError_"+code, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
-			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
-
-			cfg.handleAuthError(w, req, appErr, "test_op", "", "")
-
-			assert.Equal(t, http.StatusInternalServerError, w.Code)
-			assert.Contains(t, w.Body.String(), "Something went wrong, please try again later")
-			mockHandlersConfig.AssertExpectations(t)
-		})
-	}
-
-	// Test all error codes that should return 400 Bad Request (OAuth related)
-	oauthBadRequestCodes := []string{"invalid_state", "token_exchange_error", "google_api_error", "no_refresh_token", "google_token_error"}
-	for _, code := range oauthBadRequestCodes {
-		t.Run("OAuthBadRequest_"+code, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
 			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
 
 			cfg.handleAuthError(w, req, appErr, "test_op", "", "")
@@ -236,6 +206,46 @@ func TestHandleAuthError_AllErrorCodes(t *testing.T) {
 			mockHandlersConfig.AssertExpectations(t)
 		})
 	}
+
+	t.Run("AllErrorCodes", func(t *testing.T) {
+		testCases := []struct {
+			name        string
+			errorCode   string
+			httpStatus  int
+			expectedMsg string
+		}{
+			// Internal error codes (500)
+			{"InternalError_database_error", "database_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_transaction_error", "transaction_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_create_user_error", "create_user_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_hash_error", "hash_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_token_generation_error", "token_generation_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_redis_error", "redis_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_commit_error", "commit_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_update_user_error", "update_user_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			{"InternalError_uuid_error", "uuid_error", http.StatusInternalServerError, "Something went wrong, please try again later"},
+			// OAuth bad request codes (400)
+			{"OAuthBadRequest_invalid_state", "invalid_state", http.StatusBadRequest, "Test error"},
+			{"OAuthBadRequest_token_exchange_error", "token_exchange_error", http.StatusBadRequest, "Test error"},
+			{"OAuthBadRequest_google_api_error", "google_api_error", http.StatusBadRequest, "Test error"},
+			{"OAuthBadRequest_no_refresh_token", "no_refresh_token", http.StatusBadRequest, "Test error"},
+			{"OAuthBadRequest_google_token_error", "google_token_error", http.StatusBadRequest, "Test error"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				w := httptest.NewRecorder()
+				appErr := &handlers.AppError{Code: tc.errorCode, Message: "Test error", Err: errors.New("inner error")}
+				mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", tc.errorCode, "Test error", "", "", mock.Anything).Return()
+
+				cfg.handleAuthError(w, req, appErr, "test_op", "", "")
+
+				assert.Equal(t, tc.httpStatus, w.Code)
+				assert.Contains(t, w.Body.String(), tc.expectedMsg)
+				mockHandlersConfig.AssertExpectations(t)
+			})
+		}
+	})
 
 	// Test default case (unknown AppError code)
 	t.Run("DefaultAppError", func(t *testing.T) {
@@ -272,7 +282,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 			Config: nil,
 		}
 		err := cfg.InitAuthService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "handlers config not initialized")
 	})
 
@@ -284,7 +294,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitAuthService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "API config not initialized")
 	})
 
@@ -298,7 +308,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitAuthService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "database not initialized")
 	})
 
@@ -314,7 +324,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitAuthService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "auth config not initialized")
 	})
 
@@ -330,7 +340,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitAuthService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "redis client not initialized")
 	})
 
@@ -347,7 +357,7 @@ func TestInitAuthService_AllValidationBranches(t *testing.T) {
 		}
 		err := cfg.InitAuthService()
 		// This will fail due to nil DB, but should not panic
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "database not initialized")
 	})
 }

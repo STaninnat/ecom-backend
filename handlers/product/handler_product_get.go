@@ -5,11 +5,12 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
 )
 
 // handler_product_get.go: Handles retrieving all products or by ID with admin check, logging, and JSON response.

@@ -278,6 +278,6 @@ func TestGetRequestMetadata_NilRequest(t *testing.T) {
 	}
 	// Should not panic, should return empty strings
 	ip, ua := cfg.GetRequestMetadata(nil)
-	assert.Equal(t, "", ip)
-	assert.Equal(t, "", ua)
+	assert.Empty(t, ip)
+	assert.Empty(t, ua)
 }

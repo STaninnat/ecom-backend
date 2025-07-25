@@ -2,14 +2,9 @@
 package categoryhandlers
 
 import (
-	"context"
 	"net/http"
 
-	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
 )
 
 // handler_category_delete.go: Provides HTTP handler for deleting categories by ID.
@@ -22,38 +17,10 @@ import (
 //   - r: *http.Request containing the request data
 //   - user: database.User representing the authenticated user
 func (cfg *HandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	categoryID := chi.URLParam(r, "id")
-	if categoryID == "" {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"delete_category",
-			"missing_category_id",
-			"Category ID not found in URL",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Category ID is required")
-		return
-	}
-
-	// Get the category service
-	categoryService := cfg.GetCategoryService()
-
-	// Call the service to delete the category
-	err := categoryService.DeleteCategory(ctx, categoryID)
-	if err != nil {
-		cfg.handleCategoryError(w, r, err, "delete_category", ip, userAgent)
-		return
-	}
-
-	// Log success
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
-
-	// Return success response
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Category deleted successfully",
-	})
+	HandleCategoryDelete(
+		w, r, user,
+		cfg.Logger,
+		cfg.GetCategoryService,
+		SharedHandleCategoryError,
+	)
 }

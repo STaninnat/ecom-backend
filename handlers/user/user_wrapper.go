@@ -66,6 +66,49 @@ func (cfg *HandlersUserConfig) GetUserService() UserService {
 	return cfg.userService
 }
 
+// ErrorResponseConfig defines the HTTP status and message for a given error code.
+type ErrorResponseConfig struct {
+	Status    int
+	Message   string // if empty, use appErr.Message
+	UseAppErr bool   // if true, use appErr.Err in logger
+}
+
+// HandleErrorWithCodeMap is a shared error handler for mapping error codes to responses.
+func HandleErrorWithCodeMap(
+	logger handlers.HandlerLogger,
+	w http.ResponseWriter,
+	r *http.Request,
+	err error,
+	operation, ip, userAgent string,
+	codeMap map[string]ErrorResponseConfig,
+	defaultStatus int,
+	defaultMsg string,
+) {
+	ctx := r.Context()
+	var appErr *handlers.AppError
+	if errors.As(err, &appErr) {
+		if cfg, ok := codeMap[appErr.Code]; ok {
+			msg := cfg.Message
+			if msg == "" {
+				msg = appErr.Message
+			}
+			logErr := err
+			if cfg.UseAppErr {
+				logErr = appErr.Err
+			}
+			logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, logErr)
+			middlewares.RespondWithError(w, cfg.Status, msg)
+			return
+		}
+		// fallback for unmapped codes
+		logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
+		middlewares.RespondWithError(w, defaultStatus, defaultMsg)
+	} else {
+		logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
+		middlewares.RespondWithError(w, defaultStatus, defaultMsg)
+	}
+}
+
 // handleUserError handles user-specific errors with proper logging and responses.
 // Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
 // Parameters:
@@ -76,28 +119,14 @@ func (cfg *HandlersUserConfig) GetUserService() UserService {
 //   - ip: string client IP address
 //   - userAgent: string client user agent
 func (cfg *HandlersUserConfig) handleUserError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
-	ctx := r.Context()
-
-	var appErr *handlers.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "transaction_error", "update_failed", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		case "user_not_found":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusNotFound, appErr.Message)
-		case "invalid_request":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
+	codeMap := map[string]ErrorResponseConfig{
+		"transaction_error": {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"update_failed":     {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"commit_error":      {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+		"user_not_found":    {Status: http.StatusNotFound, Message: "", UseAppErr: true},
+		"invalid_request":   {Status: http.StatusBadRequest, Message: "", UseAppErr: true},
 	}
+	HandleErrorWithCodeMap(cfg.Logger, w, r, err, operation, ip, userAgent, codeMap, http.StatusInternalServerError, "Internal server error")
 }
 
 // UserExtractionMiddleware extracts the user from the request and sets it in the context using contextKeyUser.

@@ -2,12 +2,18 @@
 package paymenthandlers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stripe/stripe-go/v82"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // payment_helper_test.go: Mock implementations for payment service, DB, Stripe, and logger interfaces used in tests.
@@ -437,4 +443,28 @@ func (m *MockHandlersConfig) LogHandlerError(ctx context.Context, action, detail
 
 func (m *MockHandlersConfig) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	m.Called(ctx, action, details, ip, ua)
+}
+
+type mockLogger interface {
+	On(method string, arguments ...any) *mock.Call
+	AssertExpectations(t mock.TestingT) bool
+}
+
+// testHandlerInvalidPayload tests handler response when given invalid JSON payload.
+func testInvalidPayload(t *testing.T,
+	handler func(http.ResponseWriter, *http.Request, database.User),
+	log mockLogger,
+	user database.User,
+	method, url, action string,
+) {
+	badBody := []byte(`{"bad":}`)
+	log.On("LogHandlerError", mock.Anything, action, "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	req := httptest.NewRequest(method, url, bytes.NewBuffer(badBody))
+	w := httptest.NewRecorder()
+
+	handler(w, req, user)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	log.AssertExpectations(t)
 }

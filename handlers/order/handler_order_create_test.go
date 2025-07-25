@@ -9,11 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_order_create_test.go: Tests for HandlerCreateOrder covering success, validation errors, service errors, and full request scenarios.
@@ -60,7 +62,7 @@ func TestHandlerCreateOrder_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var response OrderResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Created order successful", response.Message)
 	assert.Equal(t, "order123", response.OrderID)
 
@@ -94,7 +96,7 @@ func TestHandlerCreateOrder_InvalidRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Invalid request payload", response["error"])
 
 	mockLogger.AssertExpectations(t)
@@ -133,7 +135,7 @@ func TestHandlerCreateOrder_EmptyItems(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Order must contain at least one item", response["error"])
 
 	mockLogger.AssertExpectations(t)
@@ -142,166 +144,57 @@ func TestHandlerCreateOrder_EmptyItems(t *testing.T) {
 
 // TestHandlerCreateOrder_InvalidQuantity checks that invalid quantity returns the correct error.
 func TestHandlerCreateOrder_InvalidQuantity(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
-		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
-	}
-
 	user := database.User{ID: "user123"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 0, Price: 10.50},
 		},
 	}
-
 	appError := &handlers.AppError{Code: "invalid_request", Message: "Quantity must be greater than 0"}
-	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, appError)
-	mockLogger.On("LogHandlerError", mock.Anything, "create_order", "invalid_request", "Quantity must be greater than 0", mock.Anything, mock.Anything, nil).Return()
 
-	jsonBody, _ := json.Marshal(requestBody)
-	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cfg.HandlerCreateOrder(w, req, user)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Quantity must be greater than 0", response["error"])
-
-	mockLogger.AssertExpectations(t)
-	mockOrderService.AssertExpectations(t)
+	testHandlerCreateOrderError(t, user, requestBody, http.StatusBadRequest, appError.Message, appError)
 }
 
 // TestHandlerCreateOrder_QuantityOverflow checks that quantity overflow returns the correct error.
 func TestHandlerCreateOrder_QuantityOverflow(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
-		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
-	}
-
 	user := database.User{ID: "user123"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2147483648, Price: 10.50}, // Exceeds int32 max
 		},
 	}
+	appError := &handlers.AppError{
+		Code:    "quantity_overflow",
+		Message: "Quantity 2147483648 exceeds the max limit for int32",
+	}
 
-	appError := &handlers.AppError{Code: "quantity_overflow", Message: "Quantity 2147483648 exceeds the max limit for int32"}
-	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, appError)
-	mockLogger.On("LogHandlerError", mock.Anything, "create_order", "quantity_overflow", "Quantity 2147483648 exceeds the max limit for int32", mock.Anything, mock.Anything, nil).Return()
-
-	jsonBody, _ := json.Marshal(requestBody)
-	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cfg.HandlerCreateOrder(w, req, user)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Quantity 2147483648 exceeds the max limit for int32", response["error"])
-
-	mockLogger.AssertExpectations(t)
-	mockOrderService.AssertExpectations(t)
+	testHandlerCreateOrderError(t, user, requestBody, http.StatusBadRequest, appError.Message, appError)
 }
 
 // TestHandlerCreateOrder_TransactionError ensures a transaction error is handled correctly.
 func TestHandlerCreateOrder_TransactionError(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
-		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
-	}
-
 	user := database.User{ID: "user123"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
 		},
 	}
-
 	appError := &handlers.AppError{Code: "transaction_error", Message: "Error starting transaction"}
-	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, appError)
-	mockLogger.On("LogHandlerError", mock.Anything, "create_order", "transaction_error", "Error starting transaction", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	jsonBody, _ := json.Marshal(requestBody)
-	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cfg.HandlerCreateOrder(w, req, user)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Something went wrong, please try again later", response["error"])
-
-	mockLogger.AssertExpectations(t)
-	mockOrderService.AssertExpectations(t)
+	testHandlerCreateOrderServerError(t, user, requestBody, http.StatusInternalServerError, appError)
 }
 
 // TestHandlerCreateOrder_CreateOrderError ensures a create order error is handled correctly.
 func TestHandlerCreateOrder_CreateOrderError(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
-		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
-	}
-
 	user := database.User{ID: "user123"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
 		},
 	}
-
 	appError := &handlers.AppError{Code: "create_order_error", Message: "Error creating order"}
-	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, appError)
-	mockLogger.On("LogHandlerError", mock.Anything, "create_order", "create_order_error", "Error creating order", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	jsonBody, _ := json.Marshal(requestBody)
-	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	cfg.HandlerCreateOrder(w, req, user)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Something went wrong, please try again later", response["error"])
-
-	mockLogger.AssertExpectations(t)
-	mockOrderService.AssertExpectations(t)
+	testHandlerCreateOrderServerError(t, user, requestBody, http.StatusInternalServerError, appError)
 }
 
 // TestHandlerCreateOrder_UnknownError ensures an unknown error is handled correctly.
@@ -338,7 +231,7 @@ func TestHandlerCreateOrder_UnknownError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockLogger.AssertExpectations(t)
@@ -388,7 +281,7 @@ func TestHandlerCreateOrder_CompleteRequest(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var response OrderResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Created order successful", response.Message)
 	assert.Equal(t, "order123", response.OrderID)
 

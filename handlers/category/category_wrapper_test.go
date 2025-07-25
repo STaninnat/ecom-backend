@@ -8,11 +8,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // category_wrapper_test.go: Tests for HandlersCategoryConfig covering service initialization, lazy loading, and error handling logic.
@@ -71,7 +73,7 @@ func TestHandlersCategoryConfig_InitCategoryService(t *testing.T) {
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, cfg.categoryService)
 			}
 		})
@@ -87,7 +89,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilHandlersConfig(t *testing
 	}
 
 	err := cfg.InitCategoryService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "handlers config not initialized")
 }
 
@@ -100,7 +102,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilAPIConfig(t *testing.T) {
 	}
 
 	err := cfg.InitCategoryService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "API config not initialized")
 }
 
@@ -115,7 +117,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilDB(t *testing.T) {
 	}
 
 	err := cfg.InitCategoryService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
@@ -132,7 +134,7 @@ func TestHandlersCategoryConfig_InitCategoryService_NilDBConn(t *testing.T) {
 	}
 
 	err := cfg.InitCategoryService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database connection not initialized")
 }
 
@@ -212,7 +214,7 @@ func TestHandlersCategoryConfig_GetCategoryService_NilConfigs(t *testing.T) {
 		Name: "Test",
 	})
 	// The service should return an error due to nil DB connection
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	if errors.As(err, &appErr) {
 		assert.Equal(t, "transaction_error", appErr.Code)

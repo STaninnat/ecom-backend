@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // handler_category_get_integration_test.go: Integration tests covering success and error scenarios of GetAllCategories handler.

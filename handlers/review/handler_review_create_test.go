@@ -9,11 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/models"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // handler_review_create_test.go: Tests for review creation handler and request validation logic.
@@ -53,7 +55,7 @@ func TestHandlerCreateReview_Success(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Code)
 	var resp handlers.APIResponse
 	err := json.NewDecoder(w.Body).Decode(&resp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Review created successfully", resp.Message)
 	assert.Equal(t, "success", resp.Code)
 	assert.NotNil(t, resp.Data)
@@ -190,7 +192,7 @@ func TestReviewCreateRequest_Validate_EdgeCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.request.Validate()
 			if tc.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				appErr := &handlers.AppError{}
 				ok := errors.As(err, &appErr)
 				assert.True(t, ok)

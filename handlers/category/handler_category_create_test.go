@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_category_create_test.go: Tests for the category creation HTTP handler, covering success and error cases.
@@ -22,22 +23,20 @@ import (
 func TestHandlerCreateCategory(t *testing.T) {
 	tests := []struct {
 		name           string
-		requestBody    CategoryRequest
+		requestBody    any
+		contentType    string
+		user           database.User
 		setupMocks     func(*MockCategoryService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name: "successful creation",
-			requestBody: CategoryRequest{
-				Name:        "Test Category",
-				Description: "Test Description",
-			},
+			name:        "Valid request",
+			requestBody: CategoryRequest{Name: "Test Category", Description: "Test Description"},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
-				mockService.On("CreateCategory", mock.Anything, CategoryRequest{
-					Name:        "Test Category",
-					Description: "Test Description",
-				}).Return("test-id", nil)
+				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("test-id", nil)
 			},
 			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Category created successfully"}`,
@@ -47,6 +46,8 @@ func TestHandlerCreateCategory(t *testing.T) {
 			requestBody: CategoryRequest{
 				Name: "", // Empty name should trigger validation error
 			},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, CategoryRequest{
 					Name: "",
@@ -64,6 +65,8 @@ func TestHandlerCreateCategory(t *testing.T) {
 				Name:        "Test Category",
 				Description: "Test Description",
 			},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("", &handlers.AppError{
 					Code:    "invalid_request",
@@ -75,49 +78,9 @@ func TestHandlerCreateCategory(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create mock service
-			mockService := &MockCategoryService{}
-			if tt.setupMocks != nil {
-				tt.setupMocks(mockService)
-			}
-
-			// Create test config that embeds the mock
-			testConfig := &TestHandlersCategoryConfig{
-				MockHandlersConfig: &MockHandlersConfig{},
-				Logger:             nil, // will set below
-				categoryService:    mockService,
-			}
-			testConfig.Logger = testConfig.MockHandlersConfig
-			testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-
-			// Create request body
-			requestBodyBytes, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest("POST", "/categories", bytes.NewBuffer(requestBodyBytes))
-			req.Header.Set("Content-Type", "application/json")
-
-			// Create response recorder
-			w := httptest.NewRecorder()
-
-			// Create test user
-			user := database.User{
-				ID:   "test-user-id",
-				Name: "Test User",
-			}
-
-			// Call handler
-			testConfig.HandlerCreateCategory(w, req, user)
-
-			// Assert response
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			assert.JSONEq(t, tt.expectedBody, w.Body.String())
-
-			// Verify mock expectations
-			mockService.AssertExpectations(t)
-		})
-	}
+	runCategoryHandlerTestTable(t, tests, "POST", func(cfg *TestHandlersCategoryConfig, w http.ResponseWriter, req *http.Request, user database.User) {
+		cfg.HandlerCreateCategory(w, req, user)
+	})
 }
 
 // TestHandlerCreateCategory_InvalidJSON tests the handler's response when invalid JSON is provided
@@ -160,10 +123,10 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 		name           string
 		requestBody    any
 		contentType    string
+		user           database.User
 		setupMocks     func(*MockCategoryService)
 		expectedStatus int
 		expectedBody   string
-		user           database.User
 	}{
 		{
 			name: "name too long",
@@ -172,6 +135,7 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("", &handlers.AppError{
 					Code:    "invalid_request",
@@ -180,7 +144,6 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category name too long (max 100 characters)"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "description too long",
@@ -189,6 +152,7 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: strings.Repeat("a", 501),
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("", &handlers.AppError{
 					Code:    "invalid_request",
@@ -197,7 +161,6 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category description too long (max 500 characters)"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "service returns non-AppError",
@@ -206,12 +169,12 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("", assert.AnError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Internal server error"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "missing content-type",
@@ -220,12 +183,12 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("test-id", nil)
 			},
 			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Category created successfully"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "incorrect content-type",
@@ -234,12 +197,12 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "text/plain",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("test-id", nil)
 			},
 			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Category created successfully"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "user is empty struct",
@@ -248,15 +211,30 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("CreateCategory", mock.Anything, mock.Anything).Return("test-id", nil)
 			},
 			expectedStatus: http.StatusCreated,
 			expectedBody:   `{"message":"Category created successfully"}`,
-			user:           database.User{},
 		},
 	}
 
+	runCategoryHandlerTestTable(t, tests, "POST", func(cfg *TestHandlersCategoryConfig, w http.ResponseWriter, req *http.Request, user database.User) {
+		cfg.HandlerCreateCategory(w, req, user)
+	})
+}
+
+// Shared helper for category handler test table loops
+func runCategoryHandlerTestTable(t *testing.T, tests []struct {
+	name           string
+	requestBody    any
+	contentType    string
+	user           database.User
+	setupMocks     func(*MockCategoryService)
+	expectedStatus int
+	expectedBody   string
+}, method string, handlerFunc func(cfg *TestHandlersCategoryConfig, w http.ResponseWriter, req *http.Request, user database.User)) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := &MockCategoryService{}
@@ -274,14 +252,14 @@ func TestHandlerCreateCategory_EdgeCases(t *testing.T) {
 			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
 			requestBodyBytes, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest("POST", "/categories", bytes.NewBuffer(requestBodyBytes))
+			req := httptest.NewRequest(method, "/categories", bytes.NewBuffer(requestBodyBytes))
 			if tt.contentType != "" {
 				req.Header.Set("Content-Type", tt.contentType)
 			}
 
 			w := httptest.NewRecorder()
 
-			testConfig.HandlerCreateCategory(w, req, tt.user)
+			handlerFunc(testConfig, w, req, tt.user)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.JSONEq(t, tt.expectedBody, w.Body.String())

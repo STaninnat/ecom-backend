@@ -2,11 +2,20 @@
 package orderhandlers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http/httptest"
+	"testing"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // order_helper_test.go: Provides mock implementations of database queries, transaction, service, and logger interfaces for unit testing.
@@ -159,4 +168,72 @@ func (m *mockHandlerLogger) LogHandlerError(ctx context.Context, action, details
 
 func (m *mockHandlerLogger) LogHandlerSuccess(ctx context.Context, action, details, ip, ua string) {
 	m.Called(ctx, action, details, ip, ua)
+}
+
+// testHandlerCreateOrderError tests order creation handler for expected error responses.
+func testHandlerCreateOrderError(t *testing.T, user database.User, requestBody CreateOrderRequest, expectedCode int, expectedMessage string, expectedAppError *handlers.AppError) {
+	mockOrderService := new(MockOrderService)
+	mockLogger := new(mockHandlerLogger)
+
+	cfg := &HandlersOrderConfig{
+		Config: &handlers.Config{
+			Logger: logrus.New(),
+		},
+		Logger:       mockLogger,
+		orderService: mockOrderService,
+	}
+
+	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, expectedAppError)
+	mockLogger.On("LogHandlerError", mock.Anything, "create_order", expectedAppError.Code, expectedAppError.Message, mock.Anything, mock.Anything, nil).Return()
+
+	jsonBody, _ := json.Marshal(requestBody)
+	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	cfg.HandlerCreateOrder(w, req, user)
+
+	assert.Equal(t, expectedCode, w.Code)
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, expectedMessage, response["error"])
+
+	mockLogger.AssertExpectations(t)
+	mockOrderService.AssertExpectations(t)
+}
+
+// testHandlerCreateOrderServerError tests order creation handler for server error responses.
+func testHandlerCreateOrderServerError(t *testing.T, user database.User, requestBody CreateOrderRequest, expectedCode int, expectedAppError *handlers.AppError) {
+	mockOrderService := new(MockOrderService)
+	mockLogger := new(mockHandlerLogger)
+
+	cfg := &HandlersOrderConfig{
+		Config: &handlers.Config{
+			Logger: logrus.New(),
+		},
+		Logger:       mockLogger,
+		orderService: mockOrderService,
+	}
+
+	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(nil, expectedAppError)
+	mockLogger.On("LogHandlerError", mock.Anything, "create_order", expectedAppError.Code, expectedAppError.Message, mock.Anything, mock.Anything, mock.Anything).Return()
+
+	jsonBody, _ := json.Marshal(requestBody)
+	req := httptest.NewRequest("POST", "/orders", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	cfg.HandlerCreateOrder(w, req, user)
+
+	assert.Equal(t, expectedCode, w.Code)
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	// For server error, a general message will be sent.
+	assert.Equal(t, "Something went wrong, please try again later", response["error"])
+
+	mockLogger.AssertExpectations(t)
+	mockOrderService.AssertExpectations(t)
 }

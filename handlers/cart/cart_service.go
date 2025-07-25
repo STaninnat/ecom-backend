@@ -11,12 +11,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/redis/go-redis/v9"
 )
 
 // cart_service.go: Provides interfaces, adapters, and services for managing shopping carts and checkout processes.
@@ -444,10 +445,10 @@ func (s *cartServiceImpl) GetGuestCart(ctx context.Context, sessionID string) (*
 	return cart, nil
 }
 
-// UpdateItemQuantity updates the quantity of an item in a user's cart
-func (s *cartServiceImpl) UpdateItemQuantity(ctx context.Context, userID string, productID string, quantity int) error {
-	if userID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+// validateItemQuantityInputs validates the common inputs for updating item quantity.
+func validateItemQuantityInputs(id, idType, productID string, quantity int) error {
+	if id == "" {
+		return &handlers.AppError{Code: "invalid_request", Message: idType + " is required"}
 	}
 	if productID == "" {
 		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
@@ -458,28 +459,23 @@ func (s *cartServiceImpl) UpdateItemQuantity(ctx context.Context, userID string,
 	if quantity > MaxQuantity {
 		return &handlers.AppError{Code: "invalid_request", Message: "Quantity exceeds maximum allowed"}
 	}
+	return nil
+}
 
+func (s *cartServiceImpl) UpdateItemQuantity(ctx context.Context, userID string, productID string, quantity int) error {
+	if err := validateItemQuantityInputs(userID, "User ID", productID, quantity); err != nil {
+		return err
+	}
 	if err := s.cartMongo.UpdateItemQuantity(ctx, userID, productID, quantity); err != nil {
 		return &handlers.AppError{Code: "update_failed", Message: "Failed to update item quantity", Err: err}
 	}
 	return nil
 }
 
-// UpdateGuestItemQuantity updates the quantity of an item in a guest cart
 func (s *cartServiceImpl) UpdateGuestItemQuantity(ctx context.Context, sessionID string, productID string, quantity int) error {
-	if sessionID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Session ID is required"}
+	if err := validateItemQuantityInputs(sessionID, "Session ID", productID, quantity); err != nil {
+		return err
 	}
-	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
-	}
-	if quantity <= 0 {
-		return &handlers.AppError{Code: "invalid_request", Message: "Quantity must be greater than 0"}
-	}
-	if quantity > MaxQuantity {
-		return &handlers.AppError{Code: "invalid_request", Message: "Quantity exceeds maximum allowed"}
-	}
-
 	if err := s.redis.UpdateGuestItemQuantity(ctx, sessionID, productID, quantity); err != nil {
 		return &handlers.AppError{Code: "update_failed", Message: "Failed to update guest item quantity", Err: err}
 	}

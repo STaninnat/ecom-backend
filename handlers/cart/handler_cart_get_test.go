@@ -7,11 +7,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/models"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // handler_cart_get_test.go: Tests for user and guest cart retrieval handlers with various scenarios.
@@ -104,12 +106,12 @@ func TestHandlerGetUserCart(t *testing.T) {
 			if tt.expectedStatus == http.StatusOK {
 				var response models.Cart
 				err := json.Unmarshal(w.Body.Bytes(), &response)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(*models.Cart).ID, response.ID)
 			} else {
 				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(map[string]any)["error"], response["error"])
 				assert.Equal(t, tt.expectedBody.(map[string]any)["code"], response["code"])
 			}
@@ -213,7 +215,7 @@ func TestHandlerGetGuestCart(t *testing.T) {
 			case tt.expectedStatus == http.StatusOK:
 				mockLogger.On("LogHandlerSuccess", mock.Anything, "get_guest_cart", "Got guest cart successfully", mock.Anything, mock.Anything).Return()
 			case tt.sessionID == "":
-				mockLogger.On("LogHandlerError", mock.Anything, "get_guest_cart", "missing session ID", "Session ID not found in request", mock.Anything, mock.Anything, nil).Return()
+				mockLogger.On("LogHandlerError", mock.Anything, "get_guest_cart", "missing session ID", "Session ID not found in request", mock.Anything, mock.Anything, mock.Anything).Return()
 			default:
 				mockLogger.On("LogHandlerError", mock.Anything, "get_guest_cart", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 			}
@@ -227,12 +229,12 @@ func TestHandlerGetGuestCart(t *testing.T) {
 			if tt.expectedStatus == http.StatusOK {
 				var response models.Cart
 				err := json.Unmarshal(w.Body.Bytes(), &response)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(*models.Cart).ID, response.ID)
 			} else {
 				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedBody.(map[string]any)["error"], response["error"])
 				if tt.expectedBody.(map[string]any)["code"] != nil {
 					assert.Equal(t, tt.expectedBody.(map[string]any)["code"], response["code"])

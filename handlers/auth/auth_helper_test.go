@@ -8,6 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/oauth2"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
@@ -15,10 +20,6 @@ import (
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"golang.org/x/oauth2"
 )
 
 // auth_helper_test.go: Mock implementations and test utilities for authentication, authorization, token handling, and related service components.
@@ -166,7 +167,7 @@ func (cfg *TestHandlersAuthConfig) HandlerSignOut(w http.ResponseWriter, r *http
 	auth.SetTokensAsCookies(w, "", "", expiredTime, expiredTime)
 
 	// Handle Google revoke if needed
-	if storedData.Provider == "google" {
+	if storedData.Provider == GoogleProvider {
 		googleRevokeURL := "https://accounts.google.com/o/oauth2/revoke?token=" + storedData.Token
 		http.Redirect(w, r, googleRevokeURL, http.StatusFound)
 		return
@@ -341,6 +342,10 @@ func (m *MockDBConn) BeginTx(ctx context.Context, opts *sql.TxOptions) (DBTx, er
 	return &MockDBTx{}, nil
 }
 
+// This mock struct intentionally duplicates the DBQueries interface for use in tests.
+// The duplication is necessary for flexible mocking of database calls.
+//
+//nolint:dupl
 type MockDBQueries struct {
 	CheckUserExistsByNameFunc         func(ctx context.Context, name string) (bool, error)
 	CheckUserExistsByEmailFunc        func(ctx context.Context, email string) (bool, error)
@@ -461,7 +466,7 @@ func (a *testDBQueriesAdapter) GetUserByEmail(ctx context.Context, email string)
 func (a *testDBQueriesAdapter) UpdateUserStatusByID(ctx context.Context, params database.UpdateUserStatusByIDParams) error {
 	return a.fakeQueries.UpdateUserStatusByID(ctx, params)
 }
-func (a *testDBQueriesAdapter) WithTx(tx interface{}) *fakeQueries {
+func (a *testDBQueriesAdapter) WithTx(tx any) *fakeQueries {
 	return a.fakeQueries.WithTx(tx)
 }
 func (a *testDBQueriesAdapter) CheckExistsAndGetIDByEmail(ctx context.Context, email string) (database.CheckExistsAndGetIDByEmailRow, error) {

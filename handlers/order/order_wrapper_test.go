@@ -10,11 +10,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // order_wrapper_test.go: Tests for order handler configuration, service initialization, error handling,
@@ -32,7 +34,7 @@ func TestInitOrderService_Success(t *testing.T) {
 	}
 
 	err := cfg.InitOrderService()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg.orderService)
 }
 
@@ -43,7 +45,7 @@ func TestInitOrderService_MissingHandlersConfig(t *testing.T) {
 	}
 
 	err := cfg.InitOrderService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "handlers config not initialized")
 }
 
@@ -59,7 +61,7 @@ func TestInitOrderService_MissingDB(t *testing.T) {
 	}
 
 	err := cfg.InitOrderService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
@@ -75,7 +77,7 @@ func TestInitOrderService_MissingDBConn(t *testing.T) {
 	}
 
 	err := cfg.InitOrderService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database connection not initialized")
 }
 
@@ -293,7 +295,7 @@ func TestRequestResponseStructs(t *testing.T) {
 	}
 	assert.Equal(t, "prod1", itemInput.ProductID)
 	assert.Equal(t, 5, itemInput.Quantity)
-	assert.Equal(t, 25.99, itemInput.Price)
+	assert.InEpsilon(t, 25.99, itemInput.Price, 0.001)
 
 	// Test UpdateOrderStatusRequest
 	updateReq := UpdateOrderStatusRequest{
@@ -357,7 +359,7 @@ func TestHandlersOrderConfig_ConcurrentAccess(t *testing.T) {
 	numGoroutines := 10
 
 	// Test concurrent initialization
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -368,7 +370,7 @@ func TestHandlersOrderConfig_ConcurrentAccess(t *testing.T) {
 	wg.Wait()
 
 	// Test concurrent service access
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

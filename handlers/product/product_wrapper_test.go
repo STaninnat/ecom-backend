@@ -9,10 +9,12 @@ import (
 
 	"database/sql"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // product_wrapper_test.go: Tests for product service initialization, lazy loading, and error handling with logging and HTTP responses.
@@ -22,7 +24,7 @@ import (
 func TestInitProductService_MissingConfig(t *testing.T) {
 	cfg := &HandlersProductConfig{DB: nil, DBConn: nil, Logger: nil}
 	err := cfg.InitProductService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
@@ -31,7 +33,7 @@ func TestInitProductService_MissingConfig(t *testing.T) {
 func TestInitProductService_MissingDB(t *testing.T) {
 	cfg := &HandlersProductConfig{DB: nil, DBConn: nil, Logger: nil}
 	err := cfg.InitProductService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
@@ -40,7 +42,7 @@ func TestInitProductService_MissingDB(t *testing.T) {
 func TestInitProductService_MissingDBConn(t *testing.T) {
 	cfg := &HandlersProductConfig{DB: new(database.Queries), DBConn: nil, Logger: nil}
 	err := cfg.InitProductService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database connection not initialized")
 }
 

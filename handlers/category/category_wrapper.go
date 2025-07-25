@@ -2,12 +2,19 @@
 package categoryhandlers
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
+	userhandlers "github.com/STaninnat/ecom-backend/handlers/user"
+	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // category_wrapper.go: Provides configuration, initialization, and error handling for category-related operations.
@@ -83,25 +90,53 @@ func (cfg *HandlersCategoryConfig) GetCategoryService() CategoryService {
 // handleCategoryError handles category-specific errors with proper logging and responses.
 // Categorizes errors and provides appropriate HTTP status codes and messages. All errors are logged with context information for debugging.
 func (cfg *HandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
+	userhandlers.HandleErrorWithCodeMap(cfg.Logger, w, r, err, operation, ip, userAgent, categoryErrorCodeMap, http.StatusInternalServerError, "Internal server error")
+}
+
+// HandleCategoryRequest is a shared helper for create/update category handlers (production and test).
+func HandleCategoryRequest[
+	S any, // Service type (CategoryService or mock)
+	L handlers.HandlerLogger, // Logger type
+](
+	w http.ResponseWriter,
+	r *http.Request,
+	user database.User,
+	logger L,
+	getCategoryService func() S,
+	handleCategoryError func(http.ResponseWriter, *http.Request, error, string, string, string),
+	action string,
+	serviceFunc func(context.Context, S, CategoryRequest) (string, error), // for create: returns id, for update: returns empty string
+	successMessage string,
+	successStatus int,
+) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	var appErr *handlers.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "invalid_request":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "database_error", "transaction_error", "create_category_error", "update_category_error", "delete_category_error", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
+	var params CategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		logger.LogHandlerError(
+			ctx,
+			action,
+			"invalid_request_body",
+			"Failed to parse request body",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
 	}
+
+	categoryService := getCategoryService()
+	_, err := serviceFunc(ctx, categoryService, params)
+	if err != nil {
+		handleCategoryError(w, r, err, action, ip, userAgent)
+		return
+	}
+
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	logger.LogHandlerSuccess(ctxWithUserID, action, successMessage, ip, userAgent)
+	middlewares.RespondWithJSON(w, successStatus, handlers.HandlerResponse{
+		Message: successMessage,
+	})
 }
 
 // CategoryWithIDRequest represents a request containing a category ID and optional name and description.
@@ -109,4 +144,72 @@ type CategoryWithIDRequest struct {
 	ID          string `json:"id"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+}
+
+// Extract shared codeMap for category error handling
+type categoryErrorCodeMapType map[string]userhandlers.ErrorResponseConfig
+
+var categoryErrorCodeMap = categoryErrorCodeMapType{
+	"invalid_request":       {Status: http.StatusBadRequest, Message: "", UseAppErr: false},
+	"database_error":        {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+	"transaction_error":     {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+	"create_category_error": {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+	"update_category_error": {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+	"delete_category_error": {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+	"commit_error":          {Status: http.StatusInternalServerError, Message: "Something went wrong, please try again later", UseAppErr: true},
+}
+
+// SharedHandleCategoryError is a shared error handler for category operations (production and test).
+func SharedHandleCategoryError(
+	logger handlers.HandlerLogger,
+	w http.ResponseWriter,
+	r *http.Request,
+	err error,
+	operation, ip, userAgent string,
+) {
+	userhandlers.HandleErrorWithCodeMap(logger, w, r, err, operation, ip, userAgent, categoryErrorCodeMap, http.StatusInternalServerError, "Internal server error")
+}
+
+// HandleCategoryDelete is a shared helper for delete category handlers (production and test).
+func HandleCategoryDelete[
+	S any, // Service type (CategoryService or mock)
+	L handlers.HandlerLogger, // Logger type
+](
+	w http.ResponseWriter,
+	r *http.Request,
+	user database.User,
+	logger L,
+	getCategoryService func() S,
+	sharedHandleCategoryError func(handlers.HandlerLogger, http.ResponseWriter, *http.Request, error, string, string, string),
+) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	categoryID := chi.URLParam(r, "id")
+	if categoryID == "" {
+		logger.LogHandlerError(
+			ctx,
+			"delete_category",
+			"missing_category_id",
+			"Category ID not found in URL",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Category ID is required")
+		return
+	}
+
+	categoryService := getCategoryService()
+	err := any(categoryService).(interface {
+		DeleteCategory(context.Context, string) error
+	}).DeleteCategory(ctx, categoryID)
+	if err != nil {
+		sharedHandleCategoryError(logger, w, r, err, "delete_category", ip, userAgent)
+		return
+	}
+
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	logger.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Category deleted successfully",
+	})
 }

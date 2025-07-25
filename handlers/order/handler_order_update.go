@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/go-chi/chi/v5"
 )
 
 // handler_order_update.go: Handles HTTP request to update order status, with validation, logging, and business logic integration.

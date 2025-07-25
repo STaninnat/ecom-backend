@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/auth"
-	"github.com/STaninnat/ecom-backend/internal/config"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/internal/config"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_middleware_test.go: Tests for middleware constructors for HandlerConfig and legacy Config, supporting auth, admin-only, and optional authentication.
@@ -127,9 +128,13 @@ func (m *MockUserService) CheckExistsAndGetIDByEmail(ctx context.Context, email 
 	return args.Get(0).(database.CheckExistsAndGetIDByEmailRow), args.Error(1)
 }
 
-// TestHandlerConfig_HandlerMiddleware_Success tests the HandlerMiddleware for successful authentication and user retrieval.
-// It checks that the handler is called and returns status OK when all dependencies succeed.
-func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
+// runHandlerMiddlewareSuccessTest is a shared helper for HandlerMiddleware/AdminOnlyMiddleware success tests.
+func runHandlerMiddlewareSuccessTest(
+	t *testing.T,
+	middlewareFunc func(cfg *HandlerConfig, handler AuthHandler) http.HandlerFunc,
+	expectedUser database.User,
+	expectedClaims *Claims,
+) {
 	mockAuth := &MockAuthService{}
 	mockUser := &MockUserService{}
 	mockLogger := &MockLoggerService{}
@@ -147,13 +152,10 @@ func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
 	w := httptest.NewRecorder()
 
-	expectedUser := database.User{ID: "user123", Role: "user"}
-	expectedClaims := &Claims{UserID: "user123"}
-
 	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+	mockUser.On("GetUserByID", req.Context(), expectedClaims.UserID).Return(expectedUser, nil)
 
 	handlerCalled := false
 	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
@@ -161,7 +163,7 @@ func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
 		assert.Equal(t, expectedUser, user)
 	})
 
-	middleware := cfg.HandlerMiddleware(testHandler)
+	middleware := middlewareFunc(cfg, testHandler)
 	middleware.ServeHTTP(w, req)
 
 	assert.True(t, handlerCalled)
@@ -169,6 +171,17 @@ func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
 	mockAuth.AssertExpectations(t)
 	mockUser.AssertExpectations(t)
 	mockRequestMetadata.AssertExpectations(t)
+}
+
+func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
+	runHandlerMiddlewareSuccessTest(
+		t,
+		func(cfg *HandlerConfig, handler AuthHandler) http.HandlerFunc {
+			return cfg.HandlerMiddleware(handler)
+		},
+		database.User{ID: "user123", Role: "user"},
+		&Claims{UserID: "user123"},
+	)
 }
 
 // TestHandlerConfig_HandlerMiddleware_MissingToken tests HandlerMiddleware when the access token cookie is missing.
@@ -290,48 +303,15 @@ func TestHandlerConfig_HandlerMiddleware_UserNotFound(t *testing.T) {
 	mockRequestMetadata.AssertExpectations(t)
 }
 
-// TestHandlerConfig_HandlerAdminOnlyMiddleware_AdminUser tests HandlerAdminOnlyMiddleware for an admin user.
-// It checks that the handler is called and returns status OK for admin users.
 func TestHandlerConfig_HandlerAdminOnlyMiddleware_AdminUser(t *testing.T) {
-	mockAuth := &MockAuthService{}
-	mockUser := &MockUserService{}
-	mockLogger := &MockLoggerService{}
-	mockRequestMetadata := &MockRequestMetadataService{}
-
-	cfg := &HandlerConfig{
-		AuthService:            mockAuth,
-		UserService:            mockUser,
-		LoggerService:          mockLogger,
-		RequestMetadataService: mockRequestMetadata,
-		JWTSecret:              "test-secret",
-	}
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
-	w := httptest.NewRecorder()
-
-	expectedUser := database.User{ID: "user123", Role: "admin"}
-	expectedClaims := &Claims{UserID: "user123"}
-
-	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
-	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
-	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
-
-	handlerCalled := false
-	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
-		handlerCalled = true
-		assert.Equal(t, expectedUser, user)
-	})
-
-	middleware := cfg.HandlerAdminOnlyMiddleware(testHandler)
-	middleware.ServeHTTP(w, req)
-
-	assert.True(t, handlerCalled)
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuth.AssertExpectations(t)
-	mockUser.AssertExpectations(t)
-	mockRequestMetadata.AssertExpectations(t)
+	runHandlerMiddlewareSuccessTest(
+		t,
+		func(cfg *HandlerConfig, handler AuthHandler) http.HandlerFunc {
+			return cfg.HandlerAdminOnlyMiddleware(handler)
+		},
+		database.User{ID: "user123", Role: "admin"},
+		&Claims{UserID: "user123"},
+	)
 }
 
 // TestHandlerConfig_HandlerAdminOnlyMiddleware_NonAdminUser tests HandlerAdminOnlyMiddleware for a non-admin user.
@@ -635,145 +615,87 @@ func TestHandlerOptionalMiddleware_MissingToken(t *testing.T) {
 	mockRequestMetadata.AssertExpectations(t)
 }
 
-// TestHandlerOptionalMiddleware_InvalidToken tests HandlerOptionalMiddleware with an invalid token.
-// It checks that the handler is called with a nil user and returns status OK.
-func TestHandlerOptionalMiddleware_InvalidToken(t *testing.T) {
-	mockAuth := &MockAuthService{}
-	mockLogger := &MockLoggerService{}
-	mockRequestMetadata := &MockRequestMetadataService{}
-
-	cfg := &HandlerConfig{
-		AuthService:            mockAuth,
-		LoggerService:          mockLogger,
-		RequestMetadataService: mockRequestMetadata,
-		JWTSecret:              "test-secret",
-	}
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "invalid-token"})
+// runHandlerOptionalMiddlewareNilUserTest is a shared helper for optional middleware tests where the handler should be called with a nil user.
+func runHandlerOptionalMiddlewareNilUserTest(
+	t *testing.T,
+	cfg *HandlerConfig,
+	req *http.Request,
+	setupMocks func(),
+) {
 	w := httptest.NewRecorder()
-
-	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
-	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
-	mockAuth.On("ValidateAccessToken", "invalid-token", "test-secret").Return(nil, assert.AnError)
-
-	// Set up logger expectations for error logging
-	logger := logrus.New()
-	entry := logger.WithError(assert.AnError)
-	mockLogger.On("WithError", assert.AnError).Return(entry)
-
+	setupMocks()
 	handlerCalled := false
 	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
 		handlerCalled = true
 		assert.Nil(t, user)
 	})
-
 	middleware := cfg.HandlerOptionalMiddleware(testHandler)
 	middleware.ServeHTTP(w, req)
-
 	assert.True(t, handlerCalled)
 	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuth.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-	mockRequestMetadata.AssertExpectations(t)
 }
 
-// TestHandlerOptionalMiddleware_UserNotFound tests HandlerOptionalMiddleware when the user is not found.
-// It checks that the handler is called with a nil user and returns status OK.
-func TestHandlerOptionalMiddleware_UserNotFound(t *testing.T) {
-	mockAuth := &MockAuthService{}
-	mockUser := &MockUserService{}
-	mockLogger := &MockLoggerService{}
-	mockRequestMetadata := &MockRequestMetadataService{}
+// runHandlerOptionalMiddlewareInvalidTokenOrMalformedCookieTest is a shared helper for HandlerOptionalMiddleware invalid token/malformed cookie tests.
+func runHandlerOptionalMiddlewareInvalidTokenOrMalformedCookieTest(
+	t *testing.T,
+	cfg *HandlerConfig,
+	req *http.Request,
+	setupMocks func(),
+) {
+	runHandlerOptionalMiddlewareNilUserTest(t, cfg, req, setupMocks)
+	cfg.AuthService.(*MockAuthService).AssertExpectations(t)
+	cfg.LoggerService.(*MockLoggerService).AssertExpectations(t)
+	cfg.RequestMetadataService.(*MockRequestMetadataService).AssertExpectations(t)
+}
 
-	cfg := &HandlerConfig{
-		AuthService:            mockAuth,
-		UserService:            mockUser,
-		LoggerService:          mockLogger,
-		RequestMetadataService: mockRequestMetadata,
-		JWTSecret:              "test-secret",
+func TestHandlerOptionalMiddleware_InvalidTokenOrMalformedCookie(t *testing.T) {
+	tests := []struct {
+		name        string
+		cookieValue string
+		ip          string
+		userAgent   string
+	}{
+		{
+			name:        "InvalidToken",
+			cookieValue: "invalid-token",
+			ip:          "192.168.1.1",
+			userAgent:   "test-user-agent",
+		},
+		{
+			name:        "MalformedCookie",
+			cookieValue: "",
+			ip:          "127.0.0.1",
+			userAgent:   "test-agent",
+		},
 	}
 
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
-	w := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockAuth := &MockAuthService{}
+			mockLogger := &MockLoggerService{}
+			mockRequestMetadata := &MockRequestMetadataService{}
+			cfg := &HandlerConfig{
+				AuthService:            mockAuth,
+				LoggerService:          mockLogger,
+				RequestMetadataService: mockRequestMetadata,
+				JWTSecret:              "test-secret",
+			}
 
-	expectedClaims := &Claims{UserID: "user123"}
+			req := httptest.NewRequest("GET", "/test", nil)
+			req.AddCookie(&http.Cookie{Name: "access_token", Value: tt.cookieValue})
 
-	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
-	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
-	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(database.User{}, assert.AnError)
+			setupMocks := func() {
+				mockRequestMetadata.On("GetIPAddress", req).Return(tt.ip)
+				mockRequestMetadata.On("GetUserAgent", req).Return(tt.userAgent)
+				mockAuth.On("ValidateAccessToken", tt.cookieValue, "test-secret").Return(nil, assert.AnError)
+				logger := logrus.New()
+				entry := logger.WithError(assert.AnError)
+				mockLogger.On("WithError", assert.AnError).Return(entry)
+			}
 
-	// Set up logger expectations for error logging
-	logger := logrus.New()
-	entry := logger.WithError(assert.AnError)
-	mockLogger.On("WithError", assert.AnError).Return(entry)
-
-	handlerCalled := false
-	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
-		handlerCalled = true
-		assert.Nil(t, user)
-	})
-
-	middleware := cfg.HandlerOptionalMiddleware(testHandler)
-	middleware.ServeHTTP(w, req)
-
-	assert.True(t, handlerCalled)
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuth.AssertExpectations(t)
-	mockUser.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-	mockRequestMetadata.AssertExpectations(t)
-}
-
-// TestHandlersConfig_HandlerOptionalMiddleware_Structure tests the structure of Config for optional middleware.
-// It checks that the adapter can be created (structure test).
-func TestHandlersConfig_HandlerOptionalMiddleware_Structure(t *testing.T) {
-	adapter := &Config{}
-	assert.NotNil(t, adapter)
-}
-
-// TestHandlerOptionalMiddleware_MalformedCookie tests HandlerOptionalMiddleware with a malformed or empty cookie.
-// It checks that the handler is called with a nil user and returns status OK.
-func TestHandlerOptionalMiddleware_MalformedCookie(t *testing.T) {
-	mockAuth := &MockAuthService{}
-	mockLogger := &MockLoggerService{}
-	mockRequestMetadata := &MockRequestMetadataService{}
-	cfg := &HandlerConfig{
-		AuthService:            mockAuth,
-		LoggerService:          mockLogger,
-		RequestMetadataService: mockRequestMetadata,
-		JWTSecret:              "test-secret",
+			runHandlerOptionalMiddlewareInvalidTokenOrMalformedCookieTest(t, cfg, req, setupMocks)
+		})
 	}
-
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: ""}) // Malformed/empty
-	w := httptest.NewRecorder()
-
-	mockRequestMetadata.On("GetIPAddress", req).Return("127.0.0.1")
-	mockRequestMetadata.On("GetUserAgent", req).Return("test-agent")
-	mockAuth.On("ValidateAccessToken", "", "test-secret").Return(nil, assert.AnError)
-
-	// Set up logger expectations for error logging
-	logger := logrus.New()
-	entry := logger.WithError(assert.AnError)
-	mockLogger.On("WithError", assert.AnError).Return(entry)
-
-	handlerCalled := false
-	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {
-		handlerCalled = true
-		assert.Nil(t, user)
-	})
-
-	middleware := cfg.HandlerOptionalMiddleware(testHandler)
-	middleware.ServeHTTP(w, req)
-
-	assert.True(t, handlerCalled)
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuth.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-	mockRequestMetadata.AssertExpectations(t)
 }
 
 // TestHandlerOptionalMiddleware_MultipleCookies tests HandlerOptionalMiddleware with multiple cookies.
@@ -846,54 +768,96 @@ func TestHandlerOptionalMiddleware_ContextPropagation(t *testing.T) {
 	mockRequestMetadata.AssertExpectations(t)
 }
 
-// TestHandlersConfig_HandlerAdminOnlyMiddleware tests the legacy HandlerAdminOnlyMiddleware.
-// It checks that the middleware does not panic and returns a valid response code.
-func TestHandlersConfig_HandlerAdminOnlyMiddleware(t *testing.T) {
-	logger := logrus.New()
-	apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
-	cfg := &Config{
-		APIConfig: apiCfg,
-		Auth:      &auth.Config{},
-		Logger:    logger,
-	}
-
-	req := httptest.NewRequest("GET", "/admin", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "admin-token"})
+// runLegacyHandlerMiddlewareTest is a shared helper for legacy config middleware tests.
+func runLegacyHandlerMiddlewareTest(
+	t *testing.T,
+	middlewareFunc func(cfg *Config, handler func(http.ResponseWriter, *http.Request, database.User)) func(http.ResponseWriter, *http.Request),
+	handler func(http.ResponseWriter, *http.Request, database.User),
+	cfg *Config,
+	req *http.Request,
+) {
 	w := httptest.NewRecorder()
-
-	handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
-		w.WriteHeader(http.StatusOK)
-	}
-
-	middleware := cfg.HandlerAdminOnlyMiddleware(handler)
+	middleware := middlewareFunc(cfg, handler)
 	assert.NotNil(t, middleware)
-	middleware(w, req)
-	// We can't assert handler invocation without a real DB and token, but we can check for no panic and a valid response
+	assert.NotPanics(t, func() {
+		middleware(w, req)
+	})
 	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusForbidden || w.Code == http.StatusUnauthorized)
 }
 
-// TestHandlersConfig_HandlerMiddleware tests the legacy HandlerMiddleware.
-// It checks that the middleware does not panic and returns a valid response code.
-func TestHandlersConfig_HandlerMiddleware(t *testing.T) {
-	logger := logrus.New()
-	apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
-	cfg := &Config{
-		APIConfig: apiCfg,
-		Auth:      &auth.Config{},
-		Logger:    logger,
+// runLegacyHandlerTest is a shared helper for legacy handler middleware tests.
+func runLegacyHandlerTest(
+	t *testing.T,
+	middlewareFunc func(cfg *Config, handler func(http.ResponseWriter, *http.Request, database.User)) func(http.ResponseWriter, *http.Request),
+	handler func(http.ResponseWriter, *http.Request, database.User),
+	cfg *Config,
+	req *http.Request,
+) {
+	runLegacyHandlerMiddlewareTest(t, middlewareFunc, handler, cfg, req)
+}
+
+func TestHandlersConfig_HandlerAdminOrUserMiddleware(t *testing.T) {
+	tests := []struct {
+		name           string
+		path           string
+		cookieValue    string
+		middlewareFunc func(cfg *Config, handler func(http.ResponseWriter, *http.Request, database.User)) func(http.ResponseWriter, *http.Request)
+	}{
+		{
+			name:        "HandlerAdminOnlyMiddleware",
+			path:        "/admin",
+			cookieValue: "admin-token",
+			middlewareFunc: func(cfg *Config, handler func(http.ResponseWriter, *http.Request, database.User)) func(http.ResponseWriter, *http.Request) {
+				return cfg.HandlerAdminOnlyMiddleware(handler)
+			},
+		},
+		{
+			name:        "HandlerMiddleware",
+			path:        "/user",
+			cookieValue: "user-token",
+			middlewareFunc: func(cfg *Config, handler func(http.ResponseWriter, *http.Request, database.User)) func(http.ResponseWriter, *http.Request) {
+				return cfg.HandlerMiddleware(handler)
+			},
+		},
 	}
 
-	req := httptest.NewRequest("GET", "/user", nil)
-	req.AddCookie(&http.Cookie{Name: "access_token", Value: "user-token"})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := logrus.New()
+			apiCfg := &config.APIConfig{JWTSecret: "test-secret", DB: &database.Queries{}}
+			cfg := &Config{
+				APIConfig: apiCfg,
+				Auth:      &auth.Config{},
+				Logger:    logger,
+			}
+
+			req := httptest.NewRequest("GET", tt.path, nil)
+			req.AddCookie(&http.Cookie{Name: "access_token", Value: tt.cookieValue})
+
+			handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
+				w := httptest.NewRecorder()
+				w.WriteHeader(http.StatusOK)
+			}
+
+			runLegacyHandlerTest(t, tt.middlewareFunc, handler, cfg, req)
+		})
+	}
+}
+
+// runLegacyOptionalHandlerMiddlewareTest is a shared helper for legacy config optional middleware tests.
+func runLegacyOptionalHandlerMiddlewareTest(
+	t *testing.T,
+	middlewareFunc func(cfg *Config, handler OptionalHandler) func(http.ResponseWriter, *http.Request),
+	handler OptionalHandler,
+	cfg *Config,
+	req *http.Request,
+) {
 	w := httptest.NewRecorder()
-
-	handler := func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
-		w.WriteHeader(http.StatusOK)
-	}
-
-	middleware := cfg.HandlerMiddleware(handler)
+	middleware := middlewareFunc(cfg, handler)
 	assert.NotNil(t, middleware)
-	middleware(w, req)
+	assert.NotPanics(t, func() {
+		middleware(w, req)
+	})
 	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusForbidden || w.Code == http.StatusUnauthorized)
 }
 
@@ -910,14 +874,13 @@ func TestHandlersConfig_HandlerOptionalMiddleware(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/optional", nil)
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "user-token"})
-	w := httptest.NewRecorder()
 
 	handler := func(_ http.ResponseWriter, _ *http.Request, _ *database.User) {
+		w := httptest.NewRecorder()
 		w.WriteHeader(http.StatusOK)
 	}
 
-	middleware := cfg.HandlerOptionalMiddleware(handler)
-	assert.NotNil(t, middleware)
-	middleware(w, req)
-	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusForbidden || w.Code == http.StatusUnauthorized)
+	runLegacyOptionalHandlerMiddlewareTest(t, func(cfg *Config, handler OptionalHandler) func(http.ResponseWriter, *http.Request) {
+		return cfg.HandlerOptionalMiddleware(handler)
+	}, handler, cfg, req)
 }

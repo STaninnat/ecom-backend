@@ -9,13 +9,15 @@ import (
 	"testing"
 	"time"
 
+	redismock "github.com/go-redis/redismock/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
 	"github.com/STaninnat/ecom-backend/internal/config"
-	redismock "github.com/go-redis/redismock/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // handler_integration_test.go: Integration and error tests for authentication HTTP handlers with mock services.
@@ -77,7 +79,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		var response handlers.HandlerResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "Signup successful", response.Message)
 
 		// Verify all mocks were called as expected
@@ -133,7 +135,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		var response handlers.HandlerResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "Signin successful", response.Message)
 
 		// Verify all mocks were called as expected
@@ -239,7 +241,7 @@ func TestHandlerIntegration(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		var response map[string]string
 		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Expect the actual error message from handler
 		assert.Contains(t, response["error"], "invalid refresh token format")
 		mockHandlersConfig.AssertExpectations(t)
@@ -315,7 +317,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		var response handlers.HandlerResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "Google signin successful", response.Message)
 
 		// Verify all mocks were called as expected
@@ -331,84 +333,68 @@ func TestHandlerErrorScenarios(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	t.Run("HandlerSignUp_InvalidJSON", func(t *testing.T) {
-		// Create mock services
-		mockAuthService := new(MockAuthService)
-		mockHandlersConfig := new(MockHandlersConfig)
-
-		// Create test config with proper mocks
-		cfg := &HandlersAuthConfig{
-			Config:             &handlers.Config{},
-			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-			Logger:             mockHandlersConfig,
-			authService:        mockAuthService,
+	t.Run("HandlerAuth_InvalidJSON", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			handlerFunc   func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request)
+			operation     string
+			invalidJSON   string
+			logMsg        string
+			methodNotCall string
+		}{
+			{
+				name: "SignUp_InvalidJSON",
+				handlerFunc: func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request) {
+					cfg.HandlerSignUp(w, req)
+				},
+				operation:     "signup-local",
+				invalidJSON:   `{"name": "testuser", "email": "test@example.com", "password": "password123"`,
+				logMsg:        "Invalid signup payload",
+				methodNotCall: "SignUp",
+			},
+			{
+				name: "SignIn_InvalidJSON",
+				handlerFunc: func(cfg *HandlersAuthConfig, w http.ResponseWriter, req *http.Request) {
+					cfg.HandlerSignIn(w, req)
+				},
+				operation:     "signin-local",
+				invalidJSON:   `{"email": "test@example.com", "password": "password123"`,
+				logMsg:        "Invalid signin payload",
+				methodNotCall: "SignIn",
+			},
 		}
 
-		// Test data - invalid JSON
-		invalidJSON := `{"name": "testuser", "email": "test@example.com", "password": "password123"`
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				mockAuthService := new(MockAuthService)
+				mockHandlersConfig := new(MockHandlersConfig)
 
-		// Set up mock expectations for error logging
-		mockHandlersConfig.On("LogHandlerError", mock.Anything, "signup-local", "invalid_request", "Invalid signup payload", mock.Anything, mock.Anything, mock.Anything).Return()
+				cfg := &HandlersAuthConfig{
+					Config:             &handlers.Config{},
+					HandlersCartConfig: &carthandlers.HandlersCartConfig{},
+					Logger:             mockHandlersConfig,
+					authService:        mockAuthService,
+				}
 
-		// Create request
-		req := httptest.NewRequest("POST", "/signup", bytes.NewBufferString(invalidJSON))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
+				mockHandlersConfig.On("LogHandlerError", mock.Anything, tc.operation, "invalid_request", tc.logMsg, mock.Anything, mock.Anything, mock.Anything).Return()
 
-		// Execute
-		cfg.HandlerSignUp(w, req)
+				req := httptest.NewRequest("POST", "/", bytes.NewBufferString(tc.invalidJSON))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
 
-		// Assertions
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+				tc.handlerFunc(cfg, w, req)
 
-		var response map[string]string
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "Invalid request payload", response["error"])
+				assert.Equal(t, http.StatusBadRequest, w.Code)
 
-		// Verify mocks were called as expected
-		mockHandlersConfig.AssertExpectations(t)
-		mockAuthService.AssertNotCalled(t, "SignUp")
-	})
+				var response map[string]string
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Equal(t, "Invalid request payload", response["error"])
 
-	t.Run("HandlerSignIn_InvalidJSON", func(t *testing.T) {
-		// Create mock services
-		mockAuthService := new(MockAuthService)
-		mockHandlersConfig := new(MockHandlersConfig)
-
-		// Create test config with proper mocks
-		cfg := &HandlersAuthConfig{
-			Config:             &handlers.Config{},
-			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-			Logger:             mockHandlersConfig,
-			authService:        mockAuthService,
+				mockHandlersConfig.AssertExpectations(t)
+				mockAuthService.AssertNotCalled(t, tc.methodNotCall)
+			})
 		}
-
-		// Test data - invalid JSON
-		invalidJSON := `{"email": "test@example.com", "password": "password123"`
-
-		// Set up mock expectations for error logging
-		mockHandlersConfig.On("LogHandlerError", mock.Anything, "signin-local", "invalid_request", "Invalid signin payload", mock.Anything, mock.Anything, mock.Anything).Return()
-
-		// Create request
-		req := httptest.NewRequest("POST", "/signin", bytes.NewBufferString(invalidJSON))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		// Execute
-		cfg.HandlerSignIn(w, req)
-
-		// Assertions
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]string
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "Invalid request payload", response["error"])
-
-		// Verify mocks were called as expected
-		mockHandlersConfig.AssertExpectations(t)
-		mockAuthService.AssertNotCalled(t, "SignIn")
 	})
 
 	t.Run("HandlerRefreshToken_NoCookie", func(t *testing.T) {
@@ -476,7 +462,7 @@ func TestHandlerErrorScenarios(t *testing.T) {
 
 		var response map[string]string
 		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "Missing required parameters", response["error"])
 
 		// Verify mocks were called as expected
@@ -502,7 +488,7 @@ func TestAuthWrapperIntegration(t *testing.T) {
 		err := apiCfg.InitAuthService()
 
 		// Assertions - should fail due to missing dependencies, but gracefully
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not initialized")
 	})
 
@@ -518,7 +504,7 @@ func TestAuthWrapperIntegration(t *testing.T) {
 		err := apiCfg.InitAuthService()
 
 		// Assertions - should fail gracefully with proper error message
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not initialized")
 	})
 
@@ -594,6 +580,33 @@ func TestAuthServiceMethods(t *testing.T) {
 	})
 }
 
+func runHandlerWithoutCookiesTest(t *testing.T, handler func(cfg *HandlersAuthConfig, w http.ResponseWriter, r *http.Request), logCode, endpoint string) {
+	cfg := &HandlersAuthConfig{
+		Config: &handlers.Config{
+			Auth: &auth.Config{},
+		},
+		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
+		Logger:             &MockHandlersConfig{},
+		authService:        &MockAuthService{},
+	}
+
+	mockLogger := &MockHandlersConfig{}
+	mockService := &MockAuthService{}
+	cfg.Logger = mockLogger
+	cfg.authService = mockService
+
+	mockLogger.On("LogHandlerError", mock.Anything, logCode, "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	req := httptest.NewRequest("POST", endpoint, nil)
+	w := httptest.NewRecorder()
+
+	handler(cfg, w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	mockLogger.AssertExpectations(t)
+	mockService.AssertExpectations(t)
+}
+
 // TestRealHandlerIntegration tests the real handlers with no cookies (validation error path only)
 func TestRealHandlerIntegration(t *testing.T) {
 	if testing.Short() {
@@ -601,56 +614,14 @@ func TestRealHandlerIntegration(t *testing.T) {
 	}
 
 	t.Run("HandlerSignOut_WithoutCookies", func(t *testing.T) {
-		cfg := &HandlersAuthConfig{
-			Config: &handlers.Config{
-				Auth: &auth.Config{},
-			},
-			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-			Logger:             &MockHandlersConfig{},
-			authService:        &MockAuthService{},
-		}
-
-		mockLogger := &MockHandlersConfig{}
-		mockService := &MockAuthService{}
-		cfg.Logger = mockLogger
-		cfg.authService = mockService
-
-		mockLogger.On("LogHandlerError", mock.Anything, "sign_out", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-		req := httptest.NewRequest("POST", "/signout", nil)
-		w := httptest.NewRecorder()
-
-		cfg.HandlerSignOut(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		mockLogger.AssertExpectations(t)
-		mockService.AssertExpectations(t)
+		runHandlerWithoutCookiesTest(t, func(cfg *HandlersAuthConfig, w http.ResponseWriter, r *http.Request) {
+			cfg.HandlerSignOut(w, r)
+		}, "sign_out", "/signout")
 	})
 
 	t.Run("HandlerRefreshToken_WithoutCookies", func(t *testing.T) {
-		cfg := &HandlersAuthConfig{
-			Config: &handlers.Config{
-				Auth: &auth.Config{},
-			},
-			HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-			Logger:             &MockHandlersConfig{},
-			authService:        &MockAuthService{},
-		}
-
-		mockLogger := &MockHandlersConfig{}
-		mockService := &MockAuthService{}
-		cfg.Logger = mockLogger
-		cfg.authService = mockService
-
-		mockLogger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-		req := httptest.NewRequest("POST", "/refresh", nil)
-		w := httptest.NewRecorder()
-
-		cfg.HandlerRefreshToken(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		mockLogger.AssertExpectations(t)
-		mockService.AssertExpectations(t)
+		runHandlerWithoutCookiesTest(t, func(cfg *HandlersAuthConfig, w http.ResponseWriter, r *http.Request) {
+			cfg.HandlerRefreshToken(w, r)
+		}, "refresh_token", "/refresh")
 	})
 }

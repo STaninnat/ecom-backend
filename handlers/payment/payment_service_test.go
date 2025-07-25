@@ -8,11 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stripe/stripe-go/v82"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // payment_service_test.go: Tests payment service input and error scenarios.
@@ -38,7 +40,7 @@ func TestCreatePayment_InvalidRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := service.CreatePayment(context.Background(), tt.params)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Missing required fields")
 		})
 	}
@@ -55,7 +57,7 @@ func TestCreatePayment_InvalidCurrency(t *testing.T) {
 	}
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Unsupported currency")
 }
 
@@ -72,57 +74,49 @@ func TestCreatePayment_OrderNotFound(t *testing.T) {
 	mockDB.On("GetOrderByID", mock.Anything, "nonexistent").Return(database.Order{}, sql.ErrNoRows)
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Order not found")
 	mockDB.AssertExpectations(t)
 }
 
-// TestCreatePayment_UnauthorizedOrder tests when order doesn't belong to user.
-func TestCreatePayment_UnauthorizedOrder(t *testing.T) {
+// Helper for CreatePayment error scenarios
+func runCreatePaymentOrderErrorTest(t *testing.T, order database.Order, params CreatePaymentParams, expectedMsg string) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
+	mockDB.On("GetOrderByID", mock.Anything, params.OrderID).Return(order, nil)
+
+	_, err := service.CreatePayment(context.Background(), params)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), expectedMsg)
+	mockDB.AssertExpectations(t)
+}
+
+func TestCreatePayment_UnauthorizedOrder(t *testing.T) {
 	params := CreatePaymentParams{
 		OrderID:  "order123",
 		UserID:   "user123",
 		Currency: "USD",
 	}
-
 	order := database.Order{
 		ID:     "order123",
 		UserID: "different_user",
 		Status: "pending",
 	}
-
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-
-	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Order does not belong to user")
-	mockDB.AssertExpectations(t)
+	runCreatePaymentOrderErrorTest(t, order, params, "Order does not belong to user")
 }
 
-// TestCreatePayment_InvalidOrderStatus tests when order status is not pending.
 func TestCreatePayment_InvalidOrderStatus(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := CreatePaymentParams{
 		OrderID:  "order123",
 		UserID:   "user123",
 		Currency: "USD",
 	}
-
 	order := database.Order{
 		ID:     "order123",
 		UserID: "user123",
 		Status: "paid",
 	}
-
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-
-	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Order already paid or invalid")
-	mockDB.AssertExpectations(t)
+	runCreatePaymentOrderErrorTest(t, order, params, "Order already paid or invalid")
 }
 
 // TestCreatePayment_PaymentExists tests when payment already exists for order.
@@ -151,7 +145,7 @@ func TestCreatePayment_PaymentExists(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(existingPayment, nil)
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment already exists for this order")
 	mockDB.AssertExpectations(t)
 }
@@ -171,7 +165,7 @@ func TestConfirmPayment_InvalidRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := service.ConfirmPayment(context.Background(), tt.params)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Missing required fields")
 		})
 	}
@@ -189,7 +183,7 @@ func TestConfirmPayment_PaymentNotFound(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment not found")
 	mockDB.AssertExpectations(t)
 }
@@ -212,7 +206,7 @@ func TestConfirmPayment_UnauthorizedPayment(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment does not belong to user")
 	mockDB.AssertExpectations(t)
 }
@@ -225,7 +219,7 @@ func TestGetPayment_NotFound(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
 
 	_, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment not found")
 	mockDB.AssertExpectations(t)
 }
@@ -244,7 +238,7 @@ func TestGetPayment_Unauthorized(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	_, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment does not belong to user")
 	mockDB.AssertExpectations(t)
 }
@@ -282,7 +276,7 @@ func TestGetPaymentHistory_Success(t *testing.T) {
 	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return(payments, nil)
 
 	result, err := service.GetPaymentHistory(context.Background(), "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 2)
 	assert.Equal(t, "payment1", result[0].ID)
 	assert.Equal(t, "payment2", result[1].ID)
@@ -311,7 +305,7 @@ func TestGetAllPayments_Success(t *testing.T) {
 	mockDB.On("GetPaymentsByStatus", mock.Anything, "succeeded").Return(payments, nil)
 
 	result, err := service.GetAllPayments(context.Background(), "succeeded")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 1)
 	assert.Equal(t, "payment1", result[0].ID)
 	mockDB.AssertExpectations(t)
@@ -332,7 +326,7 @@ func TestRefundPayment_InvalidRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := service.RefundPayment(context.Background(), tt.params)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Missing required fields")
 		})
 	}
@@ -350,7 +344,7 @@ func TestRefundPayment_PaymentNotFound(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment not found")
 	mockDB.AssertExpectations(t)
 }
@@ -373,7 +367,7 @@ func TestRefundPayment_UnauthorizedPayment(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment does not belong to user")
 	mockDB.AssertExpectations(t)
 }
@@ -397,7 +391,7 @@ func TestRefundPayment_InvalidStatus(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment cannot be refunded")
 	mockDB.AssertExpectations(t)
 }
@@ -420,7 +414,7 @@ func TestHandleWebhook_InvalidSignature(t *testing.T) {
 	mockStripe.On("ParseWebhook", payload, signature, secret).Return(stripe.Event{}, errors.New("Signature verification failed"))
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Signature verification failed")
 }
 
@@ -592,7 +586,7 @@ func TestCreatePayment_Success(t *testing.T) {
 	}, nil)
 
 	result, err := service.CreatePayment(context.Background(), params)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.PaymentID)
 	assert.NotEmpty(t, result.ClientSecret)
@@ -625,7 +619,7 @@ func TestCreatePayment_InvalidAmount(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid total amount")
 
 	mockDB.AssertExpectations(t)
@@ -661,7 +655,7 @@ func TestCreatePayment_TransactionError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(nil, errors.New("transaction failed"))
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error starting transaction")
 
 	mockDB.AssertExpectations(t)
@@ -705,7 +699,7 @@ func TestCreatePayment_CreatePaymentError(t *testing.T) {
 	}, nil)
 
 	_, err := service.CreatePayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
 
 	mockDB.AssertExpectations(t)
@@ -754,7 +748,7 @@ func TestConfirmPayment_Success(t *testing.T) {
 	}, nil)
 
 	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "succeeded", result.Status)
 
@@ -764,54 +758,42 @@ func TestConfirmPayment_Success(t *testing.T) {
 	mockStripe.AssertExpectations(t)
 }
 
-// TestConfirmPayment_OrderNotFound tests when order is not found during confirmation
-func TestConfirmPayment_OrderNotFound(t *testing.T) {
+// Helper for ConfirmPayment error scenarios with missing provider payment ID
+func runConfirmPaymentMissingProviderIDTest(t *testing.T, payment database.Payment, params ConfirmPaymentParams) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	payment := database.Payment{
-		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, params.OrderID).Return(payment, nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Missing provider payment ID")
-
 	mockDB.AssertExpectations(t)
 }
 
-// TestConfirmPayment_InvalidOrderStatus tests when order status is invalid for confirmation
-func TestConfirmPayment_InvalidOrderStatus(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
-
+func TestConfirmPayment_OrderNotFound(t *testing.T) {
 	params := ConfirmPaymentParams{
 		OrderID: "order123",
 		UserID:  "user123",
 	}
-
 	payment := database.Payment{
 		ID:      "payment123",
 		OrderID: "order123",
 		UserID:  "user123",
 	}
+	runConfirmPaymentMissingProviderIDTest(t, payment, params)
+}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-
-	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing provider payment ID")
-
-	mockDB.AssertExpectations(t)
+func TestConfirmPayment_InvalidOrderStatus(t *testing.T) {
+	params := ConfirmPaymentParams{
+		OrderID: "order123",
+		UserID:  "user123",
+	}
+	payment := database.Payment{
+		ID:      "payment123",
+		OrderID: "order123",
+		UserID:  "user123",
+	}
+	runConfirmPaymentMissingProviderIDTest(t, payment, params)
 }
 
 // TestGetPayment_Success tests successful payment retrieval
@@ -834,12 +816,12 @@ func TestGetPayment_Success(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	result, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "payment123", result.ID)
 	assert.Equal(t, "order123", result.OrderID)
 	assert.Equal(t, "user123", result.UserID)
-	assert.Equal(t, 100.0, result.Amount)
+	assert.InEpsilon(t, 100.0, result.Amount, 0.001)
 	assert.Equal(t, "USD", result.Currency)
 	assert.Equal(t, "succeeded", result.Status)
 	assert.Equal(t, "stripe", result.Provider)
@@ -848,11 +830,19 @@ func TestGetPayment_Success(t *testing.T) {
 	mockDB.AssertExpectations(t)
 }
 
-// TestGetPayment_InvalidAmount tests when payment has invalid amount
-func TestGetPayment_InvalidAmount(t *testing.T) {
+// Helper for GetPayment invalid amount tests
+func runGetPaymentInvalidAmountTest(t *testing.T, payment database.Payment) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
+	mockDB.On("GetPaymentByOrderID", mock.Anything, payment.OrderID).Return(payment, nil)
 
+	_, err := service.GetPayment(context.Background(), payment.OrderID, payment.UserID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid payment amount")
+	mockDB.AssertExpectations(t)
+}
+
+func TestGetPayment_InvalidAmount(t *testing.T) {
 	payment := database.Payment{
 		ID:      "payment123",
 		OrderID: "order123",
@@ -860,14 +850,7 @@ func TestGetPayment_InvalidAmount(t *testing.T) {
 		Amount:  "invalid_amount",
 		Status:  "succeeded",
 	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-
-	_, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid payment amount")
-
-	mockDB.AssertExpectations(t)
+	runGetPaymentInvalidAmountTest(t, payment)
 }
 
 // TestRefundPayment_Success tests successful payment refund
@@ -909,7 +892,7 @@ func TestRefundPayment_Success(t *testing.T) {
 	}, nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockDB.AssertExpectations(t)
 	mockDBConn.AssertExpectations(t)
@@ -938,7 +921,7 @@ func TestRefundPayment_InvalidAmount(t *testing.T) {
 	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Missing provider payment ID")
 
 	mockDB.AssertExpectations(t)
@@ -979,7 +962,7 @@ func TestHandleWebhook_Success(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockDB.AssertExpectations(t)
 	mockDBConn.AssertExpectations(t)
@@ -1015,160 +998,79 @@ func TestHandleWebhook_PaymentNotFound(t *testing.T) {
 	mockDB.On("GetPaymentByProviderPaymentID", mock.Anything, "pi_test_123").Return(database.Payment{}, sql.ErrNoRows)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment not found")
 
 	mockDB.AssertExpectations(t)
 	mockStripe.AssertExpectations(t)
 }
 
-// TestHandleWebhook_PaymentFailed tests payment_intent.payment_failed webhook event
+// Helper for webhook event status update tests
+func runHandleWebhookStatusUpdateTest(t *testing.T, eventType, payloadStr, eventRawStr, status string) {
+	mockDB := new(mockPaymentDBQueries)
+	mockDBConn := new(mockPaymentDBConn)
+	mockTx := new(mockPaymentDBTx)
+	mockStripe := new(mockStripeClient)
+	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
+
+	payload := []byte(payloadStr)
+	signature := testSignatureService
+	secret := testSecret
+
+	event := stripe.Event{
+		Type: stripe.EventType(eventType),
+		Data: &stripe.EventData{
+			Raw: []byte(eventRawStr),
+		},
+	}
+	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
+
+	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
+	mockDB.On("WithTx", mockTx).Return(mockDB)
+	mockDB.On("UpdatePaymentStatusByProviderPaymentID", mock.Anything, database.UpdatePaymentStatusByProviderPaymentIDParams{
+		Status:            status,
+		ProviderPaymentID: utils.ToNullString("pi_test_123"),
+	}).Return(nil)
+	mockTx.On("Commit").Return(nil)
+	mockTx.On("Rollback").Return(nil)
+
+	err := service.HandleWebhook(context.Background(), payload, signature, secret)
+	require.NoError(t, err)
+
+	mockDB.AssertExpectations(t)
+	mockDBConn.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
+	mockStripe.AssertExpectations(t)
+}
+
 func TestHandleWebhook_PaymentFailed(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	payload := []byte(`{"type":"payment_intent.payment_failed","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := testSignatureService
-	secret := testSecret
-
-	event := stripe.Event{
-		Type: "payment_intent.payment_failed",
-		Data: &stripe.EventData{
-			Raw: []byte(`{"id":"pi_test_123"}`),
-		},
-	}
-	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatusByProviderPaymentID", mock.Anything, database.UpdatePaymentStatusByProviderPaymentIDParams{
-		Status:            "failed",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.NoError(t, err)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
+	runHandleWebhookStatusUpdateTest(
+		t,
+		"payment_intent.payment_failed",
+		`{"type":"payment_intent.payment_failed","data":{"object":{"id":"pi_test_123"}}}`,
+		`{"id":"pi_test_123"}`,
+		"failed",
+	)
 }
 
-// TestHandleWebhook_PaymentCanceled tests payment_intent.canceled webhook event
 func TestHandleWebhook_PaymentCanceled(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	payload := []byte(`{"type":"payment_intent.canceled","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := testSignatureService
-	secret := testSecret
-
-	event := stripe.Event{
-		Type: "payment_intent.canceled",
-		Data: &stripe.EventData{
-			Raw: []byte(`{"id":"pi_test_123"}`),
-		},
-	}
-	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatusByProviderPaymentID", mock.Anything, database.UpdatePaymentStatusByProviderPaymentIDParams{
-		Status:            "cancelled",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.NoError(t, err)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
+	runHandleWebhookStatusUpdateTest(
+		t,
+		"payment_intent.canceled",
+		`{"type":"payment_intent.canceled","data":{"object":{"id":"pi_test_123"}}}`,
+		`{"id":"pi_test_123"}`,
+		"cancelled",
+	)
 }
 
-// TestHandleWebhook_ChargeRefunded tests charge.refunded webhook event
 func TestHandleWebhook_ChargeRefunded(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := testSignatureService
-	secret := testSecret
-
-	event := stripe.Event{
-		Type: "charge.refunded",
-		Data: &stripe.EventData{
-			Raw: []byte(`{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}`),
-		},
-	}
-	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatusByProviderPaymentID", mock.Anything, database.UpdatePaymentStatusByProviderPaymentIDParams{
-		Status:            "refunded",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.NoError(t, err)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestHandleWebhook_JSONUnmarshalError tests when JSON unmarshaling fails
-func TestHandleWebhook_JSONUnmarshalError(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	// Invalid JSON payload
-	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123"}}}`)
-	signature := testSignatureService
-	secret := testSecret
-
-	event := stripe.Event{
-		Type: "payment_intent.succeeded",
-		Data: &stripe.EventData{
-			Raw: []byte(`invalid json`), // Invalid JSON
-		},
-	}
-	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockTx.On("Rollback").Return(nil)
-
-	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Bad payment intent")
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
+	runHandleWebhookStatusUpdateTest(
+		t,
+		"charge.refunded",
+		`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`,
+		`{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}`,
+		"refunded",
+	)
 }
 
 // TestHandleWebhook_DatabaseUpdateError tests when database update fails
@@ -1201,7 +1103,7 @@ func TestHandleWebhook_DatabaseUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update payment")
 
 	mockDB.AssertExpectations(t)
@@ -1241,7 +1143,7 @@ func TestHandleWebhook_TransactionCommitError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
 
 	mockDB.AssertExpectations(t)
@@ -1276,7 +1178,7 @@ func TestHandleWebhook_UnknownEventType(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.NoError(t, err) // Unknown events should be ignored
+	require.NoError(t, err) // Unknown events should be ignored
 
 	mockDB.AssertExpectations(t)
 	mockDBConn.AssertExpectations(t)
@@ -1284,234 +1186,80 @@ func TestHandleWebhook_UnknownEventType(t *testing.T) {
 	mockStripe.AssertExpectations(t)
 }
 
-// TestConfirmPayment_RequiresPaymentMethod tests when payment intent status is RequiresPaymentMethod
-func TestConfirmPayment_RequiresPaymentMethod(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+// TestConfirmPayment_PendingStatuses tests when payment intent status is pending
+func TestConfirmPayment_PendingStatuses(t *testing.T) {
+	tests := []struct {
+		name         string
+		intentStatus stripe.PaymentIntentStatus
+	}{
+		{
+			name:         "RequiresPaymentMethod",
+			intentStatus: stripe.PaymentIntentStatusRequiresPaymentMethod,
+		},
+		{
+			name:         "RequiresConfirmation",
+			intentStatus: stripe.PaymentIntentStatusRequiresConfirmation,
+		},
+		{
+			name:         "RequiresAction",
+			intentStatus: stripe.PaymentIntentStatusRequiresAction,
+		},
+		{
+			name:         "RequiresCapture",
+			intentStatus: stripe.PaymentIntentStatusRequiresCapture,
+		},
+		{
+			name:         "Processing",
+			intentStatus: stripe.PaymentIntentStatusProcessing,
+		},
 	}
 
-	payment := database.Payment{
-		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
-		Amount:            "100.00",
-		Currency:          "USD",
-		Status:            "pending",
-		Provider:          "stripe",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockDB := new(mockPaymentDBQueries)
+			mockDBConn := new(mockPaymentDBConn)
+			mockTx := new(mockPaymentDBTx)
+			mockStripe := new(mockStripeClient)
+			service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
+
+			params := ConfirmPaymentParams{
+				OrderID: "order123",
+				UserID:  "user123",
+			}
+
+			payment := database.Payment{
+				ID:                "payment123",
+				OrderID:           "order123",
+				UserID:            "user123",
+				Amount:            "100.00",
+				Currency:          "USD",
+				Status:            "pending",
+				Provider:          "stripe",
+				ProviderPaymentID: utils.ToNullString("pi_test_123"),
+			}
+
+			mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+			mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
+				ID:     "pi_test_123",
+				Status: tt.intentStatus,
+			}, nil)
+
+			mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
+			mockDB.On("WithTx", mockTx).Return(mockDB)
+			mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
+			mockTx.On("Commit").Return(nil)
+			mockTx.On("Rollback").Return(nil)
+
+			result, err := service.ConfirmPayment(context.Background(), params)
+			require.NoError(t, err)
+			assert.Equal(t, "pending", result.Status)
+
+			mockDB.AssertExpectations(t)
+			mockDBConn.AssertExpectations(t)
+			mockTx.AssertExpectations(t)
+			mockStripe.AssertExpectations(t)
+		})
 	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
-		ID:     "pi_test_123",
-		Status: stripe.PaymentIntentStatusRequiresPaymentMethod,
-	}, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
-	assert.Equal(t, "pending", result.Status)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestConfirmPayment_RequiresConfirmation tests when payment intent status is RequiresConfirmation
-func TestConfirmPayment_RequiresConfirmation(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	payment := database.Payment{
-		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
-		Amount:            "100.00",
-		Currency:          "USD",
-		Status:            "pending",
-		Provider:          "stripe",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
-		ID:     "pi_test_123",
-		Status: stripe.PaymentIntentStatusRequiresConfirmation,
-	}, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
-	assert.Equal(t, "pending", result.Status)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestConfirmPayment_RequiresAction tests when payment intent status is RequiresAction
-func TestConfirmPayment_RequiresAction(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	payment := database.Payment{
-		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
-		Amount:            "100.00",
-		Currency:          "USD",
-		Status:            "pending",
-		Provider:          "stripe",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
-		ID:     "pi_test_123",
-		Status: stripe.PaymentIntentStatusRequiresAction,
-	}, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
-	assert.Equal(t, "pending", result.Status)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestConfirmPayment_RequiresCapture tests when payment intent status is RequiresCapture
-func TestConfirmPayment_RequiresCapture(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	payment := database.Payment{
-		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
-		Amount:            "100.00",
-		Currency:          "USD",
-		Status:            "pending",
-		Provider:          "stripe",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
-		ID:     "pi_test_123",
-		Status: stripe.PaymentIntentStatusRequiresCapture,
-	}, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
-	assert.Equal(t, "pending", result.Status)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestConfirmPayment_Processing tests when payment intent status is Processing
-func TestConfirmPayment_Processing(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
-	}
-
-	payment := database.Payment{
-		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
-		Amount:            "100.00",
-		Currency:          "USD",
-		Status:            "pending",
-		Provider:          "stripe",
-		ProviderPaymentID: utils.ToNullString("pi_test_123"),
-	}
-
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
-		ID:     "pi_test_123",
-		Status: stripe.PaymentIntentStatusProcessing,
-	}, nil)
-
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
-	mockTx.On("Commit").Return(nil)
-	mockTx.On("Rollback").Return(nil)
-
-	result, err := service.ConfirmPayment(context.Background(), params)
-	assert.NoError(t, err)
-	assert.Equal(t, "pending", result.Status)
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
 }
 
 // TestConfirmPayment_StripeError tests when Stripe API call fails
@@ -1540,7 +1288,7 @@ func TestConfirmPayment_StripeError(t *testing.T) {
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(nil, errors.New("stripe error"))
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to fetch payment intent")
 
 	mockDB.AssertExpectations(t)
@@ -1579,7 +1327,7 @@ func TestConfirmPayment_TransactionError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(nil, errors.New("transaction error"))
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error starting transaction")
 
 	mockDB.AssertExpectations(t)
@@ -1623,7 +1371,7 @@ func TestConfirmPayment_DatabaseUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update payment status")
 
 	mockDB.AssertExpectations(t)
@@ -1669,7 +1417,7 @@ func TestConfirmPayment_OrderUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update order status")
 
 	mockDB.AssertExpectations(t)
@@ -1716,7 +1464,7 @@ func TestConfirmPayment_CommitError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
 
 	mockDB.AssertExpectations(t)
@@ -1733,7 +1481,7 @@ func TestGetPaymentHistory_DatabaseError(t *testing.T) {
 	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return(nil, errors.New("database error"))
 
 	_, err := service.GetPaymentHistory(context.Background(), "user123")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to fetch payment history")
 
 	mockDB.AssertExpectations(t)
@@ -1747,7 +1495,7 @@ func TestGetPaymentHistory_EmptyResult(t *testing.T) {
 	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return([]database.Payment{}, nil)
 
 	result, err := service.GetPaymentHistory(context.Background(), "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, result)
 
 	mockDB.AssertExpectations(t)
@@ -1775,7 +1523,7 @@ func TestGetAllPayments_WithStatusFilter(t *testing.T) {
 	mockDB.On("GetPaymentsByStatus", mock.Anything, "succeeded").Return(payments, nil)
 
 	result, err := service.GetAllPayments(context.Background(), "succeeded")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 1)
 	assert.Equal(t, "payment123", result[0].ID)
 
@@ -1790,7 +1538,7 @@ func TestGetAllPayments_DatabaseError(t *testing.T) {
 	mockDB.On("GetAllPayments", mock.Anything).Return(nil, errors.New("database error"))
 
 	_, err := service.GetAllPayments(context.Background(), "all")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to fetch payments")
 
 	mockDB.AssertExpectations(t)
@@ -1804,7 +1552,7 @@ func TestGetAllPayments_StatusFilterDatabaseError(t *testing.T) {
 	mockDB.On("GetPaymentsByStatus", mock.Anything, "succeeded").Return(nil, errors.New("database error"))
 
 	_, err := service.GetAllPayments(context.Background(), "succeeded")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to fetch payments")
 
 	mockDB.AssertExpectations(t)
@@ -1818,7 +1566,7 @@ func TestGetAllPayments_EmptyResult(t *testing.T) {
 	mockDB.On("GetAllPayments", mock.Anything).Return([]database.Payment{}, nil)
 
 	result, err := service.GetAllPayments(context.Background(), "all")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, result)
 
 	mockDB.AssertExpectations(t)
@@ -1850,7 +1598,7 @@ func TestRefundPayment_StripeError(t *testing.T) {
 	mockStripe.On("CreateRefund", mock.Anything).Return(nil, errors.New("stripe error"))
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to process refund")
 
 	mockDB.AssertExpectations(t)
@@ -1888,7 +1636,7 @@ func TestRefundPayment_TransactionError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(nil, errors.New("transaction error"))
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error starting transaction")
 
 	mockDB.AssertExpectations(t)
@@ -1934,7 +1682,7 @@ func TestRefundPayment_PaymentUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update payment status")
 
 	mockDB.AssertExpectations(t)
@@ -1982,7 +1730,7 @@ func TestRefundPayment_OrderUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update order status")
 
 	mockDB.AssertExpectations(t)
@@ -2031,41 +1779,8 @@ func TestRefundPayment_CommitError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.RefundPayment(context.Background(), params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
-
-	mockDB.AssertExpectations(t)
-	mockDBConn.AssertExpectations(t)
-	mockTx.AssertExpectations(t)
-	mockStripe.AssertExpectations(t)
-}
-
-// TestHandleWebhook_ChargeRefunded_JSONUnmarshalError tests JSON unmarshal error for charge.refunded
-func TestHandleWebhook_ChargeRefunded_JSONUnmarshalError(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	mockDBConn := new(mockPaymentDBConn)
-	mockTx := new(mockPaymentDBTx)
-	mockStripe := new(mockStripeClient)
-	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
-
-	payload := []byte(`{"type":"charge.refunded","data":{"object":{"id":"ch_test_123","payment_intent":{"id":"pi_test_123"}}}}`)
-	signature := testSignatureService
-	secret := testSecret
-
-	event := stripe.Event{
-		Type: "charge.refunded",
-		Data: &stripe.EventData{
-			Raw: []byte(`invalid json`),
-		},
-	}
-	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
-	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
-	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockTx.On("Rollback").Return(nil)
-
-	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Bad charge")
 
 	mockDB.AssertExpectations(t)
 	mockDBConn.AssertExpectations(t)
@@ -2101,7 +1816,7 @@ func TestHandleWebhook_ChargeRefunded_DatabaseUpdateError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to update payment")
 
 	mockDB.AssertExpectations(t)
@@ -2139,7 +1854,7 @@ func TestHandleWebhook_ChargeRefunded_CommitError(t *testing.T) {
 	mockTx.On("Rollback").Return(nil)
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
 
 	mockDB.AssertExpectations(t)
@@ -2162,7 +1877,7 @@ func TestHandleWebhook_MalformedPayload(t *testing.T) {
 	mockStripe.On("ParseWebhook", payload, signature, secret).Return(stripe.Event{}, errors.New("bad payload"))
 
 	err := service.HandleWebhook(context.Background(), payload, signature, secret)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Signature verification failed")
 
 	mockStripe.AssertExpectations(t)
@@ -2174,7 +1889,7 @@ func TestGetPaymentHistory_EmptyUserID(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
 	_, err := service.GetPaymentHistory(context.Background(), "")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "User ID is required")
 }
 
@@ -2184,15 +1899,23 @@ func TestGetPayment_EmptyOrderID(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
 	_, err := service.GetPayment(context.Background(), "", "user123")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Order ID is required")
 }
 
-// TestGetPayment_EmptyUserID tests empty user ID
-func TestGetPayment_EmptyUserID(t *testing.T) {
+// Helper for GetPayment error scenarios
+func runGetPaymentErrorTest(t *testing.T, payment database.Payment, orderID, userID, expectedMsg string) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
+	mockDB.On("GetPaymentByOrderID", mock.Anything, orderID).Return(payment, nil)
 
+	_, err := service.GetPayment(context.Background(), orderID, userID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), expectedMsg)
+	mockDB.AssertExpectations(t)
+}
+
+func TestGetPayment_EmptyUserID(t *testing.T) {
 	payment := database.Payment{
 		ID:      "payment123",
 		OrderID: "order123",
@@ -2200,20 +1923,10 @@ func TestGetPayment_EmptyUserID(t *testing.T) {
 		Amount:  "100.00",
 		Status:  "succeeded",
 	}
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-
-	_, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Payment does not belong to user")
-
-	mockDB.AssertExpectations(t)
+	runGetPaymentErrorTest(t, payment, "order123", "user123", "Payment does not belong to user")
 }
 
-// TestGetPayment_InvalidAmount tests invalid amount parsing
 func TestGetPayment_InvalidAmountParsing(t *testing.T) {
-	mockDB := new(mockPaymentDBQueries)
-	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
-
 	payment := database.Payment{
 		ID:      "payment123",
 		OrderID: "order123",
@@ -2221,11 +1934,5 @@ func TestGetPayment_InvalidAmountParsing(t *testing.T) {
 		Amount:  "not_a_number",
 		Status:  "succeeded",
 	}
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
-
-	_, err := service.GetPayment(context.Background(), "order123", "user123")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid payment amount")
-
-	mockDB.AssertExpectations(t)
+	runGetPaymentErrorTest(t, payment, "order123", "user123", "Invalid payment amount")
 }

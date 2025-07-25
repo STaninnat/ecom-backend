@@ -8,10 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/config"
 )
 
 // handler_payment_webhook_test.go: Tests for Stripe webhook HTTP handler including payload validation and service error handling.
@@ -70,105 +71,113 @@ func TestHandlerStripeWebhook_ReadBodyError(t *testing.T) {
 	mockLog.AssertExpectations(t)
 }
 
-// TestHandlerStripeWebhook_InvalidContentType tests invalid content type
-func TestHandlerStripeWebhook_InvalidContentType(t *testing.T) {
-	mockService := new(MockPaymentServiceForWebhook)
-	mockLog := new(MockLoggerForWebhook)
-	cfg := &HandlersPaymentConfig{
-		Config:         &handlers.Config{},
-		Logger:         mockLog,
-		paymentService: mockService,
-	}
-	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "invalid_content_type", "Expected application/json", mock.Anything, mock.Anything, nil).Return()
-
-	r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer([]byte(`{}`)))
-	r.Header.Set("Content-Type", "text/plain") // wrong content type
-	w := httptest.NewRecorder()
-
-	cfg.HandlerStripeWebhook(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockLog.AssertExpectations(t)
-}
-
-// TestHandlerStripeWebhook_MissingSignature tests missing signature header
-func TestHandlerStripeWebhook_MissingSignature(t *testing.T) {
-	mockService := new(MockPaymentServiceForWebhook)
-	mockLog := new(MockLoggerForWebhook)
-	cfg := &HandlersPaymentConfig{
-		Config:         &handlers.Config{},
-		Logger:         mockLog,
-		paymentService: mockService,
-	}
-	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "missing_signature", "Missing Stripe signature header", mock.Anything, mock.Anything, nil).Return()
-
-	r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer([]byte(`{}`)))
-	r.Header.Set("Content-Type", "application/json")
-	// no Stripe-Signature header
-	w := httptest.NewRecorder()
-
-	cfg.HandlerStripeWebhook(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockLog.AssertExpectations(t)
-}
-
-// TestHandlerStripeWebhook_ServiceError tests internal error from service
-func TestHandlerStripeWebhook_ServiceError(t *testing.T) {
-	mockService := new(MockPaymentServiceForWebhook)
-	mockLog := new(MockLoggerForWebhook)
-	cfg := &HandlersPaymentConfig{
-		Config: &handlers.Config{
-			APIConfig: &config.APIConfig{
-				StripeWebhookSecret: "whsec_test",
-			},
+// TestHandlerStripeWebhook_BadRequestScenarios tests bad request scenarios for webhook processing.
+func TestHandlerStripeWebhook_BadRequestScenarios(t *testing.T) {
+	tests := []struct {
+		name            string
+		contentType     string
+		setSignature    bool
+		expectedLogCode string
+		expectedLogMsg  string
+		expectedStatus  int
+	}{
+		{
+			name:            "InvalidContentType",
+			contentType:     "text/plain",
+			setSignature:    true,
+			expectedLogCode: "invalid_content_type",
+			expectedLogMsg:  "Expected application/json",
+			expectedStatus:  http.StatusBadRequest,
 		},
-		Logger:         mockLog,
-		paymentService: mockService,
+		{
+			name:            "MissingSignature",
+			contentType:     "application/json",
+			setSignature:    false,
+			expectedLogCode: "missing_signature",
+			expectedLogMsg:  "Missing Stripe signature header",
+			expectedStatus:  http.StatusBadRequest,
+		},
 	}
-	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	signature := testSignatureWebhook
-	err := &handlers.AppError{Code: "webhook_error", Message: "fail", Err: errors.New("fail")}
-	mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(err)
-	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "webhook_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
 
-	r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer(payload))
-	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Stripe-Signature", signature)
-	w := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService := new(MockPaymentServiceForWebhook)
+			mockLog := new(MockLoggerForWebhook)
+			cfg := &HandlersPaymentConfig{
+				Config:         &handlers.Config{},
+				Logger:         mockLog,
+				paymentService: mockService,
+			}
+			mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", tt.expectedLogCode, tt.expectedLogMsg, mock.Anything, mock.Anything, nil).Return()
 
-	cfg.HandlerStripeWebhook(w, r)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockService.AssertExpectations(t)
-	mockLog.AssertExpectations(t)
+			r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer([]byte(`{}`)))
+			r.Header.Set("Content-Type", tt.contentType)
+			if tt.setSignature {
+				r.Header.Set("Stripe-Signature", "test-signature")
+			}
+			w := httptest.NewRecorder()
+
+			cfg.HandlerStripeWebhook(w, r)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockLog.AssertExpectations(t)
+		})
+	}
 }
 
-// TestHandlerStripeWebhook_InvalidSignature tests invalid signature error
-func TestHandlerStripeWebhook_InvalidSignature(t *testing.T) {
-	mockService := new(MockPaymentServiceForWebhook)
-	mockLog := new(MockLoggerForWebhook)
-	cfg := &HandlersPaymentConfig{
-		Config: &handlers.Config{
-			APIConfig: &config.APIConfig{
-				StripeWebhookSecret: "whsec_test",
-			},
+// TestHandlerStripeWebhook_ErrorScenarios tests error scenarios for webhook processing.
+func TestHandlerStripeWebhook_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            *handlers.AppError
+		logCode        string
+		logMsg         string
+		expectedStatus int
+	}{
+		{
+			name:           "ServiceError",
+			err:            &handlers.AppError{Code: "webhook_error", Message: "fail", Err: errors.New("fail")},
+			logCode:        "webhook_error",
+			logMsg:         "fail",
+			expectedStatus: http.StatusInternalServerError,
 		},
-		Logger:         mockLog,
-		paymentService: mockService,
+		{
+			name:           "InvalidSignature",
+			err:            &handlers.AppError{Code: "invalid_signature", Message: "Invalid signature", Err: errors.New("invalid")},
+			logCode:        "internal_error",
+			logMsg:         "Invalid signature",
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
-	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	signature := testSignatureWebhook
-	err := &handlers.AppError{Code: "invalid_signature", Message: "Invalid signature", Err: errors.New("invalid")}
-	mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(err)
-	mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", "internal_error", "Invalid signature", mock.Anything, mock.Anything, err.Err).Return()
 
-	r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer(payload))
-	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Stripe-Signature", signature)
-	w := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService := new(MockPaymentServiceForWebhook)
+			mockLog := new(MockLoggerForWebhook)
+			cfg := &HandlersPaymentConfig{
+				Config: &handlers.Config{
+					APIConfig: &config.APIConfig{
+						StripeWebhookSecret: "whsec_test",
+					},
+				},
+				Logger:         mockLog,
+				paymentService: mockService,
+			}
+			payload := []byte(`{"type":"payment_intent.succeeded"}`)
+			signature := testSignatureWebhook
+			mockService.On("HandleWebhook", mock.Anything, payload, signature, "whsec_test").Return(tt.err)
+			mockLog.On("LogHandlerError", mock.Anything, "payment_webhook", tt.logCode, tt.logMsg, mock.Anything, mock.Anything, tt.err.Err).Return()
 
-	cfg.HandlerStripeWebhook(w, r)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockService.AssertExpectations(t)
-	mockLog.AssertExpectations(t)
+			r := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewBuffer(payload))
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Stripe-Signature", signature)
+			w := httptest.NewRecorder()
+
+			cfg.HandlerStripeWebhook(w, r)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockService.AssertExpectations(t)
+			mockLog.AssertExpectations(t)
+		})
+	}
 }
 
 // errorReader is a reader that always returns an error

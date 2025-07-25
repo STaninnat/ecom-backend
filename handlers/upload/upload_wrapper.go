@@ -5,9 +5,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/go-chi/chi/v5"
 )
 
 // upload_wrapper.go: Provides configuration, error handling, and response structures for local and S3 upload handlers.
@@ -41,78 +42,46 @@ type imageUploadResponse struct {
 // Allows dependency injection for URL parameter extraction in test scenarios.
 var chiURLParam = chi.URLParam
 
-// handleUploadError centralizes error handling for local upload endpoints.
-// Logs the error and sends the appropriate HTTP response based on the error type.
-// Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - err: error to handle
-//   - operation: string describing the operation
-//   - ip: string client IP address
-//   - userAgent: string client user agent
-func (cfg *HandlersUploadConfig) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
+// handleUploadErrorShared centralizes error handling for upload endpoints (local and S3).
+// It logs the error and sends the appropriate HTTP response based on the error type.
+func handleUploadErrorShared(
+	logger handlers.HandlerLogger,
+	w http.ResponseWriter,
+	r *http.Request,
+	err error,
+	operation, ip, userAgent string,
+) {
 	ctx := r.Context()
 
 	var appErr *handlers.AppError
 	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "missing_product_id":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
+			logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
 			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
 		case "not_found":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
+			logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusNotFound, appErr.Message)
 		case "invalid_form", "invalid_image":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
+			logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
 		case "db_error", "file_save_failed", "transaction_error", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
+			logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
 		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
+			logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
 			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 		}
 	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
+		logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-// handleUploadError centralizes error handling for S3 upload endpoints.
-// Logs the error and sends the appropriate HTTP response based on the error type.
-// Maps AppError codes to corresponding HTTP status codes and user-friendly messages.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - err: error to handle
-//   - operation: string describing the operation
-//   - ip: string client IP address
-//   - userAgent: string client user agent
-func (cfg *HandlersUploadS3Config) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
-	ctx := r.Context()
+func (cfg *HandlersUploadConfig) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
+	handleUploadErrorShared(cfg.Logger, w, r, err, operation, ip, userAgent)
+}
 
-	appErr := &handlers.AppError{}
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "missing_product_id":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "not_found":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusNotFound, appErr.Message)
-		case "invalid_form", "invalid_image":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "db_error", "file_save_failed", "transaction_error", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-	}
+func (cfg *HandlersUploadS3Config) handleUploadError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
+	handleUploadErrorShared(cfg.Logger, w, r, err, operation, ip, userAgent)
 }

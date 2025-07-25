@@ -9,10 +9,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_payment_create_test.go: Tests for payment creation HTTP handler behavior and error handling.
@@ -73,15 +74,8 @@ func TestHandlerCreatePayment_InvalidPayload(t *testing.T) {
 		paymentService: mockService,
 	}
 	user := database.User{ID: "u1"}
-	badBody := []byte(`{"bad":}`)
-	mockLog.On("LogHandlerError", mock.Anything, "create_payment", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	httpReq := httptest.NewRequest("POST", "/payments", bytes.NewBuffer(badBody))
-	w := httptest.NewRecorder()
-
-	cfg.HandlerCreatePayment(w, httpReq, user)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockLog.AssertExpectations(t)
+	testInvalidPayload(t, cfg.HandlerCreatePayment, mockLog, user, "POST", "/payments", "create_payment")
 }
 
 // TestHandlerCreatePayment_ServiceError tests the handler's behavior when the payment service returns an error.
@@ -145,7 +139,7 @@ func TestHandlerCreatePayment_ValidationError(t *testing.T) {
 
 	err := &handlers.AppError{Code: "invalid_request", Message: "Invalid order ID", Err: errors.New("invalid order")}
 	mockService.On("CreatePayment", mock.Anything, expectedParams).Return(nil, err)
-	mockLog.On("LogHandlerError", mock.Anything, "create_payment", "invalid_request", "Invalid order ID", mock.Anything, mock.Anything, nil).Return()
+	mockLog.On("LogHandlerError", mock.Anything, "create_payment", "invalid_request", "Invalid order ID", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	httpReq := httptest.NewRequest("POST", "/payments", bytes.NewBuffer(jsonBody))
 	w := httptest.NewRecorder()

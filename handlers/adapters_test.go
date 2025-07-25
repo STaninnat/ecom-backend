@@ -7,11 +7,13 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/STaninnat/ecom-backend/auth"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/auth"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // adapters_test.go: Tests for adapter implementations that integrate services with handler middleware, including legacy support.
@@ -37,7 +39,7 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 
 	claims, err := adapter.ValidateAccessToken(tokenString, secret)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, claims)
 	assert.Equal(t, "user123", claims.UserID)
 	mockAuthService.AssertExpectations(t)
@@ -57,7 +59,7 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Error(t *testing.T) {
 
 	claims, err := adapter.ValidateAccessToken(tokenString, secret)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, claims)
 	assert.Equal(t, expectedError, err)
 	mockAuthService.AssertExpectations(t)
@@ -77,7 +79,7 @@ func TestHandlerConfigUserAdapter_GetUserByID_Success(t *testing.T) {
 
 	user, err := adapter.GetUserByID(ctx, userID)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedUser, user)
 	mockUserService.AssertExpectations(t)
 }
@@ -96,7 +98,7 @@ func TestHandlerConfigUserAdapter_GetUserByID_Error(t *testing.T) {
 
 	user, err := adapter.GetUserByID(ctx, userID)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Equal(t, expectedError, err)
 	mockUserService.AssertExpectations(t)
@@ -198,7 +200,7 @@ func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 
 	claims, err := adapter.ValidateAccessToken(tokenString, secret)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, claims)
 	assert.Equal(t, "user123", claims.UserID)
 	mockAuth.AssertExpectations(t)
@@ -218,7 +220,7 @@ func TestLegacyAuthService_ValidateAccessToken_Error(t *testing.T) {
 
 	claims, err := adapter.ValidateAccessToken(tokenString, secret)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, claims)
 	assert.Equal(t, expectedError, err)
 	mockAuth.AssertExpectations(t)
@@ -257,7 +259,7 @@ func TestLegacyUserService_GetUserByID(t *testing.T) {
 
 	user, err := adapter.GetUserByID(ctx, userID)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedUser.ID, user.ID)
 	assert.Equal(t, expectedUser.Name, user.Name)
 	assert.Equal(t, expectedUser.Email, user.Email)
@@ -342,5 +344,5 @@ func TestLegacyMetadataService_GetUserAgent_Empty(t *testing.T) {
 
 	ua := adapter.GetUserAgent(req)
 
-	assert.Equal(t, "", ua)
+	assert.Empty(t, ua)
 }

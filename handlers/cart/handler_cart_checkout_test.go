@@ -8,13 +8,33 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_cart_checkout_test.go: Tests for user and guest cart checkout handlers.
+
+func assertCartCheckoutResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStatus int, expectedBody any) {
+	assert.Equal(t, expectedStatus, w.Code)
+	if expectedStatus == http.StatusOK {
+		var resp CartResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, expectedBody.(CartResponse).Message, resp.Message)
+		assert.Equal(t, expectedBody.(CartResponse).OrderID, resp.OrderID)
+	} else {
+		var resp map[string]any
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		for k, v := range expectedBody.(map[string]any) {
+			assert.Equal(t, v, resp[k])
+		}
+	}
+}
 
 // TestHandlerCheckoutUserCart tests the HandlerCheckoutUserCart function for user cart checkout scenarios.
 // It verifies both successful checkout and service error handling, checking the returned status and response body.
@@ -73,21 +93,7 @@ func TestHandlerCheckoutUserCart(t *testing.T) {
 
 			config.HandlerCheckoutUserCart(w, req, tt.user)
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp CartResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(CartResponse).Message, resp.Message)
-				assert.Equal(t, tt.expectedBody.(CartResponse).OrderID, resp.OrderID)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertCartCheckoutResponse(t, w, tt.expectedStatus, tt.expectedBody)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})
@@ -183,7 +189,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 				bodyBytes = []byte(v)
 			default:
 				bodyBytes, err = json.Marshal(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			req := httptest.NewRequest("POST", "/cart/guest/checkout", bytes.NewReader(bodyBytes))
@@ -194,21 +200,7 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 
 			config.HandlerCheckoutGuestCart(w, req)
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp CartResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(CartResponse).Message, resp.Message)
-				assert.Equal(t, tt.expectedBody.(CartResponse).OrderID, resp.OrderID)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertCartCheckoutResponse(t, w, tt.expectedStatus, tt.expectedBody)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})

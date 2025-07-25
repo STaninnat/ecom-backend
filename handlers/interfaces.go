@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // interfaces.go: Defines core service interfaces, data structures, and handler types for authentication, user management, logging, and request metadata.

@@ -8,10 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_cart_delete_test.go: Tests for cart handlers covering item removal and cart clearing for users and guests.
@@ -85,7 +87,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 				bodyBytes = []byte(v)
 			default:
 				bodyBytes, err = json.Marshal(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			req := httptest.NewRequest("DELETE", "/cart/item", bytes.NewReader(bodyBytes))
@@ -97,19 +99,7 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 			config.HandlerRemoveItemFromUserCart(w, req, tt.user)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})
@@ -168,19 +158,7 @@ func TestHandlerClearUserCart(t *testing.T) {
 			config.HandlerClearUserCart(w, req, tt.user)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})
@@ -269,7 +247,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 				bodyBytes = []byte(v)
 			default:
 				bodyBytes, err = json.Marshal(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			req := httptest.NewRequest("DELETE", "/cart/guest/item", bytes.NewReader(bodyBytes))
@@ -281,19 +259,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			config.HandlerRemoveItemFromGuestCart(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})
@@ -364,19 +330,7 @@ func TestHandlerClearGuestCart(t *testing.T) {
 			config.HandlerClearGuestCart(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedStatus == http.StatusOK {
-				var resp handlers.HandlerResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedBody.(handlers.HandlerResponse).Message, resp.Message)
-			} else {
-				var resp map[string]any
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				for k, v := range tt.expectedBody.(map[string]any) {
-					assert.Equal(t, v, resp[k])
-				}
-			}
+			assertHTTPResponse(t, w, tt.expectedBody, tt.expectedStatus)
 			mockService.AssertExpectations(t)
 			mockLogger.AssertExpectations(t)
 		})

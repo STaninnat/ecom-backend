@@ -4,10 +4,18 @@ package carthandlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/models"
-	"github.com/stretchr/testify/mock"
 )
 
 // cart_helper_test.go: Mocks for cart, product, order, logger, and database APIs used in unit tests.
@@ -228,4 +236,22 @@ func (m *MockCartMongo) RemoveItemFromCart(ctx context.Context, userID string, p
 func (m *MockCartMongo) ClearCart(ctx context.Context, userID string) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
+}
+
+// assertHTTPResponse checks if the HTTP response matches the expected body and status.
+func assertHTTPResponse(t *testing.T, w *httptest.ResponseRecorder, expectedBody any, expectedStatus int) {
+	t.Helper()
+	if expectedStatus == http.StatusOK {
+		var resp handlers.HandlerResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, expectedBody.(handlers.HandlerResponse).Message, resp.Message)
+	} else {
+		var resp map[string]any
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		for k, v := range expectedBody.(map[string]any) {
+			assert.Equal(t, v, resp[k])
+		}
+	}
 }

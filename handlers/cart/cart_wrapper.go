@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	intmongo "github.com/STaninnat/ecom-backend/internal/mongo"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/models"
-	"github.com/redis/go-redis/v9"
 )
 
 // cart_wrapper.go: Defines cart business logic interface, handler config, DTOs, error handling, and service initialization.
@@ -127,6 +128,49 @@ func (cfg *HandlersCartConfig) handleCartError(w http.ResponseWriter, r *http.Re
 		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
 		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error", "internal_error")
 	}
+}
+
+// handleCartItemOperation is a shared helper for add/update item handlers (user/guest)
+func (cfg *HandlersCartConfig) handleCartItemOperation(
+	w http.ResponseWriter,
+	r *http.Request,
+	id string,
+	parseIDErrMsg string,
+	parseReq func(*http.Request) (string, string, int, error),
+	serviceCall func(ctx context.Context, id, productID string, quantity int) error,
+	opName string,
+	successMsg string,
+	responseMsg string,
+) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	if id == "" {
+		cfg.Logger.LogHandlerError(ctx, opName, "missing id", parseIDErrMsg, ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusBadRequest, parseIDErrMsg)
+		return
+	}
+
+	productID, _, quantity, err := parseReq(r)
+	if err != nil {
+		cfg.Logger.LogHandlerError(ctx, opName, "invalid request body", "Failed to parse body", ip, userAgent, err)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if productID == "" || quantity <= 0 {
+		cfg.Logger.LogHandlerError(ctx, opName, "missing fields", "Required fields are missing", ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID and quantity are required")
+		return
+	}
+
+	if err := serviceCall(ctx, id, productID, quantity); err != nil {
+		cfg.handleCartError(w, r, err, opName, ip, userAgent)
+		return
+	}
+
+	cfg.Logger.LogHandlerSuccess(ctx, opName, successMsg, ip, userAgent)
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{Message: responseMsg})
 }
 
 // CartItemRequest is the DTO for cart item operations (add/update).

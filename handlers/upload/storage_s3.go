@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"github.com/STaninnat/ecom-backend/utils"
 )
 
 // storage_s3.go: Implements AWS S3 file storage with upload and delete operations, including file extension validation, unique key generation, and S3 URL parsing for secure object management.

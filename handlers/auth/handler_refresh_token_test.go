@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/handlers"
 	carthandlers "github.com/STaninnat/ecom-backend/handlers/cart"
+	testutil "github.com/STaninnat/ecom-backend/internal/testutil"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // handler_refresh_token_test.go: Tests for HandlerRefreshToken — validates refresh token flow and error handling.
@@ -91,121 +93,15 @@ func TestHandlerRefreshToken_InvalidToken(t *testing.T) {
 	cfg.MockHandlersConfig.AssertExpectations(t)
 }
 
-// TestHandlerRefreshToken_ServiceError ensures a service error during refresh is handled and logged correctly.
-func TestHandlerRefreshToken_ServiceError(t *testing.T) {
-	cfg := setupTestConfig()
-	userID := utils.NewUUID()
-	refreshTokenData := &RefreshTokenData{
-		Token:    "valid-refresh-token",
-		Provider: "local",
-	}
-
-	// Mock successful token validation
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return(userID.String(), refreshTokenData, nil)
-
-	// Mock service error
-	serviceError := &handlers.AppError{Code: "redis_error", Message: "Error storing refresh token"}
-	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
-		Return(nil, serviceError)
-
-	// Mock logging (accept any value for the error argument)
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "redis_error", "Error storing refresh token", mock.Anything, mock.Anything, mock.Anything)
-
-	// Create request with valid cookies
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-refresh-token"})
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "Something went wrong, please try again later")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.authService.(*MockAuthService).AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestHandlerRefreshToken_InvalidTokenError checks that an AppError for invalid token is handled as internal error.
-func TestHandlerRefreshToken_InvalidTokenError(t *testing.T) {
-	cfg := setupTestConfig()
-	userID := utils.NewUUID()
-	refreshTokenData := &RefreshTokenData{
-		Token:    "valid-refresh-token",
-		Provider: "local",
-	}
-
-	// Mock successful token validation
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return(userID.String(), refreshTokenData, nil)
-
-	// Mock invalid token error
-	authError := &handlers.AppError{Code: "invalid_token", Message: "Invalid refresh token"}
-	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
-		Return(nil, authError)
-
-	// Mock logging (expect internal_error as the error code)
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "internal_error", "Invalid refresh token", mock.Anything, mock.Anything, mock.Anything)
-
-	// Create request with valid cookies
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-refresh-token"})
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "Internal server error")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.authService.(*MockAuthService).AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestHandlerRefreshToken_GenericError ensures a generic error during refresh is handled as internal server error.
-func TestHandlerRefreshToken_GenericError(t *testing.T) {
-	cfg := setupTestConfig()
-	userID := utils.NewUUID()
-	refreshTokenData := &RefreshTokenData{
-		Token:    "valid-refresh-token",
-		Provider: "local",
-	}
-
-	// Mock successful token validation
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return(userID.String(), refreshTokenData, nil)
-
-	// Mock generic error
-	genericError := errors.New("some unexpected error")
-	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
-		Return(nil, genericError)
-
-	// Mock logging
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, genericError)
-
-	// Create request with valid cookies
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-refresh-token"})
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "Internal server error")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.authService.(*MockAuthService).AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
+// TestHandlerRefreshToken_ErrorScenarios tests various error scenarios for HandlerRefreshToken.
+func TestHandlerRefreshToken_ErrorScenarios(t *testing.T) {
+	testutil.RunAuthTokenErrorScenarios(t, "refresh_token", func(w http.ResponseWriter, r *http.Request, logger *testutil.MockHandlersConfig, authService *testutil.MockAuthService) {
+		cfg := setupTestConfig()
+		cfg.MockHandlersConfig = (*MockHandlersConfig)(logger)
+		cfg.authService = (*MockAuthService)(authService)
+		cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).Return("", (*RefreshTokenData)(nil), assert.AnError)
+		cfg.HandlerRefreshToken(w, r)
+	})
 }
 
 // TestHandlerRefreshToken_Exists is a smoke test to ensure the handler exists and can be called without panicking.
@@ -277,162 +173,6 @@ func TestHandlerRefreshToken_EmptyToken(t *testing.T) {
 	cfg.Auth.AssertExpectations(t)
 	cfg.authService.(*MockAuthService).AssertExpectations(t)
 	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestHandlerRefreshToken_DatabaseError ensures a database error during refresh is handled and logged correctly.
-func TestHandlerRefreshToken_DatabaseError(t *testing.T) {
-	cfg := setupTestConfig()
-	userID := utils.NewUUID()
-	refreshTokenData := &RefreshTokenData{
-		Token:    "valid-refresh-token",
-		Provider: "local",
-	}
-
-	// Mock successful token validation
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return(userID.String(), refreshTokenData, nil)
-
-	// Mock database error
-	dbError := &handlers.AppError{Code: "database_error", Message: "Database connection failed"}
-	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
-		Return(nil, dbError)
-
-	// Mock logging
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "database_error", "Database connection failed", mock.Anything, mock.Anything, mock.Anything)
-
-	// Create request
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "Something went wrong, please try again later")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.authService.(*MockAuthService).AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestHandlerRefreshToken_TokenExpiredError checks that an expired token returns a bad request and logs appropriately.
-func TestHandlerRefreshToken_TokenExpiredError(t *testing.T) {
-	cfg := setupTestConfig()
-	userID := utils.NewUUID()
-	refreshTokenData := &RefreshTokenData{
-		Token:    "valid-refresh-token",
-		Provider: "local",
-	}
-
-	// Mock successful token validation
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return(userID.String(), refreshTokenData, nil)
-
-	// Mock token expired error
-	expiredError := &handlers.AppError{Code: "token_expired", Message: "Refresh token has expired"}
-	cfg.authService.(*MockAuthService).On("RefreshToken", mock.Anything, userID.String(), "local", "valid-refresh-token").
-		Return(nil, expiredError)
-
-	// Mock logging
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "token_expired", "Refresh token has expired", mock.Anything, mock.Anything, mock.Anything)
-
-	// Create request
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Refresh token has expired")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.authService.(*MockAuthService).AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestHandlerRefreshToken_ValidationErrorWithNilData checks that a validation error with nil data returns unauthorized and logs appropriately.
-func TestHandlerRefreshToken_ValidationErrorWithNilData(t *testing.T) {
-	cfg := setupTestConfig()
-
-	// Mock token validation failure with nil data
-	cfg.Auth.On("ValidateCookieRefreshTokenData", mock.Anything, mock.Anything).
-		Return("", (*RefreshTokenData)(nil), errors.New("token expired"))
-
-	// Mock logging
-	cfg.MockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything)
-
-	// Create request
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	// Call the handler
-	cfg.HandlerRefreshToken(w, req)
-
-	// Assertions
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "token expired")
-
-	// Verify mock expectations
-	cfg.Auth.AssertExpectations(t)
-	cfg.MockHandlersConfig.AssertExpectations(t)
-}
-
-// TestRealHandlerRefreshToken_InvalidToken checks that the handler returns 401 when the refresh token is invalid or missing.
-func TestRealHandlerRefreshToken_InvalidToken(t *testing.T) {
-	mockHandlersConfig := &MockHandlersConfig{}
-	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.Config{}
-
-	cfg := &HandlersAuthConfig{
-		Config: &handlers.Config{
-			Auth: realAuthConfig,
-		},
-		Logger:      mockHandlersConfig,
-		authService: mockAuthService,
-	}
-
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	// Set up mock expectations for the error path
-	mockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	cfg.HandlerRefreshToken(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockHandlersConfig.AssertExpectations(t)
-}
-
-// TestRealHandlerRefreshToken_ServiceError checks the real HandlerRefreshToken for service error handling and unauthorized response.
-func TestRealHandlerRefreshToken_ServiceError(t *testing.T) {
-	mockHandlersConfig := &MockHandlersConfig{}
-	mockAuthService := &MockAuthService{}
-	realAuthConfig := &auth.Config{}
-
-	cfg := &HandlersAuthConfig{
-		Config: &handlers.Config{
-			Auth: realAuthConfig,
-		},
-		Logger:      mockHandlersConfig,
-		authService: mockAuthService,
-	}
-
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	// Set up mock expectations for the invalid token error path (real method will fail validation)
-	mockHandlersConfig.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	cfg.HandlerRefreshToken(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "http: named cookie not present")
-	mockHandlersConfig.AssertExpectations(t)
 }
 
 // TestRealHandlerRefreshToken_Direct tests the real HandlerRefreshToken method directly for various scenarios and expected responses.
@@ -513,58 +253,4 @@ func TestRealHandlerRefreshToken_Direct(t *testing.T) {
 			mockService.AssertExpectations(t)
 		})
 	}
-}
-
-// TestRealHandlerRefreshToken_ValidationError tests the real HandlerRefreshToken with validation errors and checks unauthorized response.
-func TestRealHandlerRefreshToken_ValidationError(t *testing.T) {
-	cfg := &HandlersAuthConfig{
-		Config: &handlers.Config{
-			Auth: &auth.Config{},
-		},
-		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-		Logger:             &MockHandlersConfig{},
-		authService:        &MockAuthService{},
-	}
-
-	mockLogger := &MockHandlersConfig{}
-	cfg.Logger = mockLogger
-
-	// Mock validation error
-	mockLogger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	cfg.HandlerRefreshToken(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "http: named cookie not present")
-	mockLogger.AssertExpectations(t)
-}
-
-// TestRealHandlerRefreshToken_AppError tests the real HandlerRefreshToken with AppError and checks unauthorized response.
-func TestRealHandlerRefreshToken_AppError(t *testing.T) {
-	cfg := &HandlersAuthConfig{
-		Config: &handlers.Config{
-			Auth: &auth.Config{},
-		},
-		HandlersCartConfig: &carthandlers.HandlersCartConfig{},
-		Logger:             &MockHandlersConfig{},
-		authService:        &MockAuthService{},
-	}
-
-	mockLogger := &MockHandlersConfig{}
-	cfg.Logger = mockLogger
-
-	// Mock validation error since real handler will fail without cookies
-	mockLogger.On("LogHandlerError", mock.Anything, "refresh_token", "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	req := httptest.NewRequest("POST", "/refresh", nil)
-	w := httptest.NewRecorder()
-
-	cfg.HandlerRefreshToken(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "http: named cookie not present")
-	mockLogger.AssertExpectations(t)
 }

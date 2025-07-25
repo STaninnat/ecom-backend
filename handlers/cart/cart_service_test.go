@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/models"
 	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
+	"github.com/STaninnat/ecom-backend/models"
 )
 
 // cart_service_test.go: Tests for interfaces, adapters, and services for managing shopping carts and checkout processes.
@@ -41,7 +43,7 @@ func TestAddItemToUserCart_ProductNotFound(t *testing.T) {
 	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(database.Product{}, dbErr)
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -69,7 +71,7 @@ func TestAddItemToUserCart_InvalidPrice(t *testing.T) {
 	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(product, nil)
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -99,7 +101,7 @@ func TestAddItemToUserCart_AddFailed(t *testing.T) {
 	mockCartMongo.On("AddItemToCart", mock.Anything, "user123", mock.AnythingOfType("models.CartItem")).Return(dbErr)
 
 	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -139,7 +141,7 @@ func TestAddItemToGuestCart_Success(t *testing.T) {
 	mockRedis.On("SaveGuestCart", mock.Anything, "session123", mock.AnythingOfType("*models.Cart")).Return(nil)
 
 	err := svc.AddItemToGuestCart(context.Background(), "session123", "product123", 2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockProduct.AssertExpectations(t)
 	mockRedis.AssertExpectations(t)
 }
@@ -172,7 +174,7 @@ func TestAddItemToGuestCart_InvalidInputs(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := svc.AddItemToGuestCart(context.Background(), tc.sessionID, tc.productID, tc.quantity)
-			assert.Error(t, err)
+			require.Error(t, err)
 			appErr := &handlers.AppError{}
 			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
@@ -200,7 +202,7 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 
 	// Create a cart with MaxCartItems items
 	items := make([]models.CartItem, MaxCartItems)
-	for i := 0; i < MaxCartItems; i++ {
+	for i := range MaxCartItems {
 		items[i] = models.CartItem{
 			ProductID: fmt.Sprintf("product%d", i),
 			Quantity:  1,
@@ -221,7 +223,7 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 	mockRedis.On("GetGuestCart", mock.Anything, "session123").Return(fullCart, nil)
 
 	err := svc.AddItemToGuestCart(context.Background(), "session123", "product123", 2)
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -230,9 +232,26 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 	mockRedis.AssertExpectations(t)
 }
 
-// TestGetUserCart_Success tests the successful retrieval of a user's cart.
-// It verifies that the service correctly delegates to the MongoDB layer and returns the expected cart.
-func TestGetUserCart_Success(t *testing.T) {
+// Shared helper for GetUserCart and GetGuestCart tests
+func runGetCartTest(t *testing.T, name string, getCart func(context.Context, string) (*models.Cart, error), id string, setupMock func(), expectedCart *models.Cart, expectedErrCode string) {
+	t.Run(name, func(t *testing.T) {
+		setupMock()
+		cart, err := getCart(context.Background(), id)
+		if expectedErrCode == "" {
+			require.NoError(t, err)
+			assert.Equal(t, expectedCart, cart)
+		} else {
+			require.Error(t, err)
+			assert.Nil(t, cart)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
+			assert.True(t, ok)
+			assert.Equal(t, expectedErrCode, appErr.Code)
+		}
+	})
+}
+
+func TestCartScenarios(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
 	mockOrder := new(MockOrderAPI)
@@ -241,154 +260,83 @@ func TestGetUserCart_Success(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	expectedCart := &models.Cart{
-		ID:     "user123",
-		UserID: "user123",
-		Items:  []models.CartItem{},
+	// User cart scenarios
+	userSetups := []func(){
+		func() {
+			mockCartMongo.ExpectedCalls = nil
+			expectedCart := &models.Cart{ID: "user123", UserID: "user123", Items: []models.CartItem{}}
+			mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return(expectedCart, nil)
+		},
+		func() {
+			mockCartMongo.ExpectedCalls = nil
+		}, // Will call with empty userID to trigger 'invalid_request'
+		func() {
+			mockCartMongo.ExpectedCalls = nil
+			dbErr := errors.New("get cart failed")
+			mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return((*models.Cart)(nil), dbErr)
+		},
 	}
-
-	mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return(expectedCart, nil)
-
-	cart, err := svc.GetUserCart(context.Background(), "user123")
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCart, cart)
-	mockCartMongo.AssertExpectations(t)
-}
-
-// TestGetUserCart_InvalidInput tests the service behavior with invalid user ID.
-// It ensures that the service returns an AppError with the "invalid_request" code.
-func TestGetUserCart_InvalidInput(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	cart, err := svc.GetUserCart(context.Background(), "")
-	assert.Error(t, err)
-	assert.Nil(t, cart)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "invalid_request", appErr.Code)
-}
-
-// TestGetUserCart_Failure tests the service behavior when the database operation fails.
-// It ensures that the service correctly wraps the database error in an AppError with the "get_failed" code.
-func TestGetUserCart_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	dbErr := errors.New("get cart failed")
-	mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return((*models.Cart)(nil), dbErr)
-
-	cart, err := svc.GetUserCart(context.Background(), "user123")
-	assert.Error(t, err)
-	assert.Nil(t, cart)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "get_failed", appErr.Code)
-	mockCartMongo.AssertExpectations(t)
-}
-
-// TestGetGuestCart_Success tests the successful retrieval of a guest cart.
-// It verifies that the service correctly delegates to the Redis layer and returns the expected cart.
-func TestGetGuestCart_Success(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	expectedCart := &models.Cart{
-		ID:     "session123",
-		UserID: "",
-		Items:  []models.CartItem{},
+	userExpectedCarts := []*models.Cart{
+		{ID: "user123", UserID: "user123", Items: []models.CartItem{}},
+		nil,
+		nil,
 	}
+	userExpectedErrCodes := []string{"", "invalid_request", "get_failed"}
 
-	mockRedis.On("GetGuestCart", mock.Anything, "session123").Return(expectedCart, nil)
+	runGetCartTest(t, "UserCart/A", svc.GetUserCart, "user123", userSetups[0], userExpectedCarts[0], userExpectedErrCodes[0])
+	runGetCartTest(t, "UserCart/B", svc.GetUserCart, "", userSetups[1], userExpectedCarts[1], userExpectedErrCodes[1])
+	runGetCartTest(t, "UserCart/C", svc.GetUserCart, "user123", userSetups[2], userExpectedCarts[2], userExpectedErrCodes[2])
 
-	cart, err := svc.GetGuestCart(context.Background(), "session123")
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCart, cart)
-	mockRedis.AssertExpectations(t)
+	// Guest cart scenarios
+	guestSetups := []func(){
+		func() {
+			mockRedis.ExpectedCalls = nil
+			expectedCart := &models.Cart{ID: "session123", UserID: "", Items: []models.CartItem{}}
+			mockRedis.On("GetGuestCart", mock.Anything, "session123").Return(expectedCart, nil)
+		},
+		func() {
+			mockRedis.ExpectedCalls = nil
+		}, // Will call with empty sessionID to trigger 'invalid_request'
+		func() {
+			mockRedis.ExpectedCalls = nil
+			redisErr := errors.New("get guest cart failed")
+			mockRedis.On("GetGuestCart", mock.Anything, "session123").Return((*models.Cart)(nil), redisErr)
+		},
+	}
+	guestExpectedCarts := []*models.Cart{
+		{ID: "session123", UserID: "", Items: []models.CartItem{}},
+		nil,
+		nil,
+	}
+	guestExpectedErrCodes := []string{"", "invalid_request", "get_failed"}
+
+	runGetCartTest(t, "GuestCart/A", svc.GetGuestCart, "session123", guestSetups[0], guestExpectedCarts[0], guestExpectedErrCodes[0])
+	runGetCartTest(t, "GuestCart/B", svc.GetGuestCart, "", guestSetups[1], guestExpectedCarts[1], guestExpectedErrCodes[1])
+	runGetCartTest(t, "GuestCart/C", svc.GetGuestCart, "session123", guestSetups[2], guestExpectedCarts[2], guestExpectedErrCodes[2])
 }
 
-// TestGetGuestCart_InvalidInput tests the service behavior with invalid session ID.
-// It ensures that the service returns an AppError with the "invalid_request" code.
-func TestGetGuestCart_InvalidInput(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	cart, err := svc.GetGuestCart(context.Background(), "")
-	assert.Error(t, err)
-	assert.Nil(t, cart)
+// Shared helper for UpdateItemQuantity and UpdateGuestItemQuantity invalid input tests
+func runUpdateQuantityInvalidInputsTest(t *testing.T, updateFunc func(context.Context, string, string, int) error, id string, productID string, quantity int, wantCode string) {
+	err := updateFunc(context.Background(), id, productID, quantity)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
-	assert.Equal(t, "invalid_request", appErr.Code)
+	assert.Equal(t, wantCode, appErr.Code)
 }
 
-// TestGetGuestCart_Failure tests the service behavior when the Redis operation fails.
-// It ensures that the service correctly wraps the Redis error in an AppError with the "get_failed" code.
-func TestGetGuestCart_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	redisErr := errors.New("get guest cart failed")
-	mockRedis.On("GetGuestCart", mock.Anything, "session123").Return((*models.Cart)(nil), redisErr)
-
-	cart, err := svc.GetGuestCart(context.Background(), "session123")
-	assert.Error(t, err)
-	assert.Nil(t, cart)
+// Shared helper for UpdateItemQuantity and UpdateGuestItemQuantity failure tests
+func runUpdateQuantityFailureTest(t *testing.T, updateFunc func(context.Context, string, string, int) error, setupMock func(), id string, productID string, quantity int, wantCode string) {
+	setupMock()
+	err := updateFunc(context.Background(), id, productID, quantity)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
-	assert.Equal(t, "get_failed", appErr.Code)
-	mockRedis.AssertExpectations(t)
+	assert.Equal(t, wantCode, appErr.Code)
 }
 
-// TestUpdateItemQuantity_Success tests the successful update of an item quantity in a user's cart.
-// It verifies that the service correctly validates inputs and delegates to the MongoDB layer.
-func TestUpdateItemQuantity_Success(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	mockCartMongo.On("UpdateItemQuantity", mock.Anything, "user123", "product123", 5).Return(nil)
-
-	err := svc.UpdateItemQuantity(context.Background(), "user123", "product123", 5)
-	assert.NoError(t, err)
-	mockCartMongo.AssertExpectations(t)
-}
-
-// TestUpdateItemQuantity_InvalidInputs tests the service behavior with invalid inputs for quantity update.
-// It ensures that the service returns appropriate AppError codes for missing or invalid parameters.
-func TestUpdateItemQuantity_InvalidInputs(t *testing.T) {
+func TestUpdateQuantity_InvalidInputs(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
 	mockOrder := new(MockOrderAPI)
@@ -398,34 +346,33 @@ func TestUpdateItemQuantity_InvalidInputs(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	cases := []struct {
-		name      string
-		userID    string
-		productID string
-		quantity  int
-		wantCode  string
+		name       string
+		id         string
+		productID  string
+		quantity   int
+		wantCode   string
+		updateFunc func(context.Context, string, string, int) error
 	}{
-		{"empty userID", "", "product123", 5, "invalid_request"},
-		{"empty productID", "user123", "", 5, "invalid_request"},
-		{"zero quantity", "user123", "product123", 0, "invalid_request"},
-		{"negative quantity", "user123", "product123", -1, "invalid_request"},
-		{"excessive quantity", "user123", "product123", 1001, "invalid_request"},
+		{"empty userID", "", "product123", 5, "invalid_request", svc.UpdateItemQuantity},
+		{"empty productID", "user123", "", 5, "invalid_request", svc.UpdateItemQuantity},
+		{"zero quantity", "user123", "product123", 0, "invalid_request", svc.UpdateItemQuantity},
+		{"negative quantity", "user123", "product123", -1, "invalid_request", svc.UpdateItemQuantity},
+		{"excessive quantity", "user123", "product123", 1001, "invalid_request", svc.UpdateItemQuantity},
+		{"empty sessionID", "", "product123", 5, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"empty productID (guest)", "session123", "", 5, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"zero quantity (guest)", "session123", "product123", 0, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"negative quantity (guest)", "session123", "product123", -1, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"excessive quantity (guest)", "session123", "product123", 1001, "invalid_request", svc.UpdateGuestItemQuantity},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := svc.UpdateItemQuantity(context.Background(), tc.userID, tc.productID, tc.quantity)
-			assert.Error(t, err)
-			appErr := &handlers.AppError{}
-			ok := errors.As(err, &appErr)
-			assert.True(t, ok)
-			assert.Equal(t, tc.wantCode, appErr.Code)
+			runUpdateQuantityInvalidInputsTest(t, tc.updateFunc, tc.id, tc.productID, tc.quantity, tc.wantCode)
 		})
 	}
 }
 
-// TestUpdateItemQuantity_Failure tests the service behavior when the database operation fails.
-// It ensures that the service correctly wraps the database error in an AppError with the "update_failed" code.
-func TestUpdateItemQuantity_Failure(t *testing.T) {
+func TestUpdateQuantity_Failure(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
 	mockOrder := new(MockOrderAPI)
@@ -434,116 +381,46 @@ func TestUpdateItemQuantity_Failure(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	dbErr := errors.New("update quantity failed")
-	mockCartMongo.On("UpdateItemQuantity", mock.Anything, "user123", "product123", 5).Return(dbErr)
+	t.Run("UpdateItemQuantity_Failure", func(t *testing.T) {
+		setupMock := func() {
+			dbErr := errors.New("update quantity failed")
+			mockCartMongo.On("UpdateItemQuantity", mock.Anything, "user123", "product123", 5).Return(dbErr)
+		}
+		runUpdateQuantityFailureTest(t, svc.UpdateItemQuantity, setupMock, "user123", "product123", 5, "update_failed")
+		mockCartMongo.AssertExpectations(t)
+	})
 
-	err := svc.UpdateItemQuantity(context.Background(), "user123", "product123", 5)
-	assert.Error(t, err)
+	t.Run("UpdateGuestItemQuantity_Failure", func(t *testing.T) {
+		setupMock := func() {
+			redisErr := errors.New("update guest quantity failed")
+			mockRedis.On("UpdateGuestItemQuantity", mock.Anything, "session123", "product123", 5).Return(redisErr)
+		}
+		runUpdateQuantityFailureTest(t, svc.UpdateGuestItemQuantity, setupMock, "session123", "product123", 5, "update_failed")
+		mockRedis.AssertExpectations(t)
+	})
+}
+
+// Shared helper for RemoveItem and RemoveGuestItem invalid input tests
+func runRemoveItemInvalidInputsTest(t *testing.T, removeFunc func(context.Context, string, string) error, id string, productID string, wantCode string) {
+	err := removeFunc(context.Background(), id, productID)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
-	assert.Equal(t, "update_failed", appErr.Code)
-	mockCartMongo.AssertExpectations(t)
+	assert.Equal(t, wantCode, appErr.Code)
 }
 
-// TestUpdateGuestItemQuantity_Success tests the successful update of an item quantity in a guest cart.
-// It verifies that the service correctly validates inputs and delegates to the Redis layer.
-func TestUpdateGuestItemQuantity_Success(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	mockRedis.On("UpdateGuestItemQuantity", mock.Anything, "session123", "product123", 5).Return(nil)
-
-	err := svc.UpdateGuestItemQuantity(context.Background(), "session123", "product123", 5)
-	assert.NoError(t, err)
-	mockRedis.AssertExpectations(t)
-}
-
-// TestUpdateGuestItemQuantity_InvalidInputs tests the service behavior with invalid inputs for guest quantity update.
-// It ensures that the service returns appropriate AppError codes for missing or invalid parameters.
-func TestUpdateGuestItemQuantity_InvalidInputs(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	cases := []struct {
-		name      string
-		sessionID string
-		productID string
-		quantity  int
-		wantCode  string
-	}{
-		{"empty sessionID", "", "product123", 5, "invalid_request"},
-		{"empty productID", "session123", "", 5, "invalid_request"},
-		{"zero quantity", "session123", "product123", 0, "invalid_request"},
-		{"negative quantity", "session123", "product123", -1, "invalid_request"},
-		{"excessive quantity", "session123", "product123", 1001, "invalid_request"},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := svc.UpdateGuestItemQuantity(context.Background(), tc.sessionID, tc.productID, tc.quantity)
-			assert.Error(t, err)
-			appErr := &handlers.AppError{}
-			ok := errors.As(err, &appErr)
-			assert.True(t, ok)
-			assert.Equal(t, tc.wantCode, appErr.Code)
-		})
-	}
-}
-
-// TestUpdateGuestItemQuantity_Failure tests the service behavior when the Redis operation fails.
-// It ensures that the service correctly wraps the Redis error in an AppError with the "update_failed" code.
-func TestUpdateGuestItemQuantity_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	redisErr := errors.New("update guest quantity failed")
-	mockRedis.On("UpdateGuestItemQuantity", mock.Anything, "session123", "product123", 5).Return(redisErr)
-
-	err := svc.UpdateGuestItemQuantity(context.Background(), "session123", "product123", 5)
-	assert.Error(t, err)
+// Shared helper for RemoveItem and RemoveGuestItem failure tests
+func runRemoveItemFailureTest(t *testing.T, removeFunc func(context.Context, string, string) error, setupMock func(), id string, productID string, wantCode string) {
+	setupMock()
+	err := removeFunc(context.Background(), id, productID)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
-	assert.Equal(t, "update_failed", appErr.Code)
-	mockRedis.AssertExpectations(t)
+	assert.Equal(t, wantCode, appErr.Code)
 }
 
-// TestRemoveItem_Success tests the successful removal of an item from a user's cart.
-// It verifies that the service correctly validates inputs and delegates to the MongoDB layer.
-func TestRemoveItem_Success(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	mockCartMongo.On("RemoveItemFromCart", mock.Anything, "user123", "product123").Return(nil)
-
-	err := svc.RemoveItem(context.Background(), "user123", "product123")
-	assert.NoError(t, err)
-	mockCartMongo.AssertExpectations(t)
-}
-
-// TestRemoveItem_InvalidInputs tests the service behavior with invalid inputs for item removal.
-// It ensures that the service returns appropriate AppError codes for missing parameters.
 func TestRemoveItem_InvalidInputs(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
@@ -554,29 +431,25 @@ func TestRemoveItem_InvalidInputs(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	cases := []struct {
-		name      string
-		userID    string
-		productID string
-		wantCode  string
+		name       string
+		id         string
+		productID  string
+		wantCode   string
+		removeFunc func(context.Context, string, string) error
 	}{
-		{"empty userID", "", "product123", "invalid_request"},
-		{"empty productID", "user123", "", "invalid_request"},
+		{"empty userID", "", "product123", "invalid_request", svc.RemoveItem},
+		{"empty productID", "user123", "", "invalid_request", svc.RemoveItem},
+		{"empty sessionID", "", "product123", "invalid_request", svc.RemoveGuestItem},
+		{"empty productID (guest)", "session123", "", "invalid_request", svc.RemoveGuestItem},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := svc.RemoveItem(context.Background(), tc.userID, tc.productID)
-			assert.Error(t, err)
-			appErr := &handlers.AppError{}
-			ok := errors.As(err, &appErr)
-			assert.True(t, ok)
-			assert.Equal(t, tc.wantCode, appErr.Code)
+			runRemoveItemInvalidInputsTest(t, tc.removeFunc, tc.id, tc.productID, tc.wantCode)
 		})
 	}
 }
 
-// TestRemoveItem_Failure tests the service behavior when the database operation fails.
-// It ensures that the service correctly wraps the database error in an AppError with the "remove_failed" code.
 func TestRemoveItem_Failure(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
@@ -586,90 +459,23 @@ func TestRemoveItem_Failure(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	dbErr := errors.New("remove item failed")
-	mockCartMongo.On("RemoveItemFromCart", mock.Anything, "user123", "product123").Return(dbErr)
+	t.Run("RemoveItem_Failure", func(t *testing.T) {
+		setupMock := func() {
+			dbErr := errors.New("remove item failed")
+			mockCartMongo.On("RemoveItemFromCart", mock.Anything, "user123", "product123").Return(dbErr)
+		}
+		runRemoveItemFailureTest(t, svc.RemoveItem, setupMock, "user123", "product123", "remove_failed")
+		mockCartMongo.AssertExpectations(t)
+	})
 
-	err := svc.RemoveItem(context.Background(), "user123", "product123")
-	assert.Error(t, err)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "remove_failed", appErr.Code)
-	mockCartMongo.AssertExpectations(t)
-}
-
-// TestRemoveGuestItem_Success tests the successful removal of an item from a guest cart.
-// It verifies that the service correctly validates inputs and delegates to the Redis layer.
-func TestRemoveGuestItem_Success(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	mockRedis.On("RemoveGuestItem", mock.Anything, "session123", "product123").Return(nil)
-
-	err := svc.RemoveGuestItem(context.Background(), "session123", "product123")
-	assert.NoError(t, err)
-	mockRedis.AssertExpectations(t)
-}
-
-// TestRemoveGuestItem_InvalidInputs tests the service behavior with invalid inputs for guest item removal.
-// It ensures that the service returns appropriate AppError codes for missing parameters.
-func TestRemoveGuestItem_InvalidInputs(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	cases := []struct {
-		name      string
-		sessionID string
-		productID string
-		wantCode  string
-	}{
-		{"empty sessionID", "", "product123", "invalid_request"},
-		{"empty productID", "session123", "", "invalid_request"},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := svc.RemoveGuestItem(context.Background(), tc.sessionID, tc.productID)
-			assert.Error(t, err)
-			appErr := &handlers.AppError{}
-			ok := errors.As(err, &appErr)
-			assert.True(t, ok)
-			assert.Equal(t, tc.wantCode, appErr.Code)
-		})
-	}
-}
-
-// TestRemoveGuestItem_Failure tests the service behavior when the Redis operation fails.
-// It ensures that the service correctly wraps the Redis error in an AppError with the "remove_failed" code.
-func TestRemoveGuestItem_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	redisErr := errors.New("remove guest item failed")
-	mockRedis.On("RemoveGuestItem", mock.Anything, "session123", "product123").Return(redisErr)
-
-	err := svc.RemoveGuestItem(context.Background(), "session123", "product123")
-	assert.Error(t, err)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "remove_failed", appErr.Code)
-	mockRedis.AssertExpectations(t)
+	t.Run("RemoveGuestItem_Failure", func(t *testing.T) {
+		setupMock := func() {
+			redisErr := errors.New("remove guest item failed")
+			mockRedis.On("RemoveGuestItem", mock.Anything, "session123", "product123").Return(redisErr)
+		}
+		runRemoveItemFailureTest(t, svc.RemoveGuestItem, setupMock, "session123", "product123", "remove_failed")
+		mockRedis.AssertExpectations(t)
+	})
 }
 
 // TestDeleteUserCart_Success tests the successful deletion of a user's cart.
@@ -686,7 +492,7 @@ func TestDeleteUserCart_Success(t *testing.T) {
 	mockCartMongo.On("ClearCart", mock.Anything, "user123").Return(nil)
 
 	err := svc.DeleteUserCart(context.Background(), "user123")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockCartMongo.AssertExpectations(t)
 }
 
@@ -702,39 +508,25 @@ func TestDeleteUserCart_InvalidInput(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	err := svc.DeleteUserCart(context.Background(), "")
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
 	assert.Equal(t, "invalid_request", appErr.Code)
 }
 
-// TestDeleteUserCart_Failure tests the service behavior when the database operation fails.
-// It ensures that the service correctly wraps the database error in an AppError with the "clear_failed" code.
-func TestDeleteUserCart_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	dbErr := errors.New("clear cart failed")
-	mockCartMongo.On("ClearCart", mock.Anything, "user123").Return(dbErr)
-
-	err := svc.DeleteUserCart(context.Background(), "user123")
-	assert.Error(t, err)
+// Shared helper for DeleteUserCart and DeleteGuestCart failure tests
+func runDeleteCartFailureTest(t *testing.T, deleteFunc func(context.Context, string) error, setupMock func(), id string, wantCode string) {
+	setupMock()
+	err := deleteFunc(context.Background(), id)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
-	assert.Equal(t, "clear_failed", appErr.Code)
-	mockCartMongo.AssertExpectations(t)
+	assert.Equal(t, wantCode, appErr.Code)
 }
 
-// TestDeleteGuestCart_Success tests the successful deletion of a guest cart.
-// It verifies that the service correctly validates inputs and delegates to the Redis layer.
-func TestDeleteGuestCart_Success(t *testing.T) {
+func TestDeleteCart_Failure(t *testing.T) {
 	mockCartMongo := new(MockCartMongoAPI)
 	mockProduct := new(MockProductAPI)
 	mockOrder := new(MockOrderAPI)
@@ -743,53 +535,23 @@ func TestDeleteGuestCart_Success(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	mockRedis.On("DeleteGuestCart", mock.Anything, "session123").Return(nil)
+	t.Run("DeleteUserCart_Failure", func(t *testing.T) {
+		setupMock := func() {
+			dbErr := errors.New("clear cart failed")
+			mockCartMongo.On("ClearCart", mock.Anything, "user123").Return(dbErr)
+		}
+		runDeleteCartFailureTest(t, svc.DeleteUserCart, setupMock, "user123", "clear_failed")
+		mockCartMongo.AssertExpectations(t)
+	})
 
-	err := svc.DeleteGuestCart(context.Background(), "session123")
-	assert.NoError(t, err)
-	mockRedis.AssertExpectations(t)
-}
-
-// TestDeleteGuestCart_InvalidInput tests the service behavior with invalid session ID.
-// It ensures that the service returns an AppError with the "invalid_request" code.
-func TestDeleteGuestCart_InvalidInput(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	err := svc.DeleteGuestCart(context.Background(), "")
-	assert.Error(t, err)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "invalid_request", appErr.Code)
-}
-
-// TestDeleteGuestCart_Failure tests the service behavior when the Redis operation fails.
-// It ensures that the service correctly wraps the Redis error in an AppError with the "clear_failed" code.
-func TestDeleteGuestCart_Failure(t *testing.T) {
-	mockCartMongo := new(MockCartMongoAPI)
-	mockProduct := new(MockProductAPI)
-	mockOrder := new(MockOrderAPI)
-	mockDBConn := new(MockDBConnAPI)
-	mockRedis := new(MockCartRedisAPI)
-
-	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
-
-	redisErr := errors.New("delete guest cart failed")
-	mockRedis.On("DeleteGuestCart", mock.Anything, "session123").Return(redisErr)
-
-	err := svc.DeleteGuestCart(context.Background(), "session123")
-	assert.Error(t, err)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "clear_failed", appErr.Code)
-	mockRedis.AssertExpectations(t)
+	t.Run("DeleteGuestCart_Failure", func(t *testing.T) {
+		setupMock := func() {
+			redisErr := errors.New("delete guest cart failed")
+			mockRedis.On("DeleteGuestCart", mock.Anything, "session123").Return(redisErr)
+		}
+		runDeleteCartFailureTest(t, svc.DeleteGuestCart, setupMock, "session123", "clear_failed")
+		mockRedis.AssertExpectations(t)
+	})
 }
 
 // TestCheckoutUserCart_Success tests the successful checkout of a user's cart.
@@ -834,7 +596,7 @@ func TestCheckoutUserCart_Success(t *testing.T) {
 	mockCartMongo.On("ClearCart", mock.Anything, userID).Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.OrderID)
 	assert.Equal(t, "Order placed successfully", result.Message)
@@ -859,7 +621,7 @@ func TestCheckoutUserCart_EmptyCart(t *testing.T) {
 	mockCartMongo.On("GetCartByUserID", mock.Anything, userID).Return(&models.Cart{ID: userID, UserID: userID, Items: []models.CartItem{}}, nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -889,7 +651,7 @@ func TestCheckoutUserCart_InsufficientStock(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -919,7 +681,7 @@ func TestCheckoutUserCart_ProductNotFound(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -948,7 +710,7 @@ func TestCheckoutUserCart_BeginTxError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(nilTx, errors.New("tx error"))
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -979,7 +741,7 @@ func TestCheckoutUserCart_CreateOrderError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1011,7 +773,7 @@ func TestCheckoutUserCart_UpdateStockError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1044,7 +806,7 @@ func TestCheckoutUserCart_CreateOrderItemError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1079,7 +841,7 @@ func TestCheckoutUserCart_ClearCartError(t *testing.T) {
 	mockCartMongo.On("ClearCart", mock.Anything, userID).Return(errors.New("clear error"))
 
 	result, err := svc.CheckoutUserCart(context.Background(), userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.OrderID)
 	assert.Equal(t, "Order placed successfully", result.Message)
@@ -1117,7 +879,7 @@ func TestCheckoutGuestCart_Success(t *testing.T) {
 	mockCartMongo.On("ClearCart", mock.Anything, userID).Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.OrderID)
 	assert.Equal(t, "Order placed successfully", result.Message)
@@ -1137,7 +899,7 @@ func TestCheckoutGuestCart_EmptyCart(t *testing.T) {
 	mockRedis.On("GetGuestCart", mock.Anything, sessionID).Return(&models.Cart{ID: sessionID, UserID: "", Items: []models.CartItem{}}, nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1156,7 +918,7 @@ func TestCheckoutGuestCart_MissingSessionID(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 	userID := testUserID
 	result, err := svc.CheckoutGuestCart(context.Background(), "", userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1175,7 +937,7 @@ func TestCheckoutGuestCart_MissingUserID(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 	sessionID := testSessionIDService
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, "")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1197,7 +959,7 @@ func TestCheckoutGuestCart_GetCartError(t *testing.T) {
 	mockRedis.On("GetGuestCart", mock.Anything, sessionID).Return((*models.Cart)(nil), errors.New("redis error"))
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1228,7 +990,7 @@ func TestCheckoutGuestCart_InsufficientStock(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1259,7 +1021,7 @@ func TestCheckoutGuestCart_ProductNotFound(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1289,7 +1051,7 @@ func TestCheckoutGuestCart_BeginTxError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(nilTx, errors.New("tx error"))
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1321,7 +1083,7 @@ func TestCheckoutGuestCart_CreateOrderError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1354,7 +1116,7 @@ func TestCheckoutGuestCart_UpdateStockError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1388,7 +1150,7 @@ func TestCheckoutGuestCart_CreateOrderItemError(t *testing.T) {
 	mockDBTx.On("Rollback").Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -1425,7 +1187,7 @@ func TestCheckoutGuestCart_ClearCartError(t *testing.T) {
 	mockCartMongo.On("ClearCart", mock.Anything, userID).Return(nil)
 
 	result, err := svc.CheckoutGuestCart(context.Background(), sessionID, userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.OrderID)
 	assert.Equal(t, "Order placed successfully", result.Message)
@@ -1455,7 +1217,7 @@ func TestSafeIntToInt32(t *testing.T) {
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.want, got)
 			}
 		})
@@ -1492,7 +1254,7 @@ func TestCartMongoAdapter_WithSqlMock(t *testing.T) {
 		ProductID: "product-1",
 		Quantity:  2,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test GetCartByUserID
 	expectedCart := &models.Cart{
@@ -1502,23 +1264,23 @@ func TestCartMongoAdapter_WithSqlMock(t *testing.T) {
 	}
 	mockMongo.On("GetCartByUserID", ctx, "user-id").Return(expectedCart, nil)
 	cart, err := adapter.GetCartByUserID(ctx, "user-id")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedCart, cart)
 
 	// Test UpdateItemQuantity
 	mockMongo.On("UpdateItemQuantity", ctx, "user-id", "product-1", 3).Return(nil)
 	err = adapter.UpdateItemQuantity(ctx, "user-id", "product-1", 3)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test RemoveItemFromCart
 	mockMongo.On("RemoveItemFromCart", ctx, "user-id", "product-1").Return(nil)
 	err = adapter.RemoveItemFromCart(ctx, "user-id", "product-1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test ClearCart
 	mockMongo.On("ClearCart", ctx, "user-id").Return(nil)
 	err = adapter.ClearCart(ctx, "user-id")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockMongo.AssertExpectations(t)
 }
@@ -1527,7 +1289,7 @@ func TestCartMongoAdapter_WithSqlMock(t *testing.T) {
 func TestProductAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// defer func() {
 	// 	if err := db.Close(); err != nil {
@@ -1547,7 +1309,7 @@ func TestProductAdapter_WithSqlMock(t *testing.T) {
 			AddRow("product-1", "category-1", "Test Product", "Test Description", "10.99", 100, nil, true, time.Now(), time.Now()),
 	)
 	product, err := adapter.GetProductByID(ctx, "product-1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "product-1", product.ID)
 
 	// Test UpdateProductStock
@@ -1566,7 +1328,7 @@ func TestProductAdapter_WithSqlMock(t *testing.T) {
 func TestOrderAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// mock.ExpectClose()
 	// defer func() {
@@ -1599,7 +1361,7 @@ func TestOrderAdapter_WithSqlMock(t *testing.T) {
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test CreateOrderItem
 	mock.ExpectExec("INSERT INTO order_items").WithArgs(
@@ -1624,7 +1386,7 @@ func TestOrderAdapter_WithSqlMock(t *testing.T) {
 func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		if err := db.Close(); err != nil {
 			t.Errorf("db.Close() failed: %v", err)
@@ -1637,13 +1399,13 @@ func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 	// Test BeginTx with default options
 	mock.ExpectBegin()
 	tx, err := adapter.BeginTx(ctx, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tx)
 
 	// Test BeginTx with custom options
 	mock.ExpectBegin()
 	tx, err = adapter.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tx)
 
 	// Verify all expectations were met
@@ -1654,7 +1416,7 @@ func TestDBConnAdapter_WithSqlMock(t *testing.T) {
 func TestDBTxAdapter(t *testing.T) {
 	// Create a mock database connection
 	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// defer func() {
 	// 	if err := db.Close(); err != nil {
@@ -1665,19 +1427,19 @@ func TestDBTxAdapter(t *testing.T) {
 	// Start a transaction
 	mock.ExpectBegin()
 	tx, err := db.Begin()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	adapter := &DBTxAdapter{tx: tx}
 
 	// Test Commit
 	mock.ExpectCommit()
 	err = adapter.Commit()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test Rollback (we need a new transaction since the previous one was committed)
 	mock.ExpectBegin()
 	tx2, err := db.Begin()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	adapter2 := &DBTxAdapter{tx: tx2}
 	mock.ExpectRollback()
@@ -1700,7 +1462,7 @@ func TestCartRedisAPI_WithRedisMock(t *testing.T) {
 	// Test GetGuestCart - empty cart
 	mock.ExpectGet("guest_cart:session-123").RedisNil()
 	cart, err := adapter.GetGuestCart(ctx, sessionID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cart)
 	assert.Empty(t, cart.Items)
 
@@ -1713,7 +1475,7 @@ func TestCartRedisAPI_WithRedisMock(t *testing.T) {
 	cartJSON, _ := json.Marshal(existingCart)
 	mock.ExpectGet("guest_cart:session-123").SetVal(string(cartJSON))
 	cart, err = adapter.GetGuestCart(ctx, sessionID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cart)
 	assert.Len(t, cart.Items, 1)
 
@@ -1726,7 +1488,7 @@ func TestCartRedisAPI_WithRedisMock(t *testing.T) {
 	cartJSON, _ = json.Marshal(cartToSave)
 	mock.ExpectSet("guest_cart:session-123", cartJSON, 7*24*time.Hour).SetVal("OK")
 	err = adapter.SaveGuestCart(ctx, sessionID, cartToSave)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test UpdateGuestItemQuantity
 	// First get the cart
@@ -1740,7 +1502,7 @@ func TestCartRedisAPI_WithRedisMock(t *testing.T) {
 	updatedCartJSON, _ := json.Marshal(updatedCart)
 	mock.ExpectSet("guest_cart:session-123", updatedCartJSON, 7*24*time.Hour).SetVal("OK")
 	err = adapter.UpdateGuestItemQuantity(ctx, sessionID, "product-1", 5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test RemoveGuestItem
 	// First get the cart
@@ -1750,7 +1512,7 @@ func TestCartRedisAPI_WithRedisMock(t *testing.T) {
 	emptyCartJSON, _ := json.Marshal(emptyCart)
 	mock.ExpectSet("guest_cart:session-123", emptyCartJSON, 7*24*time.Hour).SetVal("OK")
 	err = adapter.RemoveGuestItem(ctx, sessionID, "product-1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test DeleteGuestCart
 	mock.ExpectDel("guest_cart:session-123").SetVal(1)

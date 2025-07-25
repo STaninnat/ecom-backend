@@ -21,43 +21,35 @@ import (
 //   - r: *http.Request containing the request data
 //   - user: database.User representing the authenticated user
 func (cfg *HandlersUploadConfig) HandlerUploadProductImage(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	const maxUploadSize = 10 << 20 // 10 MB
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-
-	imageURL, err := cfg.Service.UploadProductImage(ctx, user.ID, r)
-	if err != nil {
-		cfg.handleUploadError(w, r, err, "upload_product_image", ip, userAgent)
-		return
-	}
-
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "upload_product_image", "Image uploaded successfully and URL generated", ip, userAgent)
-
-	middlewares.RespondWithJSON(w, http.StatusOK, imageUploadResponse{
-		Message:  "Image URL created successfully",
-		ImageURL: imageURL,
-	})
+	handleProductImageUpload(
+		w, r, user,
+		cfg.Service.UploadProductImage,
+		cfg.handleUploadError,
+		cfg.Logger,
+		"upload_product_image",
+		"Image uploaded successfully and URL generated",
+		"Image URL created successfully",
+	)
 }
 
-// HandlerUpdateProductImageByID handles HTTP POST requests to update a product image by its ID (local storage).
-// Extracts the product ID from the URL, delegates to the upload service, logs the event, and responds with the updated image URL.
-// On error or missing ID, logs and returns the appropriate error response.
-// Parameters:
-//   - w: http.ResponseWriter for sending the response
-//   - r: *http.Request containing the request data
-//   - user: database.User representing the authenticated user
-func (cfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.ResponseWriter, r *http.Request, user database.User) {
+// handleUpdateProductImageByID is a shared helper for update-by-ID logic for both local and S3 uploads.
+func handleUpdateProductImageByID(
+	w http.ResponseWriter,
+	r *http.Request,
+	user database.User,
+	serviceUpdate func(ctx context.Context, userID string, r *http.Request) (string, error),
+	handleUploadError func(http.ResponseWriter, *http.Request, error, string, string, string),
+	logger handlers.HandlerLogger,
+	operation, logMsg, respMsg string,
+) {
 	ctx := r.Context()
 	ip, userAgent := handlers.GetRequestMetadata(r)
 
 	productID := chiURLParam(r, "id")
 	if productID == "" {
-		cfg.Logger.LogHandlerError(
+		logger.LogHandlerError(
 			ctx,
-			"update_product_image",
+			operation,
 			"missing_product_id",
 			"Product ID not found",
 			ip, userAgent, nil,
@@ -66,17 +58,64 @@ func (cfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.ResponseWr
 		return
 	}
 
-	imageURL, err := cfg.Service.UpdateProductImage(ctx, productID, user.ID, r)
+	// Wrap the serviceUpdate to inject productID
+	wrappedServiceUpdate := func(ctx context.Context, userID string, r *http.Request) (string, error) {
+		return serviceUpdate(ctx, userID, r)
+	}
+
+	handleProductImageUpload(
+		w, r, user,
+		wrappedServiceUpdate,
+		handleUploadError,
+		logger,
+		operation,
+		logMsg,
+		respMsg,
+	)
+}
+
+func (cfg *HandlersUploadConfig) HandlerUpdateProductImageByID(w http.ResponseWriter, r *http.Request, user database.User) {
+	handleUpdateProductImageByID(
+		w, r, user,
+		func(ctx context.Context, userID string, r *http.Request) (string, error) {
+			productID := chiURLParam(r, "id")
+			return cfg.Service.UpdateProductImage(ctx, productID, userID, r)
+		},
+		cfg.handleUploadError,
+		cfg.Logger,
+		"update_product_image",
+		"Product image updated",
+		"Product image updated successfully",
+	)
+}
+
+// handleProductImageUpload is a shared helper for product image upload/update logic.
+func handleProductImageUpload(
+	w http.ResponseWriter,
+	r *http.Request,
+	user database.User,
+	serviceUpload func(ctx context.Context, userID string, r *http.Request) (string, error),
+	handleUploadError func(http.ResponseWriter, *http.Request, error, string, string, string),
+	logger handlers.HandlerLogger,
+	operation, logMsg, respMsg string,
+) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	const maxUploadSize = 10 << 20 // 10 MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	imageURL, err := serviceUpload(ctx, user.ID, r)
 	if err != nil {
-		cfg.handleUploadError(w, r, err, "update_product_image", ip, userAgent)
+		handleUploadError(w, r, err, operation, ip, userAgent)
 		return
 	}
 
-	ctxWithUser := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUser, "update_product_image", "Product image updated", ip, userAgent)
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	logger.LogHandlerSuccess(ctxWithUserID, operation, logMsg, ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, imageUploadResponse{
-		Message:  "Product image updated successfully",
+		Message:  respMsg,
 		ImageURL: imageURL,
 	})
 }

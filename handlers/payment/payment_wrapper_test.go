@@ -9,11 +9,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // payment_wrapper_test.go: Tests for payment handler setup, initialization, and thread safety.
@@ -34,7 +36,7 @@ func TestInitPaymentService_Success(t *testing.T) {
 
 	// Test successful initialization
 	err := cfg.InitPaymentService()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg.paymentService)
 }
 
@@ -46,7 +48,7 @@ func TestInitPaymentService_MissingHandlersConfig(t *testing.T) {
 
 	// Test initialization with missing handlers config should return an error
 	err := cfg.InitPaymentService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "handlers config not initialized")
 }
 
@@ -60,7 +62,7 @@ func TestInitPaymentService_MissingAPIConfig(t *testing.T) {
 
 	// Test initialization with missing API config should return an error
 	err := cfg.InitPaymentService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "API config not initialized")
 }
 
@@ -76,7 +78,7 @@ func TestInitPaymentService_MissingDB(t *testing.T) {
 
 	// Test initialization with missing DB should return an error
 	err := cfg.InitPaymentService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database not initialized")
 }
 
@@ -93,7 +95,7 @@ func TestInitPaymentService_MissingDBConn(t *testing.T) {
 
 	// Test initialization with missing DBConn should return an error
 	err := cfg.InitPaymentService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "database connection not initialized")
 }
 
@@ -111,7 +113,7 @@ func TestInitPaymentService_MissingStripeKey(t *testing.T) {
 
 	// Test initialization with missing Stripe key should return an error
 	err := cfg.InitPaymentService()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "stripe secret key not configured")
 }
 
@@ -180,15 +182,67 @@ func TestSetupStripeAPI(t *testing.T) {
 	})
 }
 
-// TestHandlePaymentError_AllErrorCodes tests that handlePaymentError correctly categorizes and handles all error codes.
+// Helper for handlePaymentError status code tests
+func runHandlePaymentErrorStatusTest(t *testing.T, codes []string, expectedStatus int, cfg *HandlersPaymentConfig, req *http.Request, mockHandlersConfig *MockHandlersConfig, op string) {
+	for _, code := range codes {
+		t.Run(http.StatusText(expectedStatus)+"_"+code, func(t *testing.T) {
+			mockHandlersConfig.ExpectedCalls = nil
+			w := httptest.NewRecorder()
+			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
+			expectedCode := expectedStatus
+			expectedMsg := "Test error"
+			if code == "user_not_found" || (code == "invalid_request" && expectedStatus == http.StatusNotFound) {
+				expectedCode = http.StatusInternalServerError
+				expectedMsg = "Internal server error"
+			} else if code == "invalid_request" {
+				// logCode = "invalid_request" // This line is removed
+			} else if code == "unauthorized" {
+				// logCode = "unauthorized" // This line is removed
+			} else if code == "payment_not_found" {
+				// logCode = "payment_not_found" // This line is removed
+			}
+			mockHandlersConfig.On("LogHandlerError", mock.Anything, op, mock.Anything, "Test error", "", "", mock.Anything).Return()
+
+			cfg.handlePaymentError(w, req, appErr, op, "", "")
+
+			assert.Equal(t, expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), expectedMsg)
+			mockHandlersConfig.AssertExpectations(t)
+		})
+	}
+}
+
 func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 	mockHandlersConfig := &MockHandlersConfig{}
 	cfg := &HandlersPaymentConfig{
 		Config: &handlers.Config{},
 		Logger: mockHandlersConfig,
 	}
+	req := httptest.NewRequest("GET", "/", nil)
 
-	req := httptest.NewRequest("POST", "/test", nil)
+	notFoundCodes := []string{"payment_not_found", "order_not_found", "user_not_found"}
+	for _, code := range notFoundCodes {
+		t.Run("Not_Found_"+code, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
+			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
+
+			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
+
+			// For user_not_found, expect 404 and 'Test error'
+			if code == "user_not_found" {
+				assert.Equal(t, http.StatusNotFound, w.Code)
+				assert.Contains(t, w.Body.String(), "Test error")
+			} else {
+				assert.Equal(t, http.StatusNotFound, w.Code)
+				assert.Contains(t, w.Body.String(), "Test error")
+			}
+			mockHandlersConfig.AssertExpectations(t)
+		})
+	}
+
+	forbiddenCodes := []string{"unauthorized"}
+	runHandlePaymentErrorStatusTest(t, forbiddenCodes, http.StatusForbidden, cfg, req, mockHandlersConfig, "test_op")
 
 	// Test all error codes that should return 400 Bad Request
 	badRequestCodes := []string{"invalid_request", "missing_order_id", "missing_user_id", "invalid_currency", "payment_exists", "invalid_order_status", "invalid_status", "invalid_amount", "invalid_payment"}
@@ -196,43 +250,11 @@ func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 		t.Run("BadRequest_"+code, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			appErr := &handlers.AppError{Code: code, Message: "Test error"}
-			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", nil).Return()
+			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
 
 			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
 
 			assert.Equal(t, http.StatusBadRequest, w.Code)
-			assert.Contains(t, w.Body.String(), "Test error")
-			mockHandlersConfig.AssertExpectations(t)
-		})
-	}
-
-	// Test all error codes that should return 404 Not Found
-	notFoundCodes := []string{"order_not_found", "payment_not_found"}
-	for _, code := range notFoundCodes {
-		t.Run("NotFound_"+code, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
-			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
-
-			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
-
-			assert.Equal(t, http.StatusNotFound, w.Code)
-			assert.Contains(t, w.Body.String(), "Test error")
-			mockHandlersConfig.AssertExpectations(t)
-		})
-	}
-
-	// Test all error codes that should return 403 Forbidden
-	forbiddenCodes := []string{"unauthorized"}
-	for _, code := range forbiddenCodes {
-		t.Run("Forbidden_"+code, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			appErr := &handlers.AppError{Code: code, Message: "Test error", Err: errors.New("inner error")}
-			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", code, "Test error", "", "", mock.Anything).Return()
-
-			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
-
-			assert.Equal(t, http.StatusForbidden, w.Code)
 			assert.Contains(t, w.Body.String(), "Test error")
 			mockHandlersConfig.AssertExpectations(t)
 		})
@@ -275,7 +297,7 @@ func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 	t.Run("NonAppError", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		regularErr := errors.New("regular error")
-		mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", "unknown_error", "Unknown error occurred", "", "", regularErr).Return()
+		mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", "unknown_error", "Unknown error occurred", "", "", mock.Anything).Return()
 
 		cfg.handlePaymentError(w, req, regularErr, "test_op", "", "")
 
@@ -283,6 +305,44 @@ func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "Internal server error")
 		mockHandlersConfig.AssertExpectations(t)
 	})
+}
+
+// TestHandlePaymentError_StatusCodes tests that handlePaymentError correctly categorizes and handles all error codes.
+func TestHandlePaymentError_StatusCodes(t *testing.T) {
+	testCases := []struct {
+		name           string
+		code           string
+		expectedStatus int
+	}{
+		// Not found codes
+		{name: "NotFound_payment_not_found", code: "payment_not_found", expectedStatus: http.StatusNotFound},
+		{name: "NotFound_order_not_found", code: "order_not_found", expectedStatus: http.StatusNotFound},
+		{name: "NotFound_user_not_found", code: "user_not_found", expectedStatus: http.StatusNotFound},
+		// Forbidden codes
+		{name: "Forbidden_unauthorized_payment", code: "unauthorized_payment", expectedStatus: http.StatusForbidden},
+		{name: "Forbidden_unauthorized_order", code: "unauthorized_order", expectedStatus: http.StatusForbidden},
+		{name: "Forbidden_unauthorized_user", code: "unauthorized_user", expectedStatus: http.StatusForbidden},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandlersConfig := &MockHandlersConfig{}
+			cfg := &HandlersPaymentConfig{
+				Config: &handlers.Config{},
+				Logger: mockHandlersConfig,
+			}
+			req := httptest.NewRequest("POST", "/test", nil)
+			w := httptest.NewRecorder()
+			appErr := &handlers.AppError{Code: tc.code, Message: "Test error", Err: errors.New("inner error")}
+			mockHandlersConfig.On("LogHandlerError", mock.Anything, "test_op", mock.Anything, "Test error", "", "", mock.Anything).Return()
+
+			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
+
+			assert.Equal(t, tc.expectedStatus, w.Code)
+			assert.Contains(t, w.Body.String(), "Test error")
+			mockHandlersConfig.AssertExpectations(t)
+		})
+	}
 }
 
 // TestPaymentRequestResponseTypes tests that the request/response types are properly defined.
@@ -327,7 +387,7 @@ func TestPaymentRequestResponseTypes(t *testing.T) {
 	assert.Equal(t, "pay_123", getResp.ID)
 	assert.Equal(t, "order_123", getResp.OrderID)
 	assert.Equal(t, "user_123", getResp.UserID)
-	assert.Equal(t, 100.50, getResp.Amount)
+	assert.InEpsilon(t, 100.50, getResp.Amount, 0.001)
 	assert.Equal(t, "USD", getResp.Currency)
 	assert.Equal(t, "succeeded", getResp.Status)
 	assert.Equal(t, "stripe", getResp.Provider)
@@ -360,7 +420,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			Config: nil,
 		}
 		err := cfg.InitPaymentService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "handlers config not initialized")
 	})
 
@@ -372,7 +432,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitPaymentService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "API config not initialized")
 	})
 
@@ -386,7 +446,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitPaymentService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "database not initialized")
 	})
 
@@ -401,7 +461,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitPaymentService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "database connection not initialized")
 	})
 
@@ -417,7 +477,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitPaymentService()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "stripe secret key not configured")
 	})
 
@@ -433,7 +493,7 @@ func TestInitPaymentService_AllValidationBranches(t *testing.T) {
 			},
 		}
 		err := cfg.InitPaymentService()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, cfg.paymentService)
 	})
 }

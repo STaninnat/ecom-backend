@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_category_update_test.go: Tests for UpdateCategory HTTP handler with various input and error scenarios.
@@ -20,9 +21,12 @@ import (
 // TestHandlerUpdateCategory tests the update category handler with mock service and logger.
 // Covers successful updates, invalid requests, and service errors.
 func TestHandlerUpdateCategory(t *testing.T) {
+
 	tests := []struct {
 		name           string
-		requestBody    CategoryRequest
+		requestBody    any
+		contentType    string
+		user           database.User
 		setupMocks     func(*MockCategoryService)
 		expectedStatus int
 		expectedBody   string
@@ -34,6 +38,8 @@ func TestHandlerUpdateCategory(t *testing.T) {
 				Name:        "Updated Category",
 				Description: "Updated Description",
 			},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
 					ID:          "test-id",
@@ -49,6 +55,8 @@ func TestHandlerUpdateCategory(t *testing.T) {
 			requestBody: CategoryRequest{
 				Name: "Test Category",
 			},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
 					Name: "Test Category",
@@ -66,6 +74,8 @@ func TestHandlerUpdateCategory(t *testing.T) {
 				ID:   "test-id",
 				Name: "Test Category",
 			},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
@@ -77,40 +87,9 @@ func TestHandlerUpdateCategory(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockService := &MockCategoryService{}
-			if tt.setupMocks != nil {
-				tt.setupMocks(mockService)
-			}
-
-			testConfig := &TestHandlersCategoryConfig{
-				MockHandlersConfig: &MockHandlersConfig{},
-				Logger:             nil, // will set below
-				categoryService:    mockService,
-			}
-			testConfig.Logger = testConfig.MockHandlersConfig
-			testConfig.On("LogHandlerError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-			testConfig.On("LogHandlerSuccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-
-			requestBodyBytes, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest("PUT", "/categories", bytes.NewBuffer(requestBodyBytes))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-
-			user := database.User{
-				ID:   "test-user-id",
-				Name: "Test User",
-			}
-
-			testConfig.HandlerUpdateCategory(w, req, user)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			assert.JSONEq(t, tt.expectedBody, w.Body.String())
-			mockService.AssertExpectations(t)
-		})
-	}
+	runCategoryHandlerTestTable(t, tests, "PUT", func(cfg *TestHandlersCategoryConfig, w http.ResponseWriter, req *http.Request, user database.User) {
+		cfg.HandlerUpdateCategory(w, req, user)
+	})
 }
 
 // TestHandlerUpdateCategory_InvalidJSON tests the update category handler with malformed JSON.
@@ -144,13 +123,24 @@ func TestHandlerUpdateCategory_InvalidJSON(t *testing.T) {
 func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name           string
-		requestBody    CategoryRequest
+		requestBody    any
 		contentType    string
+		user           database.User
 		setupMocks     func(*MockCategoryService)
 		expectedStatus int
 		expectedBody   string
-		user           database.User
 	}{
+		{
+			name:        "Valid update",
+			requestBody: CategoryRequest{ID: "cat-1", Name: "Updated Category"},
+			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
+			setupMocks: func(mockService *MockCategoryService) {
+				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"message":"Category updated successfully"}`,
+		},
 		{
 			name: "name too long",
 			requestBody: CategoryRequest{
@@ -159,6 +149,7 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
@@ -167,7 +158,6 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category name too long (max 100 characters)"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "description too long",
@@ -177,6 +167,7 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: strings.Repeat("a", 501),
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
@@ -185,7 +176,6 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category description too long (max 500 characters)"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "service returns non-AppError",
@@ -195,12 +185,12 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(assert.AnError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Internal server error"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "missing content-type",
@@ -210,12 +200,12 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category updated successfully"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "incorrect content-type",
@@ -225,12 +215,12 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "text/plain",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category updated successfully"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "user is empty struct",
@@ -240,12 +230,12 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category updated successfully"}`,
-			user:           database.User{},
 		},
 		{
 			name: "ID is empty",
@@ -255,6 +245,7 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
@@ -263,7 +254,6 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"Category ID is required"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 		{
 			name: "ID is very long",
@@ -273,12 +263,12 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 				Description: "desc",
 			},
 			contentType: "application/json",
+			user:        database.User{ID: "test-user-id"},
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category updated successfully"}`,
-			user:           database.User{ID: "test-user-id"},
 		},
 	}
 

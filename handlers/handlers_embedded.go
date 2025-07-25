@@ -6,11 +6,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
+
 	"github.com/STaninnat/ecom-backend/auth"
 	"github.com/STaninnat/ecom-backend/internal/config"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/oauth2"
 )
 
 // handlers_embedded.go: Defines the main handler configuration struct and helper functions to initialize and validate handler dependencies.

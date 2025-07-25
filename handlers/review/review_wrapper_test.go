@@ -7,9 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
 )
 
 // review_wrapper_test.go: Tests for review handler config, service initialization, and error handling behavior.
@@ -20,7 +22,7 @@ import (
 func TestInitReviewService_Success(t *testing.T) {
 	cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
 	err := cfg.InitReviewService(&mockReviewService{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg.GetReviewService())
 }
 
@@ -39,7 +41,7 @@ func TestInitReviewService_Error(t *testing.T) {
 func TestGetReviewService_ReturnsCorrectInstance(t *testing.T) {
 	cfg := &HandlersReviewConfig{Config: &handlers.Config{}}
 	err := cfg.InitReviewService(&mockReviewService{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rs := cfg.GetReviewService()
 	assert.NotNil(t, rs)
 }

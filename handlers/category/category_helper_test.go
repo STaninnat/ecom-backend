@@ -5,16 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/mock"
 )
 
 // category_helper_test.go: Implements category CRUD HTTP handlers with supporting mocks for unit and integration testing.
@@ -47,116 +44,44 @@ func (cfg *TestHandlersCategoryConfig) GetCategoryService() CategoryService {
 
 // HandlerCreateCategory handles category creation requests
 func (cfg *TestHandlersCategoryConfig) HandlerCreateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	var params CategoryRequest
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"create_category",
-			"invalid_request_body",
-			"Failed to parse request body",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	// Get the category service
-	categoryService := cfg.GetCategoryService()
-
-	// Call the service to create the category
-	_, err := categoryService.CreateCategory(ctx, params)
-	if err != nil {
-		cfg.handleCategoryError(w, r, err, "create_category", ip, userAgent)
-		return
-	}
-
-	// Log success
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "create_category", "Category created successfully", ip, userAgent)
-
-	// Return success response
-	middlewares.RespondWithJSON(w, http.StatusCreated, handlers.HandlerResponse{
-		Message: "Category created successfully",
-	})
+	HandleCategoryRequest(
+		w, r, user,
+		cfg.Logger,
+		cfg.GetCategoryService,
+		cfg.handleCategoryError,
+		"create_category",
+		func(ctx context.Context, service CategoryService, params CategoryRequest) (string, error) {
+			return service.CreateCategory(ctx, params)
+		},
+		"Category created successfully",
+		http.StatusCreated,
+	)
 }
 
 // HandlerUpdateCategory handles category update requests
 func (cfg *TestHandlersCategoryConfig) HandlerUpdateCategory(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	var params CategoryRequest
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"update_category",
-			"invalid_request_body",
-			"Failed to parse request body",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	// Get the category service
-	categoryService := cfg.GetCategoryService()
-
-	// Call the service to update the category
-	err := categoryService.UpdateCategory(ctx, params)
-	if err != nil {
-		cfg.handleCategoryError(w, r, err, "update_category", ip, userAgent)
-		return
-	}
-
-	// Log success
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_category", "Category updated successfully", ip, userAgent)
-
-	// Return success response
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Category updated successfully",
-	})
+	HandleCategoryRequest(
+		w, r, user,
+		cfg.Logger,
+		cfg.GetCategoryService,
+		cfg.handleCategoryError,
+		"update_category",
+		func(ctx context.Context, service CategoryService, params CategoryRequest) (string, error) {
+			return "", service.UpdateCategory(ctx, params)
+		},
+		"Category updated successfully",
+		http.StatusOK,
+	)
 }
 
 // HandlerDeleteCategory handles category deletion requests
 func (cfg *TestHandlersCategoryConfig) HandlerDeleteCategory(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	categoryID := chi.URLParam(r, "id")
-	if categoryID == "" {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"delete_category",
-			"missing_category_id",
-			"Category ID not found in URL",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Category ID is required")
-		return
-	}
-
-	// Get the category service
-	categoryService := cfg.GetCategoryService()
-
-	// Call the service to delete the category
-	err := categoryService.DeleteCategory(ctx, categoryID)
-	if err != nil {
-		cfg.handleCategoryError(w, r, err, "delete_category", ip, userAgent)
-		return
-	}
-
-	// Log success
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "delete_category", "Category deleted successfully", ip, userAgent)
-
-	// Return success response
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Category deleted successfully",
-	})
+	HandleCategoryDelete(
+		w, r, user,
+		cfg.Logger,
+		cfg.GetCategoryService,
+		SharedHandleCategoryError,
+	)
 }
 
 // HandlerGetAllCategories handles category retrieval requests
@@ -199,25 +124,7 @@ func (cfg *TestHandlersCategoryConfig) HandlerGetAllCategories(w http.ResponseWr
 
 // handleCategoryError handles category-specific errors with proper logging and responses
 func (cfg *TestHandlersCategoryConfig) handleCategoryError(w http.ResponseWriter, r *http.Request, err error, operation, ip, userAgent string) {
-	ctx := r.Context()
-
-	appErr := &handlers.AppError{}
-	if errors.As(err, &appErr) {
-		switch appErr.Code {
-		case "invalid_request":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, nil)
-			middlewares.RespondWithError(w, http.StatusBadRequest, appErr.Message)
-		case "database_error", "transaction_error", "create_category_error", "update_category_error", "delete_category_error", "commit_error":
-			cfg.Logger.LogHandlerError(ctx, operation, appErr.Code, appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		default:
-			cfg.Logger.LogHandlerError(ctx, operation, "internal_error", appErr.Message, ip, userAgent, appErr.Err)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-		}
-	} else {
-		cfg.Logger.LogHandlerError(ctx, operation, "unknown_error", "Unknown error occurred", ip, userAgent, err)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
-	}
+	SharedHandleCategoryError(cfg.Logger, w, r, err, operation, ip, userAgent)
 }
 
 // Mock implementations for testing

@@ -8,11 +8,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/handlers"
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/STaninnat/ecom-backend/handlers"
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_order_get_test.go: Tests for order handlers, verifying behavior for admin and user endpoints including success, validation, and error handling.
@@ -46,7 +48,7 @@ func TestHandlerGetAllOrders_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var response []database.Order
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, response, 2)
 
 	mockOrderService.AssertExpectations(t)
@@ -78,7 +80,7 @@ func TestHandlerGetAllOrders_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -115,7 +117,7 @@ func TestHandlerGetUserOrders_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var response []UserOrderResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, response, 2)
 
 	mockOrderService.AssertExpectations(t)
@@ -148,7 +150,7 @@ func TestHandlerGetUserOrders_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -188,78 +190,88 @@ func TestHandlerGetOrderByID_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var response OrderDetailResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, orderID, response.Order.ID)
 
 	mockOrderService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }
 
-// TestHandlerGetOrderByID_MissingOrderID checks that missing order ID returns an error.
-func TestHandlerGetOrderByID_MissingOrderID(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
+// TestHandlerGetOrderByID_Scenarios combines missing order ID and order not found scenarios.
+func TestHandlerGetOrderByID_Scenarios(t *testing.T) {
+	cases := []struct {
+		name           string
+		orderID        string
+		setOrderID     bool
+		serviceReturn  any
+		serviceErr     error
+		loggerCall     func(*mockHandlerLogger)
+		expectedStatus int
+		expectedMsg    string
+		expectedField  string // "error" or "Message"
+	}{
+		{
+			name:          "MissingOrderID",
+			orderID:       "",
+			setOrderID:    false,
+			serviceReturn: nil,
+			serviceErr:    nil,
+			loggerCall: func(l *mockHandlerLogger) {
+				l.On("LogHandlerError", mock.Anything, "get_order_by_id", "missing_order_id", "Order ID not found in URL", mock.Anything, mock.Anything, nil).Return()
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "Missing order ID",
+			expectedField:  "error",
 		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
+		{
+			name:          "OrderNotFound",
+			orderID:       "nonexistent",
+			setOrderID:    true,
+			serviceReturn: nil,
+			serviceErr:    &handlers.AppError{Code: "order_not_found", Message: "Order not found"},
+			loggerCall: func(l *mockHandlerLogger) {
+				l.On("LogHandlerError", mock.Anything, "get_order_by_id", "order_not_found", "Order not found", mock.Anything, mock.Anything, nil).Return()
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedMsg:    "Order not found",
+			expectedField:  "error",
+		},
 	}
 
-	user := database.User{ID: "user123"}
-	mockLogger.On("LogHandlerError", mock.Anything, "get_order_by_id", "missing_order_id", "Order ID not found in URL", mock.Anything, mock.Anything, nil).Return()
-
-	req := httptest.NewRequest("GET", "/orders/", nil)
-	w := httptest.NewRecorder()
-
-	cfg.HandlerGetOrderByID(w, req, user)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Missing order ID", response["error"])
-
-	mockLogger.AssertExpectations(t)
-	mockOrderService.AssertNotCalled(t, "GetOrderByID")
-}
-
-// TestHandlerGetOrderByID_OrderNotFound checks that order not found returns the correct error.
-func TestHandlerGetOrderByID_OrderNotFound(t *testing.T) {
-	mockOrderService := new(MockOrderService)
-	mockLogger := new(mockHandlerLogger)
-
-	cfg := &HandlersOrderConfig{
-		Config: &handlers.Config{
-			Logger: logrus.New(),
-		},
-		Logger:       mockLogger,
-		orderService: mockOrderService,
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockOrderService := new(MockOrderService)
+			mockLogger := new(mockHandlerLogger)
+			cfg := &HandlersOrderConfig{
+				Config:       &handlers.Config{Logger: logrus.New()},
+				Logger:       mockLogger,
+				orderService: mockOrderService,
+			}
+			user := database.User{ID: "user123"}
+			if tc.setOrderID {
+				mockOrderService.On("GetOrderByID", mock.Anything, tc.orderID, user).Return(tc.serviceReturn, tc.serviceErr)
+			}
+			if tc.loggerCall != nil {
+				tc.loggerCall(mockLogger)
+			}
+			var req *http.Request
+			if tc.setOrderID {
+				req = httptest.NewRequest("GET", "/orders/"+tc.orderID, nil)
+				req = setChiURLParam(req, "orderID", tc.orderID)
+			} else {
+				req = httptest.NewRequest("GET", "/orders/", nil)
+			}
+			w := httptest.NewRecorder()
+			cfg.HandlerGetOrderByID(w, req, user)
+			assert.Equal(t, tc.expectedStatus, w.Code)
+			var response map[string]string
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedMsg, response[tc.expectedField])
+			mockOrderService.AssertExpectations(t)
+			mockLogger.AssertExpectations(t)
+		})
 	}
-
-	user := database.User{ID: "user123"}
-	orderID := "nonexistent"
-	appError := &handlers.AppError{Code: "order_not_found", Message: "Order not found"}
-	mockOrderService.On("GetOrderByID", mock.Anything, orderID, user).Return(nil, appError)
-	mockLogger.On("LogHandlerError", mock.Anything, "get_order_by_id", "order_not_found", "Order not found", mock.Anything, mock.Anything, nil).Return()
-
-	req := httptest.NewRequest("GET", "/orders/"+orderID, nil)
-	req = setChiURLParam(req, "orderID", orderID)
-
-	w := httptest.NewRecorder()
-
-	cfg.HandlerGetOrderByID(w, req, user)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "Order not found", response["error"])
-
-	mockOrderService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
 }
 
 // TestHandlerGetOrderItemsByOrderID_Success verifies successful retrieval of order items.
@@ -294,7 +306,7 @@ func TestHandlerGetOrderItemsByOrderID_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var response []OrderItemResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, response, 2)
 
 	mockOrderService.AssertExpectations(t)
@@ -324,7 +336,7 @@ func TestHandlerGetOrderItemsByOrderID_MissingOrderID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Missing order_id", response["error"])
 
 	mockLogger.AssertExpectations(t)
@@ -359,7 +371,7 @@ func TestHandlerGetOrderItemsByOrderID_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -391,7 +403,7 @@ func TestHandlerGetAllOrders_UnknownError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -424,7 +436,7 @@ func TestHandlerGetUserOrders_UnknownError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -460,7 +472,7 @@ func TestHandlerGetOrderByID_UnknownError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)
@@ -495,7 +507,7 @@ func TestHandlerGetOrderItemsByOrderID_UnknownError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", response["error"])
 
 	mockOrderService.AssertExpectations(t)

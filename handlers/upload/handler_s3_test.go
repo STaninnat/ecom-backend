@@ -7,54 +7,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/STaninnat/ecom-backend/internal/database"
 )
 
 // handler_s3_test.go: Tests S3 product image upload and update handlers for success, error, and missing ID cases, verifying correct HTTP responses and proper logging behavior.
-
-// TestHandlerS3UploadProductImage_Success tests the successful upload of a product image to S3 via the handler.
-// It verifies that the handler returns HTTP 200 and logs success when the service returns an S3 image URL without error.
-func TestHandlerS3UploadProductImage_Success(t *testing.T) {
-	mockLogger := new(mockS3Logger)
-	mockService := new(mockS3UploadService)
-	cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
-	req := httptest.NewRequest("POST", "/upload", nil)
-	w := httptest.NewRecorder()
-
-	mockService.On("UploadProductImage", req.Context(), user.ID, req).Return("https://s3/test.jpg", nil)
-	mockLogger.On("LogHandlerSuccess", mock.Anything, "s3_upload_product_image", "Image uploaded to S3 and URL generated", mock.Anything, mock.Anything).Return()
-
-	cfg.HandlerS3UploadProductImage(w, req, user)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "https://s3/test.jpg")
-	assert.Contains(t, w.Body.String(), "Image URL created successfully (S3)")
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
-
-// TestHandlerS3UploadProductImage_Error tests the handler's behavior when the S3 upload service returns an error.
-// It ensures the handler returns HTTP 500 and logs the error correctly.
-func TestHandlerS3UploadProductImage_Error(t *testing.T) {
-	mockLogger := new(mockS3Logger)
-	mockService := new(mockS3UploadService)
-	cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
-	req := httptest.NewRequest("POST", "/upload", nil)
-	w := httptest.NewRecorder()
-
-	err := errors.New("upload failed")
-	mockService.On("UploadProductImage", req.Context(), user.ID, req).Return("", err)
-	mockLogger.On("LogHandlerError", mock.Anything, "s3_upload_product_image", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, err).Return()
-
-	cfg.HandlerS3UploadProductImage(w, req, user)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "Internal server error")
-	mockService.AssertExpectations(t)
-	mockLogger.AssertExpectations(t)
-}
 
 // TestHandlerS3UpdateProductImageByID_Success tests the successful update of a product image by ID in S3 via the handler.
 // It verifies that the handler returns HTTP 200 and logs success when the service returns an updated S3 image URL without error.

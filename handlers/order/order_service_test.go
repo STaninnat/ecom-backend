@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
-	"github.com/stretchr/testify/assert"
 )
 
 // order_service_test.go: Tests for the OrderService implementation, focusing on order creation logic and error handling.
@@ -57,7 +59,7 @@ func TestCreateOrder_Success(t *testing.T) {
 	result, err := service.CreateOrder(context.Background(), user, params)
 
 	// Expect an error due to transaction issues with sqlmock
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -79,7 +81,7 @@ func TestCreateOrder_EmptyItems(t *testing.T) {
 
 	result, err := service.CreateOrder(context.Background(), user, params)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -104,7 +106,7 @@ func TestCreateOrder_InvalidQuantity(t *testing.T) {
 
 	result, err := service.CreateOrder(context.Background(), user, params)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -129,7 +131,7 @@ func TestCreateOrder_NegativePrice(t *testing.T) {
 
 	result, err := service.CreateOrder(context.Background(), user, params)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -154,7 +156,7 @@ func TestCreateOrder_QuantityOverflow(t *testing.T) {
 
 	result, err := service.CreateOrder(context.Background(), user, params)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -162,203 +164,119 @@ func TestCreateOrder_QuantityOverflow(t *testing.T) {
 	assert.Equal(t, "transaction_error", appErr.Code)
 }
 
-// TestCreateOrder_TransactionError tests order creation with transaction error.
-func TestCreateOrder_TransactionError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
+// TestCreateOrder_ErrorScenarios tests order creation with various error scenarios.
+func TestCreateOrder_ErrorScenarios(t *testing.T) {
+	testCases := []struct {
+		name         string
+		mockSetup    func(mock sqlmock.Sqlmock)
+		useNilDB     bool
+		expectedCode string
+		expectedMsg  string
+	}{
+		{
+			name: "TransactionError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin().WillReturnError(errors.New("transaction error"))
+				mock.ExpectClose()
+			},
+			useNilDB:     false,
+			expectedCode: "transaction_error",
+			expectedMsg:  "",
+		},
+		{
+			name: "CreateOrderError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec("INSERT INTO orders").WillReturnError(errors.New("create order error"))
+				mock.ExpectRollback()
+				mock.ExpectClose()
+			},
+			useNilDB:     false,
+			expectedCode: "create_order_error",
+			expectedMsg:  "",
+		},
+		{
+			name: "CommitError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec("INSERT INTO orders").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("INSERT INTO order_items").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+				mock.ExpectClose()
+			},
+			useNilDB:     false,
+			expectedCode: "create_order_error",
+			expectedMsg:  "",
+		},
+		{
+			name: "CreateOrderItemError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec("INSERT INTO orders").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("INSERT INTO order_items").WillReturnError(errors.New("order item creation error"))
+				mock.ExpectRollback()
+				mock.ExpectClose()
+			},
+			useNilDB:     false,
+			expectedCode: "create_order_error",
+			expectedMsg:  "",
+		},
+		{
+			name:         "NilDBConnection",
+			mockSetup:    nil,
+			useNilDB:     true,
+			expectedCode: "transaction_error",
+			expectedMsg:  "DB connection is nil",
+		},
+		{
+			name: "TransactionBeginError",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin().WillReturnError(errors.New("transaction begin error"))
+				mock.ExpectClose()
+			},
+			useNilDB:     false,
+			expectedCode: "transaction_error",
+			expectedMsg:  "",
 		},
 	}
 
-	// Mock transaction begin to fail
-	mock.ExpectBegin().WillReturnError(errors.New("transaction error"))
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "transaction_error", appErr.Code)
-}
-
-// TestCreateOrder_CreateOrderError tests order creation with database error.
-func TestCreateOrder_CreateOrderError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-		},
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var service OrderService
+			var db *sql.DB
+			var mock sqlmock.Sqlmock
+			if tc.useNilDB {
+				service = NewOrderService(nil, nil)
+			} else {
+				db, mock, _ = sqlmock.New()
+				queries := database.New(db)
+				if tc.mockSetup != nil {
+					mock.MatchExpectationsInOrder(false)
+					tc.mockSetup(mock)
+				}
+				service = NewOrderService(queries, db)
+			}
+			user := database.User{ID: "user123"}
+			params := CreateOrderRequest{
+				Items: []OrderItemInput{{ProductID: "prod1", Quantity: 2, Price: 10.50}},
+			}
+			result, err := service.CreateOrder(context.Background(), user, params)
+			require.Error(t, err)
+			assert.Nil(t, result)
+			appErr := &handlers.AppError{}
+			ok := errors.As(err, &appErr)
+			assert.True(t, ok)
+			assert.Equal(t, tc.expectedCode, appErr.Code)
+			if tc.expectedMsg != "" {
+				assert.Equal(t, tc.expectedMsg, appErr.Message)
+			}
+			if db != nil {
+				if err := db.Close(); err != nil {
+					t.Fatalf("failed to close db: %v", err)
+				}
+			}
+		})
 	}
-
-	// Mock transaction begin to succeed but order creation to fail
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO orders").WillReturnError(errors.New("create order error"))
-	mock.ExpectRollback()
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "create_order_error", appErr.Code)
-}
-
-// TestCreateOrder_CommitError tests order creation with commit error.
-func TestCreateOrder_CommitError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-		},
-	}
-
-	// Mock the database operations
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO orders").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("INSERT INTO order_items").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "create_order_error", appErr.Code)
-}
-
-// TestCreateOrder_CreateOrderItemError tests order creation with order item creation error.
-func TestCreateOrder_CreateOrderItemError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-		},
-	}
-
-	// Mock the database operations
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO orders").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("INSERT INTO order_items").WillReturnError(errors.New("order item creation error"))
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "create_order_error", appErr.Code)
-}
-
-// TestCreateOrder_NilDBConnection tests order creation with nil database connection.
-func TestCreateOrder_NilDBConnection(t *testing.T) {
-	service := NewOrderService(nil, nil)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-		},
-	}
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "transaction_error", appErr.Code)
-	assert.Equal(t, "DB connection is nil", appErr.Message)
-}
-
-// TestCreateOrder_TransactionBeginError tests order creation with transaction begin error.
-func TestCreateOrder_TransactionBeginError(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-		},
-	}
-
-	// Mock the database operations to fail at transaction begin
-	mock.ExpectBegin().WillReturnError(errors.New("transaction begin error"))
-
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Equal(t, "transaction_error", appErr.Code)
-}
-
-// TestCreateOrder_WithAllOptionalFields tests order creation with all optional fields populated.
-func TestCreateOrder_WithAllOptionalFields(t *testing.T) {
-	// This test will fail due to transaction issues, but it tests the interface
-	// and validation logic with all optional fields
-	db, _, _ := sqlmock.New()
-	queries := database.New(db)
-
-	service := NewOrderService(queries, db)
-
-	user := database.User{ID: "user123"}
-	params := CreateOrderRequest{
-		Items: []OrderItemInput{
-			{ProductID: "prod1", Quantity: 2, Price: 10.50},
-			{ProductID: "prod2", Quantity: 1, Price: 25.00},
-		},
-		PaymentMethod:     "credit_card",
-		ShippingAddress:   "123 Main St",
-		ContactPhone:      "555-1234",
-		ExternalPaymentID: "ext_pay_123",
-		TrackingNumber:    "TRK123",
-	}
-
-	// This test will fail due to transaction issues, but it validates the request structure
-	result, err := service.CreateOrder(context.Background(), user, params)
-
-	// The test will fail due to transaction issues, but we can validate the request structure
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	// The error should be related to transaction issues, not validation
-	appErr := &handlers.AppError{}
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok)
-	assert.Contains(t, []string{"transaction_error", "create_order_error"}, appErr.Code)
 }
 
 // TestGetAllOrders_Success tests successful retrieval of all orders.
@@ -384,7 +302,7 @@ func TestGetAllOrders_Success(t *testing.T) {
 
 	orders, err := service.GetAllOrders(context.Background())
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, orders)
 	assert.Len(t, orders, 1)
 }
@@ -401,7 +319,7 @@ func TestGetAllOrders_DatabaseError(t *testing.T) {
 
 	orders, err := service.GetAllOrders(context.Background())
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, orders)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -440,7 +358,7 @@ func TestGetUserOrders_Success(t *testing.T) {
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, orders)
 	assert.Len(t, orders, 1)
 }
@@ -458,7 +376,7 @@ func TestGetUserOrders_DatabaseError(t *testing.T) {
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, orders)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -492,7 +410,7 @@ func TestGetUserOrders_OrderItemsError(t *testing.T) {
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, orders)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -508,7 +426,7 @@ func TestGetUserOrders_NilDatabase(t *testing.T) {
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, orders)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -548,7 +466,7 @@ func TestGetOrderByID_Success(t *testing.T) {
 
 	order, err := service.GetOrderByID(context.Background(), "order1", user)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, order)
 	assert.Equal(t, "order1", order.Order.ID)
 }
@@ -577,7 +495,7 @@ func TestGetOrderByID_Unauthorized(t *testing.T) {
 
 	order, err := service.GetOrderByID(context.Background(), "order1", user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, order)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -616,7 +534,7 @@ func TestGetOrderByID_AdminAccess(t *testing.T) {
 
 	order, err := service.GetOrderByID(context.Background(), "order1", user)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, order)
 	assert.Equal(t, "order1", order.Order.ID)
 }
@@ -646,7 +564,7 @@ func TestGetOrderByID_OrderItemsError(t *testing.T) {
 
 	order, err := service.GetOrderByID(context.Background(), "order1", user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, order)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -662,7 +580,7 @@ func TestGetOrderByID_NilDatabase(t *testing.T) {
 
 	order, err := service.GetOrderByID(context.Background(), "order1", user)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, order)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -697,7 +615,7 @@ func TestUpdateOrderStatus_InvalidStatus(t *testing.T) {
 
 	err := service.UpdateOrderStatus(context.Background(), "order123", "invalid_status")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -719,7 +637,7 @@ func TestUpdateOrderStatus_CommitError(t *testing.T) {
 
 	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -732,7 +650,7 @@ func TestUpdateOrderStatus_NilDBConnection(t *testing.T) {
 
 	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -771,7 +689,7 @@ func TestDeleteOrder_CommitError(t *testing.T) {
 
 	err := service.DeleteOrder(context.Background(), "order123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -784,7 +702,7 @@ func TestDeleteOrder_NilDBConnection(t *testing.T) {
 
 	err := service.DeleteOrder(context.Background(), "order123")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -805,7 +723,7 @@ func TestOrderService_NilDependencies(t *testing.T) {
 	}
 
 	result, err := service.CreateOrder(context.Background(), user, params)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -814,7 +732,7 @@ func TestOrderService_NilDependencies(t *testing.T) {
 
 	// Test GetAllOrders with nil dependencies
 	orders, err := service.GetAllOrders(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, orders)
 	appErr = &handlers.AppError{}
 	ok = errors.As(err, &appErr)
@@ -842,7 +760,7 @@ func TestGetOrderItemsByOrderID_Success(t *testing.T) {
 
 	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, items)
 	assert.Len(t, items, 2)
 	assert.Equal(t, "item1", items[0].ID)
@@ -863,7 +781,7 @@ func TestGetOrderItemsByOrderID_DatabaseError(t *testing.T) {
 
 	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, items)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -878,7 +796,7 @@ func TestGetOrderItemsByOrderID_NilDatabase(t *testing.T) {
 
 	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, items)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -903,8 +821,8 @@ func TestGetOrderItemsByOrderID_EmptyResult(t *testing.T) {
 
 	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
 
-	assert.NoError(t, err)
-	assert.Len(t, items, 0)
+	require.NoError(t, err)
+	assert.Empty(t, items)
 
 	// Check for unmet expectations
 	if err := mock.ExpectationsWereMet(); err != nil {
