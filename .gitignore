@@ -4,4 +4,8 @@ logs/
 images/
 uploads/
 
+ecom-server
+coverage.out
+coverage.html
+
 google_credentials.json
