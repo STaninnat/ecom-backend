@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing in the ecom-backend project.
 package middlewares
 
 import (
@@ -7,21 +8,30 @@ import (
 	"strings"
 	"time"
 
-	"github.com/STaninnat/ecom-backend/utils"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	"github.com/STaninnat/ecom-backend/utils"
 )
+
+// logging_middleware.go: Middleware for structured request logging and request ID tracing.
 
 type statusResponseWriter struct {
 	http.ResponseWriter
 	status int
 }
 
+// WriteHeader captures the status code for logging purposes
 func (w *statusResponseWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }
 
+// LoggingMiddleware creates a middleware that logs HTTP requests with detailed information.
+// It measures request duration, captures status codes, and logs structured information.
+// The middleware supports path filtering through include/exclude path maps.
+// It categorizes responses as success (2xx), fail (4xx), or error (5xx) for monitoring.
+// Request metadata includes method, path, status, duration, IP, user agent, and request ID.
 func LoggingMiddleware(logger *logrus.Logger, includePaths, excludePaths map[string]struct{}) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +42,7 @@ func LoggingMiddleware(logger *logrus.Logger, includePaths, excludePaths map[str
 				return
 			}
 
-			start := time.Now()
+			start := time.Now().UTC()
 			sw := &statusResponseWriter{ResponseWriter: w, status: http.StatusOK}
 
 			next.ServeHTTP(sw, r)
@@ -63,6 +73,7 @@ func LoggingMiddleware(logger *logrus.Logger, includePaths, excludePaths map[str
 	}
 }
 
+// RequestIDMiddleware adds a unique request ID to each request context for tracing and correlation.
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := uuid.NewString()
@@ -72,6 +83,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// ShouldLog determines whether a request path should be logged based on include/exclude rules.
 func ShouldLog(path string, includePaths, excludePaths map[string]struct{}) bool {
 	for ex := range excludePaths {
 		if strings.HasPrefix(path, ex) {
@@ -88,6 +100,7 @@ func ShouldLog(path string, includePaths, excludePaths map[string]struct{}) bool
 	return false
 }
 
+// GetIPAddress extracts the real client IP address from various request headers or RemoteAddr.
 func GetIPAddress(r *http.Request) string {
 	ip := r.Header.Get("X-Real-IP")
 	if ip != "" && IsValidIP(ip) {
@@ -113,6 +126,7 @@ func GetIPAddress(r *http.Request) string {
 	return ""
 }
 
+// IsValidIP validates whether a string represents a valid IP address (IPv4 or IPv6).
 func IsValidIP(ip string) bool {
 	parsed := net.ParseIP(ip)
 	return parsed != nil

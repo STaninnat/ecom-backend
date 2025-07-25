@@ -1,4 +1,5 @@
-package cart
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
+package carthandlers
 
 import (
 	"context"
@@ -11,93 +12,32 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-type RemoveItemReq struct {
+// handler_cart_delete.go: Provides handlers for managing items in authenticated user and guest carts.
+
+// DeleteItemRequest represents a request containing a product ID.
+type DeleteItemRequest struct {
 	ProductID string `json:"product_id"`
 }
 
-func (apicfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
+// HandlerRemoveItemFromUserCart handles HTTP requests to remove an item from a user's cart.
+// @Summary      Remove item from user cart
+// @Description  Removes an item from the authenticated user's cart
+// @Tags         cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  DeleteItemRequest  true  "Delete item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [delete]
+func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	var req RemoveItemReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ProductID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"remove_item_to_cart",
-			"invalid request body",
-			"Failed to parse body",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	err := apicfg.CartMG.RemoveItemFromCart(ctx, user.ID, req.ProductID)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
+	var req DeleteItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"remove_item_from_cart",
-			"failed to remove item",
-			"DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove item from cart")
-		return
-	}
-
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.HandlersConfig.LogHandlerSuccess(ctxWithUserID, "remove_item_from_cart", "Removed item from cart", ip, userAgent)
-
-	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
-		Message: "Item removed from cart",
-	})
-}
-
-func (apicfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	err := apicfg.CartMG.ClearCart(ctx, user.ID)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"clear_cart",
-			"failed to clear cart",
-			"DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to clear cart")
-		return
-	}
-
-	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.HandlersConfig.LogHandlerSuccess(ctxWithUserID, "clear_cart", "Cart cleared", ip, userAgent)
-
-	middlewares.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Cart cleared"})
-}
-
-func (apicfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWriter, r *http.Request) {
-	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
-
-	sessionID := utils.GetSessionIDFromRequest(r)
-	if sessionID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"remove_item_guest_cart",
-			"missing session ID",
-			"Session ID not found in request",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing session ID")
-		return
-	}
-
-	var req RemoveItemReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ProductID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"remove_item_guest_cart",
 			"invalid request body",
 			"Failed to parse body",
 			ip, userAgent, err,
@@ -106,33 +46,135 @@ func (apicfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.Response
 		return
 	}
 
-	err := apicfg.RemoveGuestItem(ctx, sessionID, req.ProductID)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
+	if req.ProductID == "" {
+		cfg.Logger.LogHandlerError(
 			ctx,
-			"remove_item_guest_cart",
-			"remove guest item failed",
-			"Error to remove guest item",
-			ip, userAgent, err,
+			"remove_item_from_cart",
+			"missing product ID",
+			"Product ID is required",
+			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to remove item")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
 		return
 	}
 
-	apicfg.HandlersConfig.LogHandlerSuccess(ctx, "remove_item_guest_cart", "Removed item from guest cart", ip, userAgent)
+	if err := cfg.GetCartService().RemoveItem(ctx, user.ID, req.ProductID); err != nil {
+		cfg.handleCartError(w, r, err, "remove_item_from_cart", ip, userAgent)
+		return
+	}
+
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "remove_item_from_cart", "Removed item from cart", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Item removed from cart",
 	})
 }
 
-func (apicfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r *http.Request) {
+// HandlerClearUserCart handles HTTP requests to clear all items from a user's cart.
+// @Summary      Clear user cart
+// @Description  Clears all items from the authenticated user's cart
+// @Tags         cart
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/ [delete]
+func (cfg *HandlersCartConfig) HandlerClearUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	sessionID := utils.GetSessionIDFromRequest(r)
+	if err := cfg.GetCartService().DeleteUserCart(ctx, user.ID); err != nil {
+		cfg.handleCartError(w, r, err, "clear_cart", ip, userAgent)
+		return
+	}
+
+	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "clear_cart", "Cart cleared", ip, userAgent)
+
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Cart cleared",
+	})
+}
+
+// HandlerRemoveItemFromGuestCart handles HTTP requests to remove an item from a guest cart (session-based).
+// @Summary      Remove item from guest cart
+// @Description  Removes an item from the guest cart (session-based)
+// @Tags         guest-cart
+// @Accept       json
+// @Produce      json
+// @Param        item  body  DeleteItemRequest  true  "Delete item payload"
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/items [delete]
+func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	sessionID := getSessionIDFromRequest(r)
 	if sessionID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
+		cfg.Logger.LogHandlerError(
+			ctx,
+			"remove_item_from_guest_cart",
+			"missing session ID",
+			"Session ID not found in request",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing session ID")
+		return
+	}
+
+	var req DeleteItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		cfg.Logger.LogHandlerError(
+			ctx,
+			"remove_item_from_guest_cart",
+			"invalid request body",
+			"Failed to parse body",
+			ip, userAgent, err,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if req.ProductID == "" {
+		cfg.Logger.LogHandlerError(
+			ctx,
+			"remove_item_from_guest_cart",
+			"missing product ID",
+			"Product ID is required",
+			ip, userAgent, nil,
+		)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
+		return
+	}
+
+	if err := cfg.GetCartService().RemoveGuestItem(ctx, sessionID, req.ProductID); err != nil {
+		cfg.handleCartError(w, r, err, "remove_item_from_guest_cart", ip, userAgent)
+		return
+	}
+
+	cfg.Logger.LogHandlerSuccess(ctx, "remove_item_from_guest_cart", "Removed item from guest cart", ip, userAgent)
+
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
+		Message: "Item removed from cart",
+	})
+}
+
+// HandlerClearGuestCart handles HTTP requests to clear all items from a guest cart (session-based).
+// @Summary      Clear guest cart
+// @Description  Clears all items from the guest cart (session-based)
+// @Tags         guest-cart
+// @Produce      json
+// @Success      200  {object}  handlers.HandlerResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/ [delete]
+func (cfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r *http.Request) {
+	ip, userAgent := handlers.GetRequestMetadata(r)
+	ctx := r.Context()
+
+	sessionID := getSessionIDFromRequest(r)
+	if sessionID == "" {
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"clear_guest_cart",
 			"missing session ID",
@@ -143,20 +185,12 @@ func (apicfg *HandlersCartConfig) HandlerClearGuestCart(w http.ResponseWriter, r
 		return
 	}
 
-	err := apicfg.DeleteGuestCart(ctx, sessionID)
-	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"clear_guest_cart",
-			"failed to clear cart",
-			"DB error",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to clear guest cart")
+	if err := cfg.GetCartService().DeleteGuestCart(ctx, sessionID); err != nil {
+		cfg.handleCartError(w, r, err, "clear_guest_cart", ip, userAgent)
 		return
 	}
 
-	apicfg.HandlersConfig.LogHandlerSuccess(ctx, "clear_guest_cart", "Guest cart cleared", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctx, "clear_guest_cart", "Guest cart cleared", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Guest cart cleared",

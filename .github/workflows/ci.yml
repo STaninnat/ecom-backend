@@ -5,10 +5,9 @@ on:
     branches: [main]
 
 jobs:
-  tests:
-    name: Tests
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out Code
         uses: actions/checkout@v4
@@ -16,7 +15,30 @@ jobs:
       - name: Set up GO
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23.x"
+          go-version: "1.24.x"
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.0
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@v4
+
+      - name: Set up GO
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Install dependencies
+        run: go mod download
 
       - name: Set environment variables
         env:
@@ -29,32 +51,10 @@ jobs:
         run: echo "Load environment variables"
 
       - name: Run unit tests
-        run: go test ./... -cover
+        run: go test -coverprofile=coverage.out ./...
 
-      - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
-
-      - name: Run Gosec
-        run: gosec ./...
-
-  style:
-    name: Style
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out Code
-        uses: actions/checkout@v4
-
-      - name: Set up GO
-        uses: actions/setup-go@v5
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          go-version: "1.23.x"
-
-      - name: Check for formatting
-        run: test -z $(go fmt ./...)
-
-      - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
-
-      - name: Run staticcheck
-        run: staticcheck ./...
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out

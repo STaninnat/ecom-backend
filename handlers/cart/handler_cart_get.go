@@ -1,4 +1,5 @@
-package cart
+// Package carthandlers implements HTTP handlers for cart operations including user and guest carts.
+package carthandlers
 
 import (
 	"context"
@@ -10,36 +11,47 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-func (apicfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
+// handler_cart_get.go: Provides handlers to fetch shopping cart data for users and guests.
+
+// HandlerGetUserCart handles HTTP requests to retrieve a user's cart.
+// @Summary      Get user cart
+// @Description  Retrieves the authenticated user's cart
+// @Tags         cart
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/cart/items [get]
+func (cfg *HandlersCartConfig) HandlerGetUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	cart, err := apicfg.CartMG.GetCartByUserID(ctx, user.ID)
+	cart, err := cfg.GetCartService().GetUserCart(ctx, user.ID)
 	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"get_cart",
-			"get cart failed",
-			"Error getting cart",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to get cart")
+		cfg.handleCartError(w, r, err, "get_cart", ip, userAgent)
 		return
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.HandlersConfig.LogHandlerSuccess(ctxWithUserID, "get_cart", "Got user cart successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "get_cart", "Got user cart successfully", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, cart)
 }
 
-func (apicfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *http.Request) {
+// HandlerGetGuestCart handles HTTP requests to retrieve a guest cart (session-based).
+// @Summary      Get guest cart
+// @Description  Retrieves the guest cart (session-based)
+// @Tags         guest-cart
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/guest-cart/ [get]
+func (cfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
-	sessionID := utils.GetSessionIDFromRequest(r)
+	sessionID := getSessionIDFromRequest(r)
 	if sessionID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_guest_cart",
 			"missing session ID",
@@ -50,20 +62,13 @@ func (apicfg *HandlersCartConfig) HandlerGetGuestCart(w http.ResponseWriter, r *
 		return
 	}
 
-	cart, err := apicfg.GetGuestCart(ctx, sessionID)
+	cart, err := cfg.GetCartService().GetGuestCart(ctx, sessionID)
 	if err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"get_guest_cart",
-			"redis get failed",
-			"Failed to retrieve guest cart from Redis",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve guest cart")
+		cfg.handleCartError(w, r, err, "get_guest_cart", ip, userAgent)
 		return
 	}
 
-	apicfg.HandlersConfig.LogHandlerSuccess(ctx, "get_guest_cart", "Got guest cart successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctx, "get_guest_cart", "Got guest cart successfully", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, cart)
 }

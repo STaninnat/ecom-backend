@@ -1,0 +1,18 @@
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 0%
+    patch:
+      default:
+        target: 80%
+        threshold: 0%
+  ignore:
+    - "main.go"
+    - "docs/**"
+    - "internal/database/**"
+    - "internal/testutil/**"
+    - "models/**"

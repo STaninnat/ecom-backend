@@ -1,3 +1,4 @@
+// Package utils provides utility functions and helpers used throughout the ecom-backend project.
 package utils
 
 import (
@@ -10,30 +11,53 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// logger.go: Sets up logrus-based logging with file rotation and custom hooks.
+
+// WriterHook is a logrus hook that writes logs of specified levels to a given io.Writer.
 type WriterHook struct {
 	Writer    io.Writer
-	LogLevels []logrus.Level
+	LogLevels map[logrus.Level]struct{}
 }
 
+// NewWriterHook creates a new WriterHook for the specified writer and log levels.
+func NewWriterHook(writer io.Writer, levels []logrus.Level) *WriterHook {
+	levelMap := make(map[logrus.Level]struct{}, len(levels))
+	for _, lvl := range levels {
+		levelMap[lvl] = struct{}{}
+	}
+	return &WriterHook{Writer: writer, LogLevels: levelMap}
+}
+
+// Fire writes the log entry to the Writer if its level is enabled in the hook.
 func (hook *WriterHook) Fire(entry *logrus.Entry) error {
-	for _, level := range hook.LogLevels {
-		if entry.Level == level {
-			line, err := entry.String()
-			if err != nil {
-				return err
-			}
-			_, err = hook.Writer.Write([]byte(line))
+	if _, ok := hook.LogLevels[entry.Level]; ok {
+		line, err := entry.String()
+		if err != nil {
 			return err
 		}
+		_, err = hook.Writer.Write([]byte(line))
+		return err
 	}
 	return nil // do nothing if level not in LogLevels
 }
 
+// Levels returns the log levels enabled for this WriterHook.
 func (hook *WriterHook) Levels() []logrus.Level {
-	return hook.LogLevels
+	levels := make([]logrus.Level, 0, len(hook.LogLevels))
+	for lvl := range hook.LogLevels {
+		levels = append(levels, lvl)
+	}
+	return levels
 }
 
-func InitLogger() *logrus.Logger {
+// RotatelogsNewFunc defines the function signature for rotatelogs.New, allowing injection for testing.
+type RotatelogsNewFunc func(string, ...rotatelogs.Option) (*rotatelogs.RotateLogs, error)
+
+// InitLoggerWithCreators creates a logrus.Logger with hooks for info and error logs, allowing injection of log writer creators for testing.
+func InitLoggerWithCreators(
+	infoLogCreator RotatelogsNewFunc,
+	errorLogCreator RotatelogsNewFunc,
+) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{
 		PrettyPrint:     true,
@@ -45,7 +69,7 @@ func InitLogger() *logrus.Logger {
 	appModeEnv := os.Getenv("APP_MODE")
 	isDev := appModeEnv == "" || strings.ToLower(appModeEnv) == "dev"
 
-	infoWriter, err := rotatelogs.New(
+	infoWriter, err := infoLogCreator(
 		"./logs/app-info.%Y-%m-%d.log",
 		rotatelogs.WithLinkName("./logs/app-info.log"),
 		rotatelogs.WithRotationTime(24*time.Hour),
@@ -55,7 +79,7 @@ func InitLogger() *logrus.Logger {
 		panic("failed to create info log rotator: " + err.Error())
 	}
 
-	errorWriter, err := rotatelogs.New(
+	errorWriter, err := errorLogCreator(
 		"./logs/app-error.%Y-%m-%d.log",
 		rotatelogs.WithLinkName("./logs/app-error.log"),
 		rotatelogs.WithRotationTime(24*time.Hour),
@@ -73,26 +97,25 @@ func InitLogger() *logrus.Logger {
 		errorOutput = io.MultiWriter(errorWriter, os.Stdout)
 	}
 
-	logger.AddHook(&WriterHook{
-		Writer: infoOutput,
-		LogLevels: []logrus.Level{
-			logrus.InfoLevel,
-			logrus.WarnLevel,
-			logrus.DebugLevel,
-		},
-	})
+	logger.AddHook(NewWriterHook(infoOutput, []logrus.Level{
+		logrus.InfoLevel,
+		logrus.WarnLevel,
+		logrus.DebugLevel,
+	}))
 
-	logger.AddHook(&WriterHook{
-		Writer: errorOutput,
-		LogLevels: []logrus.Level{
-			logrus.ErrorLevel,
-			logrus.FatalLevel,
-			logrus.PanicLevel,
-		},
-	})
+	logger.AddHook(NewWriterHook(errorOutput, []logrus.Level{
+		logrus.ErrorLevel,
+		logrus.FatalLevel,
+		logrus.PanicLevel,
+	}))
 
 	logger.SetLevel(logrus.DebugLevel)
 	return logger
+}
+
+// InitLogger creates a logrus.Logger for production use, writing to rotating log files.
+func InitLogger() *logrus.Logger {
+	return InitLoggerWithCreators(rotatelogs.New, rotatelogs.New)
 }
 
 // Lumberjack

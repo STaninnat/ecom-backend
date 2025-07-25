@@ -1,0 +1,79 @@
+version: "2"
+run:
+  timeout: 10m
+
+linters:
+  enable:
+    - bodyclose
+    - copyloopvar
+    - dupl
+    - errcheck
+    - errorlint
+    - funlen
+    - gocheckcompilerdirectives
+    - goconst
+    - gocritic
+    - godox
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - revive
+    - staticcheck
+    - testifylint
+    - unparam
+    - unused
+  
+  settings:
+    dupl:
+      threshold: 100
+    funlen:
+      lines: -1
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
+  
+  exclusions:
+    rules:
+      - path: ^handlers/auth/(auth_helper_test|auth_service|handler_auth_test|handler_refresh_token_test)\.go$
+        linters:
+          - dupl
+      - path: ^handlers/payment/(handler_payment_confirm_test|handler_payment_create_test|handler_payment_get_test|handler_payment_refund_test)\.go$
+        linters:
+          - dupl
+      - path: ^handlers/review/(review_service_test)\.go$
+        linters:
+          - dupl
+      - path: ^handlers/upload/(handler_local_test)\.go$
+        linters:
+          - dupl
+      - path: ^internal/mongo/(review_test)\.go$
+        linters:
+          - dupl
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    goimports:
+      local-prefixes:
+        - github.com/STaninnat/ecom-backend
+    
+
+issues:
+  max-issues-per-linter: 20
+  max-same-issues: 5
+  fix: true
+  uniq-by-line: true
+  new: false
+  # whole-files: false

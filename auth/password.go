@@ -1,13 +1,17 @@
+// Package auth provides authentication, token management, validation, and session utilities for the ecom-backend project.
 package auth
 
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+// password.go: Password hashing and comparison using bcrypt.
+
+// HashPassword hashes the given password using bcrypt and returns the resulting hash string.
+// Returns an error if the password is too short or hashing fails.
 func HashPassword(password string) (string, error) {
 	if len(password) <= 8 {
 		return "", errors.New("password is too short, it must have at least 8 characters")
@@ -15,17 +19,18 @@ func HashPassword(password string) (string, error) {
 
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Couldn't hash password")
+		// log.Printf("Couldn't hash password")
 		return "", err
 	}
 
 	return string(bytes), nil
 }
 
+// CheckPasswordHash compares a plaintext password with its bcrypt hash and returns an error if they do not match.
 func CheckPasswordHash(password, hash string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return errors.New("password mismatch")
 		}
 

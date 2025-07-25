@@ -1,81 +1,108 @@
+// Package handlers provides core interfaces, configurations, middleware, and utilities to support HTTP request handling, authentication, logging, and user management in the ecom-backend project.
 package handlers
 
 import (
 	"net/http"
 
-	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 )
 
-type authhandler func(http.ResponseWriter, *http.Request, database.User)
+// handler_middleware.go: Provides middleware constructors for HandlerConfig and legacy Config, supporting auth, admin-only, and optional authentication.
 
-func (apicfg *HandlersConfig) HandlerAdminOnlyMiddleware(handler authhandler) http.HandlerFunc {
-	return apicfg.HandlerMiddleware(func(w http.ResponseWriter, r *http.Request, user database.User) {
-		ip, userAgent := GetRequestMetadata(r)
-		ctx := r.Context()
-
-		if user.Role != "admin" {
-			apicfg.LogHandlerError(
-				ctx,
-				"admin_middleware",
-				"user is not admin",
-				"unauthorized access attempt",
-				ip, userAgent, nil,
-			)
-			middlewares.RespondWithError(w, http.StatusForbidden, "Access Denied")
-			return
-		}
-
-		handler(w, r, user)
-	})
+// HandlerAdminOnlyMiddleware creates middleware that only allows admin users for HandlerConfig.
+func (cfg *HandlerConfig) HandlerAdminOnlyMiddleware(handler AuthHandler) http.HandlerFunc {
+	authService := &handlerConfigAuthAdapter{authService: cfg.AuthService}
+	userService := &handlerConfigUserAdapter{userService: cfg.UserService}
+	loggerService := &handlerConfigLoggerAdapter{loggerService: cfg.LoggerService}
+	metadataService := &handlerConfigMetadataAdapter{metadataService: cfg.RequestMetadataService}
+	authMiddleware := middlewares.CreateAdminOnlyMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		cfg.JWTSecret,
+	)
+	return authMiddleware(middlewares.AuthHandler(handler))
 }
 
-func (apicfg *HandlersConfig) HandlerMiddleware(handler authhandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ip, userAgent := GetRequestMetadata(r)
-		ctx := r.Context()
+// HandlerMiddleware creates authentication middleware that validates JWT tokens for HandlerConfig.
+func (cfg *HandlerConfig) HandlerMiddleware(handler AuthHandler) http.HandlerFunc {
+	authService := &handlerConfigAuthAdapter{authService: cfg.AuthService}
+	userService := &handlerConfigUserAdapter{userService: cfg.UserService}
+	loggerService := &handlerConfigLoggerAdapter{loggerService: cfg.LoggerService}
+	metadataService := &handlerConfigMetadataAdapter{metadataService: cfg.RequestMetadataService}
+	authMiddleware := middlewares.CreateAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		cfg.JWTSecret,
+	)
+	return authMiddleware(middlewares.AuthHandler(handler))
+}
 
-		cookie, err := r.Cookie("access_token")
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"auth_middleware",
-				"missing access token cookie",
-				"Access token cookie not found",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusUnauthorized, "Couldn't find token")
-			return
-		}
+// HandlerAdminOnlyMiddleware creates middleware that only allows admin users for Config (legacy compatibility).
+// Legacy compatibility methods for existing Config
+func (apicfg *Config) HandlerAdminOnlyMiddleware(handler AuthHandler) http.HandlerFunc {
+	authService := &legacyAuthService{auth: apicfg.Auth}
+	userService := &legacyUserService{db: apicfg.DB}
+	loggerService := &legacyLoggerService{logger: apicfg.Logger}
+	metadataService := &legacyMetadataService{}
+	authMiddleware := middlewares.CreateAdminOnlyMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		apicfg.JWTSecret,
+	)
+	return authMiddleware(middlewares.AuthHandler(handler))
+}
 
-		token := cookie.Value
+// HandlerMiddleware returns an HTTP handler with authentication and related middlewares applied.
+func (apicfg *Config) HandlerMiddleware(handler AuthHandler) http.HandlerFunc {
+	authService := &legacyAuthService{auth: apicfg.Auth}
+	userService := &legacyUserService{db: apicfg.DB}
+	loggerService := &legacyLoggerService{logger: apicfg.Logger}
+	metadataService := &legacyMetadataService{}
+	authMiddleware := middlewares.CreateAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		apicfg.JWTSecret,
+	)
+	return authMiddleware(middlewares.AuthHandler(handler))
+}
 
-		claims, err := apicfg.Auth.ValidateAccessToken(token, apicfg.JWTSecret)
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"auth_middleware",
-				"invalid access token",
-				"Access token validation failed",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusUnauthorized, "Invalid token")
-			return
-		}
+// HandlerOptionalMiddleware creates middleware that optionally authenticates users for HandlerConfig.
+func (cfg *HandlerConfig) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
+	authService := &handlerConfigAuthAdapter{authService: cfg.AuthService}
+	userService := &handlerConfigUserAdapter{userService: cfg.UserService}
+	loggerService := &handlerConfigLoggerAdapter{loggerService: cfg.LoggerService}
+	metadataService := &handlerConfigMetadataAdapter{metadataService: cfg.RequestMetadataService}
+	optionalAuthMiddleware := middlewares.CreateOptionalAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		cfg.JWTSecret,
+	)
+	return optionalAuthMiddleware(middlewares.OptionalHandler(handler))
+}
 
-		user, err := apicfg.DB.GetUserByID(ctx, claims.UserID)
-		if err != nil {
-			apicfg.LogHandlerError(
-				ctx,
-				"auth_middleware",
-				"user lookup failed",
-				"Failed to fetch user from database",
-				ip, userAgent, err,
-			)
-			middlewares.RespondWithError(w, http.StatusInternalServerError, "Couldn't get user info")
-			return
-		}
-
-		handler(w, r, user)
-	}
+// HandlerOptionalMiddleware creates middleware that optionally authenticates users for Config (legacy compatibility).
+// Legacy compatibility method for existing Config
+func (apicfg *Config) HandlerOptionalMiddleware(handler OptionalHandler) http.HandlerFunc {
+	authService := &legacyAuthService{auth: apicfg.Auth}
+	userService := &legacyUserService{db: apicfg.DB}
+	loggerService := &legacyLoggerService{logger: apicfg.Logger}
+	metadataService := &legacyMetadataService{}
+	optionalAuthMiddleware := middlewares.CreateOptionalAuthMiddleware(
+		authService,
+		userService,
+		loggerService,
+		metadataService,
+		apicfg.JWTSecret,
+	)
+	return optionalAuthMiddleware(middlewares.OptionalHandler(handler))
 }

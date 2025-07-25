@@ -1,3 +1,22 @@
+// Package main is the entry point for the ecom-backend application. It sets up the server and routes.
+// @title           E-Commerce Backend API
+// @version         1.0
+// @description     This is the backend API for the e-commerce platform.
+// @termsOfService  https://yourdomain.com/terms/
+//
+// @contact.name   API Support
+// @contact.url    https://yourdomain.com/support
+// @contact.email  support@yourdomain.com
+//
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+//
+// @host      localhost:8080
+// @BasePath  /v1
+//
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -5,12 +24,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/router"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq"
+
+	_ "github.com/STaninnat/ecom-backend/docs"
 )
 
 func main() {
@@ -20,11 +42,11 @@ func main() {
 	}
 
 	logger := utils.InitLogger()
-	handlersConfig := handlers.SetupHandlersConfig(logger)
+	Config := handlers.SetupHandlersConfig(logger)
 
-	port := handlersConfig.APIConfig.Port
+	port := Config.Port
 
-	r := &router.RouterConfig{HandlersConfig: handlersConfig}
+	r := &router.Config{Config: Config}
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r.SetupRouter(logger),
@@ -40,5 +62,5 @@ func main() {
 		}
 	}()
 
-	utils.GracefulShutdown(srv, handlersConfig.APIConfig)
+	utils.GracefulShutdown(srv, Config.APIConfig, 10*time.Second)
 }

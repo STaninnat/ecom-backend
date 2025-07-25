@@ -1,63 +1,58 @@
+// Package orderhandlers provides HTTP handlers and services for managing orders, including creation, retrieval, updating, deletion, with error handling and logging.
 package orderhandlers
 
 import (
 	"encoding/json"
 	"net/http"
-	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
-	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, r *http.Request, user database.User) {
-	type UpdateOrderStatusRequest struct {
-		Status string `json:"status"`
-	}
+// handler_order_update.go: Handles HTTP request to update order status, with validation, logging, and business logic integration.
 
+// HandlerUpdateOrderStatus handles HTTP PUT requests to update an order's status.
+// @Summary      Update order status
+// @Description  Updates the status of an order (admin only)
+// @Tags         orders
+// @Accept       json
+// @Produce      json
+// @Param        order_id  path  string  true  "Order ID"
+// @Param        status    body  object{}  true  "Order status payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/orders/{order_id}/status [put]
+func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, r *http.Request, _ database.User) {
+	// Extract request metadata for logging
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
+	// Parse and validate request payload
 	var req UpdateOrderStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apicfg.LogHandlerError(
+		// Log error for invalid request payload
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_order_status",
-			"invalid request body",
-			"Failed to parse body",
+			"invalid_request",
+			"Failed to parse request body",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	validStatuses := map[string]bool{
-		"pending":   true,
-		"paid":      true,
-		"shipped":   true,
-		"delivered": true,
-		"cancelled": true,
-	}
-
-	if !validStatuses[req.Status] {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_order_status",
-			"invalid status",
-			"Received invalid order status",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid order status")
-		return
-	}
-
+	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
 	if orderID == "" {
-		apicfg.LogHandlerError(
+		// Log error for missing order ID
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_order_status",
-			"missing order id",
+			"missing_order_id",
 			"Order ID must be provided",
 			ip, userAgent, nil,
 		)
@@ -65,53 +60,18 @@ func (apicfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWrite
 		return
 	}
 
-	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	// Call business logic service to update order status
+	err := cfg.GetOrderService().UpdateOrderStatus(ctx, orderID, req.Status)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_order_status",
-			"start tx failed",
-			"Error starting transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
-		return
-	}
-	defer tx.Rollback()
-
-	queries := apicfg.DB.WithTx(tx)
-
-	err = queries.UpdateOrderStatus(ctx, database.UpdateOrderStatusParams{
-		ID:        orderID,
-		Status:    req.Status,
-		UpdatedAt: time.Now().UTC(),
-	})
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_order_status",
-			"update failed",
-			"Failed to update order status",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update order status")
+		// Handle and log any errors from the service layer
+		cfg.handleOrderError(w, r, err, "update_order_status", ip, userAgent)
 		return
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_order_status",
-			"commit tx failed",
-			"Error committing transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
-		return
-	}
+	// Log successful status update
+	cfg.Logger.LogHandlerSuccess(ctx, "update_order_status", "Order status updated successfully", ip, userAgent)
 
-	apicfg.LogHandlerSuccess(ctx, "update_order_status", "Order status updated successfully", ip, userAgent)
+	// Respond with success message
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Order status updated successfully",
 	})

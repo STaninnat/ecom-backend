@@ -1,3 +1,4 @@
+// Package reviewhandlers provides HTTP handlers for managing product reviews, including CRUD operations and listing with filters and pagination.
 package reviewhandlers
 
 import (
@@ -5,70 +6,103 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
 	"github.com/STaninnat/ecom-backend/middlewares"
 	"github.com/STaninnat/ecom-backend/models"
 	"github.com/STaninnat/ecom-backend/utils"
-	"github.com/go-chi/chi/v5"
 )
 
-func (apicfg *HandlersReviewConfig) HandlerUpdateReviewByID(w http.ResponseWriter, r *http.Request, user database.User) {
+// handler_review_update.go: Handles updating a review by ID: validates input, checks ownership, updates via service, and sends response.
+
+// Validate checks the request for required fields and valid values.
+// Ensures that the Rating is within the valid range (1-5) and the Comment field is not empty.
+// Returns an AppError if any validation fails.
+// Returns:
+//   - error: AppError with appropriate code and message if validation fails, nil otherwise
+func (r *ReviewUpdateRequest) Validate() error {
+	if r.Rating < 1 || r.Rating > 5 {
+		return &handlers.AppError{Code: "invalid_request", Message: "Rating must be between 1 and 5"}
+	}
+	if r.Comment == "" {
+		return &handlers.AppError{Code: "invalid_request", Message: "Comment is required"}
+	}
+	return nil
+}
+
+// HandlerUpdateReviewByID handles HTTP PUT requests to update an existing review by its ID.
+// @Summary      Update review by ID
+// @Description  Updates an existing review by its ID
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Param        id     path  string  true  "Review ID"
+// @Param        review body  object{}  true  "Review update payload"
+// @Success      200  {object}  handlers.APIResponse
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/reviews/{id} [put]
+func (cfg *HandlersReviewConfig) HandlerUpdateReviewByID(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
 	reviewID := chi.URLParam(r, "id")
 	if reviewID == "" {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"update_review_by_id",
-			"missing review id",
-			"Review ID not found in URL",
-			ip, userAgent, nil,
-		)
+		cfg.Logger.LogHandlerError(ctx, "update_review_by_id", "invalid_request", "Review ID is required", ip, userAgent, nil)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Review ID is required")
 		return
 	}
 
-	var input models.Review
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
+	review, err := cfg.GetReviewService().GetReviewByID(ctx, reviewID)
+	if err != nil {
+		cfg.handleReviewError(w, r, err, "update_review_by_id", ip, userAgent)
+		return
+	}
+
+	if review.UserID != user.ID {
+		cfg.Logger.LogHandlerError(ctx, "update_review_by_id", "unauthorized", "You can only update your own reviews", ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusForbidden, "You can only update your own reviews")
+		return
+	}
+
+	var req ReviewUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_review_by_id",
-			"invalid request body",
-			"Failed to parse body",
+			"invalid_request",
+			"Invalid request payload",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if input.UserID != user.ID {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"update_review_by_id",
-			"unauthorized",
-			"User does not own the review",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusForbidden, "You can only update your own reviews")
+	if err := req.Validate(); err != nil {
+		cfg.handleReviewError(w, r, err, "update_review_by_id", ip, userAgent)
 		return
 	}
 
-	if err := apicfg.ReviewMG.UpdateReviewByID(ctx, reviewID, &input); err != nil {
-		apicfg.HandlersConfig.LogHandlerError(
-			ctx,
-			"update_review_by_id",
-			"update review failed",
-			"Error updating review",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to update review")
+	update := &models.Review{
+		UserID:    user.ID,
+		ProductID: review.ProductID,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
+		MediaURLs: req.MediaURLs,
+	}
+
+	if err := cfg.GetReviewService().UpdateReviewByID(ctx, reviewID, update); err != nil {
+		cfg.handleReviewError(w, r, err, "update_review_by_id", ip, userAgent)
 		return
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.HandlersConfig.LogHandlerSuccess(ctxWithUserID, "update_review_by_id", "Review updated successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_review_by_id", "Review updated successfully", ip, userAgent)
 
-	middlewares.RespondWithJSON(w, http.StatusOK, input)
+	middlewares.RespondWithJSON(w, http.StatusOK, handlers.APIResponse{
+		Message: "Review updated successfully",
+		Code:    "success",
+		Data:    update,
+	})
 }

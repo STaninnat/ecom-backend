@@ -1,11 +1,10 @@
+// Package producthandlers provides HTTP handlers and business logic for managing products, including CRUD operations and filtering.
 package producthandlers
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
@@ -13,94 +12,43 @@ import (
 	"github.com/STaninnat/ecom-backend/utils"
 )
 
-func (apicfg *HandlersProductConfig) HandlerUpdateProduct(w http.ResponseWriter, r *http.Request, user database.User) {
+// handler_product_update.go: Handles updating a product: parses input, calls service, logs result, and returns success or error response.
+
+// HandlerUpdateProduct handles HTTP PUT requests to update an existing product.
+// @Summary      Update product
+// @Description  Updates an existing product
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        product  body  object{}  true  "Product payload"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Router       /v1/products/ [put]
+func (cfg *HandlersProductConfig) HandlerUpdateProduct(w http.ResponseWriter, r *http.Request, user database.User) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
 	ctx := r.Context()
 
 	var params ProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		apicfg.LogHandlerError(
+		cfg.Logger.LogHandlerError(
 			ctx,
 			"update_product",
-			"invalid body",
-			"Failed to parse body",
+			"invalid_request",
+			"Invalid request payload",
 			ip, userAgent, err,
 		)
 		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if params.ID == "" || params.CategoryID == "" || params.Name == "" || params.Price <= 0 || params.Stock < 0 {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_product",
-			"missing fields",
-			"Required fields are missing",
-			ip, userAgent, nil,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing or invalid required fields")
-		return
-	}
-
-	isActive := true
-	if params.IsActive != nil {
-		isActive = *params.IsActive
-	}
-
-	tx, err := apicfg.DBConn.BeginTx(ctx, nil)
+	err := cfg.GetProductService().UpdateProduct(ctx, params)
 	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_product",
-			"start tx failed",
-			"Error starting transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Transaction error")
-		return
-	}
-	defer tx.Rollback()
-
-	queries := apicfg.DB.WithTx(tx)
-
-	err = queries.UpdateProduct(ctx, database.UpdateProductParams{
-		ID:          params.ID,
-		CategoryID:  utils.ToNullString(params.CategoryID),
-		Name:        params.Name,
-		Description: utils.ToNullString(params.Description),
-		Price:       fmt.Sprintf("%.2f", params.Price),
-		Stock:       params.Stock,
-		ImageUrl:    utils.ToNullString(params.ImageURL),
-		IsActive:    isActive,
-		UpdatedAt:   time.Now().UTC(),
-	})
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_product",
-			"update failed",
-			"Error updating product",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Couldn't update product")
-		return
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		apicfg.LogHandlerError(
-			ctx,
-			"update_product",
-			"commit tx failed",
-			"Error committing transaction",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		cfg.handleProductError(w, r, err, "update_product", ip, userAgent)
 		return
 	}
 
 	ctxWithUserID := context.WithValue(ctx, utils.ContextKeyUserID, user.ID)
-	apicfg.LogHandlerSuccess(ctxWithUserID, "update_product", "Updated product successfully", ip, userAgent)
+	cfg.Logger.LogHandlerSuccess(ctxWithUserID, "update_product", "Updated product successfully", ip, userAgent)
 
 	middlewares.RespondWithJSON(w, http.StatusOK, handlers.HandlerResponse{
 		Message: "Product updated successfully",
