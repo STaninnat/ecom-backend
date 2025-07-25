@@ -194,12 +194,6 @@ func runHandlePaymentErrorStatusTest(t *testing.T, codes []string, expectedStatu
 			if code == "user_not_found" || (code == "invalid_request" && expectedStatus == http.StatusNotFound) {
 				expectedCode = http.StatusInternalServerError
 				expectedMsg = "Internal server error"
-			} else if code == "invalid_request" {
-				// logCode = "invalid_request" // This line is removed
-			} else if code == "unauthorized" {
-				// logCode = "unauthorized" // This line is removed
-			} else if code == "payment_not_found" {
-				// logCode = "payment_not_found" // This line is removed
 			}
 			mockHandlersConfig.On("LogHandlerError", mock.Anything, op, mock.Anything, "Test error", "", "", mock.Anything).Return()
 
@@ -229,14 +223,8 @@ func TestHandlePaymentError_AllErrorCodes(t *testing.T) {
 
 			cfg.handlePaymentError(w, req, appErr, "test_op", "", "")
 
-			// For user_not_found, expect 404 and 'Test error'
-			if code == "user_not_found" {
-				assert.Equal(t, http.StatusNotFound, w.Code)
-				assert.Contains(t, w.Body.String(), "Test error")
-			} else {
-				assert.Equal(t, http.StatusNotFound, w.Code)
-				assert.Contains(t, w.Body.String(), "Test error")
-			}
+			assert.Equal(t, http.StatusNotFound, w.Code)
+			assert.Contains(t, w.Body.String(), "Test error")
 			mockHandlersConfig.AssertExpectations(t)
 		})
 	}

@@ -63,54 +63,50 @@ func TestHandlerConfirmPayment_InvalidPayload(t *testing.T) {
 	testInvalidPayload(t, cfg.HandlerConfirmPayment, mockLog, user, "POST", "/payments/confirm", "confirm_payment")
 }
 
-// TestHandlerConfirmPayment_ServiceError tests internal error from service
-func TestHandlerConfirmPayment_ServiceError(t *testing.T) {
-	mockService := new(MockPaymentServiceForConfirm)
-	mockLog := new(MockLoggerForConfirm)
-	cfg := &HandlersPaymentConfig{
-		Config:         &handlers.Config{},
-		Logger:         mockLog,
-		paymentService: mockService,
+// TestHandlerConfirmPayment_ErrorCases tests internal error from service and validation error from service
+func TestHandlerConfirmPayment_ErrorCases(t *testing.T) {
+	cases := []struct {
+		name           string
+		err            *handlers.AppError
+		expectedStatus int
+		logArgs        []any
+	}{
+		{
+			name:           "service error",
+			err:            &handlers.AppError{Code: "confirm_payment_error", Message: "fail", Err: errors.New("fail")},
+			expectedStatus: http.StatusInternalServerError,
+			logArgs:        []any{mock.Anything, "confirm_payment", "internal_error", "fail", mock.Anything, mock.Anything, errors.New("fail")},
+		},
+		{
+			name:           "validation error",
+			err:            &handlers.AppError{Code: "invalid_request", Message: "Invalid order ID", Err: errors.New("invalid order")},
+			expectedStatus: http.StatusBadRequest,
+			logArgs:        []any{mock.Anything, "confirm_payment", "invalid_request", "Invalid order ID", mock.Anything, mock.Anything, mock.Anything},
+		},
 	}
-	user := database.User{ID: "u1"}
-	req := ConfirmPaymentRequest{OrderID: "order1"}
-	jsonBody, _ := json.Marshal(req)
-	expectedParams := ConfirmPaymentParams{OrderID: "order1", UserID: "u1"}
-	err := &handlers.AppError{Code: "confirm_payment_error", Message: "fail", Err: errors.New("fail")}
-	mockService.On("ConfirmPayment", mock.Anything, expectedParams).Return(nil, err)
-	mockLog.On("LogHandlerError", mock.Anything, "confirm_payment", "internal_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockService := new(MockPaymentServiceForConfirm)
+			mockLog := new(MockLoggerForConfirm)
+			cfg := &HandlersPaymentConfig{
+				Config:         &handlers.Config{},
+				Logger:         mockLog,
+				paymentService: mockService,
+			}
+			user := database.User{ID: "u1"}
+			req := ConfirmPaymentRequest{OrderID: "order1"}
+			jsonBody, _ := json.Marshal(req)
+			expectedParams := ConfirmPaymentParams{OrderID: "order1", UserID: "u1"}
+			mockService.On("ConfirmPayment", mock.Anything, expectedParams).Return(nil, tc.err)
+			mockLog.On("LogHandlerError", tc.logArgs...).Return()
 
-	httpReq := httptest.NewRequest("POST", "/payments/confirm", bytes.NewBuffer(jsonBody))
-	w := httptest.NewRecorder()
+			httpReq := httptest.NewRequest("POST", "/payments/confirm", bytes.NewBuffer(jsonBody))
+			w := httptest.NewRecorder()
 
-	cfg.HandlerConfirmPayment(w, httpReq, user)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockService.AssertExpectations(t)
-	mockLog.AssertExpectations(t)
-}
-
-// TestHandlerConfirmPayment_ValidationError tests validation error from service
-func TestHandlerConfirmPayment_ValidationError(t *testing.T) {
-	mockService := new(MockPaymentServiceForConfirm)
-	mockLog := new(MockLoggerForConfirm)
-	cfg := &HandlersPaymentConfig{
-		Config:         &handlers.Config{},
-		Logger:         mockLog,
-		paymentService: mockService,
+			cfg.HandlerConfirmPayment(w, httpReq, user)
+			assert.Equal(t, tc.expectedStatus, w.Code)
+			mockService.AssertExpectations(t)
+			mockLog.AssertExpectations(t)
+		})
 	}
-	user := database.User{ID: "u1"}
-	req := ConfirmPaymentRequest{OrderID: "order1"}
-	jsonBody, _ := json.Marshal(req)
-	expectedParams := ConfirmPaymentParams{OrderID: "order1", UserID: "u1"}
-	err := &handlers.AppError{Code: "invalid_request", Message: "Invalid order ID", Err: errors.New("invalid order")}
-	mockService.On("ConfirmPayment", mock.Anything, expectedParams).Return(nil, err)
-	mockLog.On("LogHandlerError", mock.Anything, "confirm_payment", "invalid_request", "Invalid order ID", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	httpReq := httptest.NewRequest("POST", "/payments/confirm", bytes.NewBuffer(jsonBody))
-	w := httptest.NewRecorder()
-
-	cfg.HandlerConfirmPayment(w, httpReq, user)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockService.AssertExpectations(t)
-	mockLog.AssertExpectations(t)
 }
