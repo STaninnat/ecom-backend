@@ -1,5 +1,7 @@
 .env*
+!.env.example
 dump.rdb
+
 logs/
 images/
 uploads/
