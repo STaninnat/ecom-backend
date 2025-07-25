@@ -66,10 +66,16 @@ func setupTestRouterConfig(t *testing.T) *Config {
 
 	// Create test upload directory and file
 	uploadPath := "./test-uploads"
-	os.MkdirAll(uploadPath, 0755)
-	os.WriteFile(filepath.Join(uploadPath, "test.txt"), []byte("test file"), 0644)
+	if err := os.MkdirAll(uploadPath, 0750); err != nil {
+		t.Fatalf("Failed to create test upload directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(uploadPath, "test.txt"), []byte("test file"), 0600); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
 	t.Cleanup(func() {
-		os.RemoveAll(uploadPath)
+		if err := os.RemoveAll(uploadPath); err != nil {
+			t.Logf("Failed to remove test upload directory: %v", err)
+		}
 	})
 
 	// Create mock database using sqlmock
@@ -440,7 +446,9 @@ func TestSetupRouter_StaticFileServer(t *testing.T) {
 	assert.Equal(t, "test file", w.Body.String(), "Should serve the test file content")
 
 	// Clean up test directory
-	os.RemoveAll("./test-uploads")
+	if err := os.RemoveAll("./test-uploads"); err != nil {
+		t.Logf("Failed to remove test upload directory: %v", err)
+	}
 }
 
 // TestSetupRouter_CacheConfiguration tests that cache middleware is properly configured.
@@ -561,12 +569,12 @@ func TestCreateCacheConfigs(t *testing.T) {
 // TestSetupUploadHandlers_S3Backend tests upload handler setup with S3 backend.
 func TestSetupUploadHandlers_S3Backend(t *testing.T) {
 	routerCfg := setupTestRouterConfig(t)
-	routerCfg.Config.APIConfig.UploadBackend = "s3"
+	routerCfg.UploadBackend = "s3"
 	configs := routerCfg.createHandlerConfigs()
 	routerCfg.setupUploadHandlers(configs)
 	// Just check that the upload config is not nil and has the right path
 	assert.NotNil(t, configs.upload)
-	assert.Equal(t, routerCfg.Config.APIConfig.UploadPath, configs.upload.UploadPath)
+	assert.Equal(t, routerCfg.UploadPath, configs.upload.UploadPath)
 }
 
 // TestGlobalMiddleware_PanicRecovery checks that panic recovery middleware works.

@@ -158,28 +158,28 @@ func TestWithUser_InvalidUserData(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rw.Code)
 }
 
-// TestWithAdmin_ConcurrentRequests tests WithAdmin adapter with concurrent requests.
-func TestWithAdmin_ConcurrentRequests(t *testing.T) {
+// runConcurrentRequests is a helper function to test concurrent requests for both WithUser and WithAdmin adapters
+func runConcurrentRequests(t *testing.T, adapter func(func(http.ResponseWriter, *http.Request, database.User)) http.HandlerFunc, expectedRole string) {
 	h := func(_ http.ResponseWriter, _ *http.Request, user database.User) {
-		assert.Equal(t, "admin", user.Role)
+		assert.Equal(t, expectedRole, user.Role)
 	}
-	hf := WithAdmin(h)
+	hf := adapter(h)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
 	// Run multiple requests concurrently
-	for i := range 10 {
+	for range 10 {
 		wg.Add(1)
-		go func(num int) {
+		go func() {
 			defer wg.Done()
 			rw := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", "/", nil)
-			user := database.User{Role: "admin"}
+			user := database.User{Role: expectedRole}
 			ctx := context.WithValue(req.Context(), contextKeyUser, user)
 			hf.ServeHTTP(rw, req.WithContext(ctx))
 			assert.Equal(t, http.StatusOK, rw.Code)
-		}(i)
+		}()
 	}
 
 	// Wait with timeout
@@ -196,42 +196,14 @@ func TestWithAdmin_ConcurrentRequests(t *testing.T) {
 	}
 }
 
+// TestWithAdmin_ConcurrentRequests tests WithAdmin adapter with concurrent requests.
+func TestWithAdmin_ConcurrentRequests(t *testing.T) {
+	runConcurrentRequests(t, WithAdmin, "admin")
+}
+
 // TestWithUser_ConcurrentRequests tests WithUser adapter with concurrent requests.
 func TestWithUser_ConcurrentRequests(t *testing.T) {
-	h := func(_ http.ResponseWriter, _ *http.Request, user database.User) {
-		assert.Equal(t, "user", user.Role)
-	}
-	hf := WithUser(h)
-
-	var wg sync.WaitGroup
-	done := make(chan struct{})
-
-	// Run multiple requests concurrently
-	for i := range 10 {
-		wg.Add(1)
-		go func(num int) {
-			defer wg.Done()
-			rw := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "/", nil)
-			user := database.User{Role: "user"}
-			ctx := context.WithValue(req.Context(), contextKeyUser, user)
-			hf.ServeHTTP(rw, req.WithContext(ctx))
-			assert.Equal(t, http.StatusOK, rw.Code)
-		}(i)
-	}
-
-	// Wait with timeout
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// Test completed successfully
-	case <-time.After(5 * time.Second):
-		t.Fatal("Test timed out")
-	}
+	runConcurrentRequests(t, WithUser, "user")
 }
 
 func TestWithUserAndAdminAdapters(t *testing.T) {

@@ -1,4 +1,5 @@
-package testutil
+// Package internal_testutil provides shared test utilities and mock implementations to support unit testing of internal handlers and services.
+package internal_testutil
 
 import (
 	"context"
@@ -10,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// payment_helpers.go: Provides a helper for testing handler behavior when order_id is missing in the request.
 
 // RunHandlerMissingOrderIDTest is a generic helper for testing missing order_id param in payment handlers.
 func RunHandlerMissingOrderIDTest(

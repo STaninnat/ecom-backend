@@ -1,4 +1,5 @@
-package testutil
+// Package internal_testutil provides shared test utilities and mock implementations to support unit testing of internal handlers and services.
+package internal_testutil
 
 import (
 	"net/http"
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// auth_helpers.go: Provides shared test cases and mocks for testing authentication token error scenarios.
 
 // MockHandlersConfig is a minimal exported mock for handler logging.
 type MockHandlersConfig struct {
@@ -34,7 +37,7 @@ func RunAuthTokenErrorScenarios(t *testing.T, operation string, handlerFunc func
 				logger.On("LogHandlerError", mock.Anything, operation, "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "http: named cookie not present",
+			expectedBody:   assert.AnError.Error(),
 		},
 		{
 			name: "Success_GoogleProvider",
@@ -42,7 +45,7 @@ func RunAuthTokenErrorScenarios(t *testing.T, operation string, handlerFunc func
 				logger.On("LogHandlerError", mock.Anything, operation, "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "http: named cookie not present",
+			expectedBody:   assert.AnError.Error(),
 		},
 		{
 			name: "ServiceError",
@@ -50,7 +53,7 @@ func RunAuthTokenErrorScenarios(t *testing.T, operation string, handlerFunc func
 				logger.On("LogHandlerError", mock.Anything, operation, "invalid_token", "Error validating authentication token", mock.Anything, mock.Anything, mock.Anything).Return()
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "http: named cookie not present",
+			expectedBody:   assert.AnError.Error(),
 		},
 	}
 
