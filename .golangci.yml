@@ -71,9 +71,9 @@ formatters:
     
 
 issues:
-  max-issues-per-linter: 20
+  max-issues-per-linter: 10
   max-same-issues: 5
   fix: true
   uniq-by-line: true
-  new: false
-  # whole-files: false
+  new: true
+  whole-files: false
