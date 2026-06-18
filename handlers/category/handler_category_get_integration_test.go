@@ -36,7 +36,7 @@ func TestIntegration_HandlerGetAllCategories(t *testing.T) {
 		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		expectedCategories := []database.Category{
 			{
-				ID:          "cat1",
+				ID:          "550e8400-e29b-41d4-a716-446655440000",
 				Name:        "Category 1",
 				Description: utils.ToNullString("Description 1"),
 				CreatedAt:   now,
@@ -63,7 +63,7 @@ func TestIntegration_HandlerGetAllCategories(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		var got []map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &got)
-		assert.Equal(t, "cat1", got[0]["ID"])
+		assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", got[0]["ID"])
 		assert.Equal(t, "Category 1", got[0]["Name"])
 		description := got[0]["Description"].(map[string]any)
 		assert.Equal(t, "Description 1", description["String"])

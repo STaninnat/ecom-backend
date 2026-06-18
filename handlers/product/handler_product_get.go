@@ -59,15 +59,15 @@ func (cfg *HandlersProductConfig) HandlerGetProductByID(w http.ResponseWriter, r
 	ctx := r.Context()
 
 	productID := chi.URLParam(r, "id")
-	if productID == "" {
+	if productID == "" || !utils.IsValidUUID(productID) {
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_product_by_id",
 			"invalid_request",
-			"Missing product ID",
+			"Valid Product ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing product ID")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Product ID is required")
 		return
 	}
 

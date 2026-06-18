@@ -44,7 +44,7 @@ func TestCreateOrder_Success(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2, Price: 10.50},
@@ -74,7 +74,7 @@ func TestCreateOrder_EmptyItems(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{},
 	}
@@ -97,7 +97,7 @@ func TestCreateOrder_InvalidQuantity(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 0, Price: 10.50},
@@ -122,7 +122,7 @@ func TestCreateOrder_NegativePrice(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: -10.50},
@@ -147,7 +147,7 @@ func TestCreateOrder_QuantityOverflow(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2147483648, Price: 10.50}, // Exceeds int32 max
@@ -256,7 +256,7 @@ func TestCreateOrder_ErrorScenarios(t *testing.T) {
 				}
 				service = NewOrderService(queries, db)
 			}
-			user := database.User{ID: "user123"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			params := CreateOrderRequest{
 				Items: []OrderItemInput{{ProductID: "prod1", Quantity: 2, Price: 10.50}},
 			}
@@ -293,7 +293,7 @@ func TestGetAllOrders_Success(t *testing.T) {
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user1", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
@@ -333,26 +333,26 @@ func TestGetUserOrders_Success(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	// Mock the database queries with correct column structure
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("user123").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user123", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "order_id", "product_id", "quantity", "price", "created_at", "updated_at",
 		}).AddRow(
-			"item1", "order1", "prod1", 2, "50.00", time.Now(), time.Now(),
+			"item1", "550e8400-e29b-41d4-a716-446655440000", "prod1", 2, "50.00", time.Now(), time.Now(),
 		),
 	)
 
@@ -369,10 +369,10 @@ func TestGetUserOrders_DatabaseError(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	// Mock the database query to return an error
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("user123").WillReturnError(errors.New("database error"))
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnError(errors.New("database error"))
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
@@ -391,22 +391,22 @@ func TestGetUserOrders_OrderItemsError(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	// Mock the database queries
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("user123").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user123", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnError(errors.New("order items error"))
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnError(errors.New("order items error"))
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
@@ -422,7 +422,7 @@ func TestGetUserOrders_OrderItemsError(t *testing.T) {
 // TestGetUserOrders_NilDatabase tests user orders retrieval with nil database.
 func TestGetUserOrders_NilDatabase(t *testing.T) {
 	service := NewOrderService(nil, nil)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	orders, err := service.GetUserOrders(context.Background(), user)
 
@@ -441,34 +441,34 @@ func TestGetOrderByID_Success(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	// Mock the database queries with correct column structure
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user123", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "order_id", "product_id", "quantity", "price", "created_at", "updated_at",
 		}).AddRow(
-			"item1", "order1", "prod1", 2, "50.00", time.Now(), time.Now(),
+			"item1", "550e8400-e29b-41d4-a716-446655440000", "prod1", 2, "50.00", time.Now(), time.Now(),
 		),
 	)
 
-	order, err := service.GetOrderByID(context.Background(), "order1", user)
+	order, err := service.GetOrderByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", user)
 
 	require.NoError(t, err)
 	assert.NotNil(t, order)
-	assert.Equal(t, "order1", order.Order.ID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", order.Order.ID)
 }
 
 // TestGetOrderByID_Unauthorized tests unauthorized access to order.
@@ -477,23 +477,23 @@ func TestGetOrderByID_Unauthorized(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123", Role: "user"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
 
 	// Mock the database query to return an order owned by a different user
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user456", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "user456", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
 
-	order, err := service.GetOrderByID(context.Background(), "order1", user)
+	order, err := service.GetOrderByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", user)
 
 	require.Error(t, err)
 	assert.Nil(t, order)
@@ -512,31 +512,31 @@ func TestGetOrderByID_AdminAccess(t *testing.T) {
 	user := database.User{ID: "admin123", Role: "admin"}
 
 	// Mock the database queries with correct column structure
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user456", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "user456", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "order_id", "product_id", "quantity", "price", "created_at", "updated_at",
 		}).AddRow(
-			"item1", "order1", "prod1", 2, "50.00", time.Now(), time.Now(),
+			"item1", "550e8400-e29b-41d4-a716-446655440000", "prod1", 2, "50.00", time.Now(), time.Now(),
 		),
 	)
 
-	order, err := service.GetOrderByID(context.Background(), "order1", user)
+	order, err := service.GetOrderByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", user)
 
 	require.NoError(t, err)
 	assert.NotNil(t, order)
-	assert.Equal(t, "order1", order.Order.ID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", order.Order.ID)
 }
 
 // TestGetOrderByID_OrderItemsError tests order retrieval with order items error.
@@ -545,24 +545,24 @@ func TestGetOrderByID_OrderItemsError(t *testing.T) {
 	queries := database.New(db)
 
 	service := NewOrderService(queries, db)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	// Mock the database queries
-	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM orders").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "user_id", "total_amount", "status", "payment_method",
 			"external_payment_id", "tracking_number", "shipping_address",
 			"contact_phone", "created_at", "updated_at",
 		}).AddRow(
-			"order1", "user123", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
+			"550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "100.00", "pending", sql.NullString{String: "credit_card", Valid: true},
 			sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
 			sql.NullString{String: "123 Main St", Valid: true}, sql.NullString{String: "555-1234", Valid: true},
 			time.Now(), time.Now(),
 		),
 	)
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnError(errors.New("order items error"))
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnError(errors.New("order items error"))
 
-	order, err := service.GetOrderByID(context.Background(), "order1", user)
+	order, err := service.GetOrderByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", user)
 
 	require.Error(t, err)
 	assert.Nil(t, order)
@@ -576,9 +576,9 @@ func TestGetOrderByID_OrderItemsError(t *testing.T) {
 // TestGetOrderByID_NilDatabase tests order retrieval with nil database.
 func TestGetOrderByID_NilDatabase(t *testing.T) {
 	service := NewOrderService(nil, nil)
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
-	order, err := service.GetOrderByID(context.Background(), "order1", user)
+	order, err := service.GetOrderByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", user)
 
 	require.Error(t, err)
 	assert.Nil(t, order)
@@ -601,7 +601,7 @@ func TestUpdateOrderStatus_Success(t *testing.T) {
 	mock.ExpectExec("UPDATE orders").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
+	err := service.UpdateOrderStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "shipped")
 
 	assert.NoError(t, err)
 }
@@ -613,7 +613,7 @@ func TestUpdateOrderStatus_InvalidStatus(t *testing.T) {
 
 	service := NewOrderService(queries, db)
 
-	err := service.UpdateOrderStatus(context.Background(), "order123", "invalid_status")
+	err := service.UpdateOrderStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "invalid_status")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -635,7 +635,7 @@ func TestUpdateOrderStatus_CommitError(t *testing.T) {
 	mock.ExpectExec("UPDATE orders").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
 
-	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
+	err := service.UpdateOrderStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "shipped")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -648,7 +648,7 @@ func TestUpdateOrderStatus_CommitError(t *testing.T) {
 func TestUpdateOrderStatus_NilDBConnection(t *testing.T) {
 	service := NewOrderService(nil, nil)
 
-	err := service.UpdateOrderStatus(context.Background(), "order123", "shipped")
+	err := service.UpdateOrderStatus(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "shipped")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -670,7 +670,7 @@ func TestDeleteOrder_Success(t *testing.T) {
 	mock.ExpectExec("DELETE FROM orders").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := service.DeleteOrder(context.Background(), "order123")
+	err := service.DeleteOrder(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	assert.NoError(t, err)
 }
@@ -687,7 +687,7 @@ func TestDeleteOrder_CommitError(t *testing.T) {
 	mock.ExpectExec("DELETE FROM orders").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
 
-	err := service.DeleteOrder(context.Background(), "order123")
+	err := service.DeleteOrder(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -700,7 +700,7 @@ func TestDeleteOrder_CommitError(t *testing.T) {
 func TestDeleteOrder_NilDBConnection(t *testing.T) {
 	service := NewOrderService(nil, nil)
 
-	err := service.DeleteOrder(context.Background(), "order123")
+	err := service.DeleteOrder(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -715,7 +715,7 @@ func TestOrderService_NilDependencies(t *testing.T) {
 	service := NewOrderService(nil, nil)
 
 	// Test CreateOrder with nil dependencies
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
@@ -748,17 +748,17 @@ func TestGetOrderItemsByOrderID_Success(t *testing.T) {
 	service := NewOrderService(queries, db)
 
 	// Mock the database query with correct 7 columns for OrderItem
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "order_id", "product_id", "quantity", "price", "created_at", "updated_at",
 		}).AddRow(
-			"item1", "order1", "prod1", 2, "50.00", time.Now(), time.Now(),
+			"item1", "550e8400-e29b-41d4-a716-446655440000", "prod1", 2, "50.00", time.Now(), time.Now(),
 		).AddRow(
-			"item2", "order1", "prod2", 1, "25.00", time.Now(), time.Now(),
+			"item2", "550e8400-e29b-41d4-a716-446655440000", "prod2", 1, "25.00", time.Now(), time.Now(),
 		),
 	)
 
-	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
+	items, err := service.GetOrderItemsByOrderID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.NoError(t, err)
 	assert.NotNil(t, items)
@@ -777,9 +777,9 @@ func TestGetOrderItemsByOrderID_DatabaseError(t *testing.T) {
 	service := NewOrderService(queries, db)
 
 	// Mock the database query to return an error
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnError(errors.New("database error"))
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnError(errors.New("database error"))
 
-	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
+	items, err := service.GetOrderItemsByOrderID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	assert.Nil(t, items)
@@ -794,7 +794,7 @@ func TestGetOrderItemsByOrderID_DatabaseError(t *testing.T) {
 func TestGetOrderItemsByOrderID_NilDatabase(t *testing.T) {
 	service := NewOrderService(nil, nil)
 
-	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
+	items, err := service.GetOrderItemsByOrderID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	assert.Nil(t, items)
@@ -813,13 +813,13 @@ func TestGetOrderItemsByOrderID_EmptyResult(t *testing.T) {
 	service := NewOrderService(queries, db)
 
 	// Mock the database query to return empty result with generic pattern
-	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("order1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM order_items").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "order_id", "product_id", "quantity", "price", "created_at", "updated_at",
 		}),
 	)
 
-	items, err := service.GetOrderItemsByOrderID(context.Background(), "order1")
+	items, err := service.GetOrderItemsByOrderID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.NoError(t, err)
 	assert.Empty(t, items)

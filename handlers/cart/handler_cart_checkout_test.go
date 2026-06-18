@@ -48,26 +48,26 @@ func TestHandlerCheckoutUserCart(t *testing.T) {
 	}{
 		{
 			name: "success",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				result := &CartCheckoutResult{
-					OrderID: "order123",
+					OrderID: "550e8400-e29b-41d4-a716-446655440000",
 					Message: "Order created successfully",
 				}
-				mockService.On("CheckoutUserCart", mock.Anything, "user1").Return(result, nil)
+				mockService.On("CheckoutUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(result, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: CartResponse{
 				Message: "Order created successfully",
-				OrderID: "order123",
+				OrderID: "550e8400-e29b-41d4-a716-446655440000",
 			},
 		},
 		{
 			name: "service error",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				err := &handlers.AppError{Code: "cart_empty", Message: "Cart is empty"}
-				mockService.On("CheckoutUserCart", mock.Anything, "user1").Return(nil, err)
+				mockService.On("CheckoutUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil, err)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Cart is empty", "code": "cart_empty"},
@@ -115,24 +115,24 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 		{
 			name:      "success",
 			sessionID: "sess1",
-			body:      map[string]string{"user_id": "user1"},
+			body:      map[string]string{"user_id": "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				result := &CartCheckoutResult{
-					OrderID: "order123",
+					OrderID: "550e8400-e29b-41d4-a716-446655440000",
 					Message: "Guest order created successfully",
 				}
-				mockService.On("CheckoutGuestCart", mock.Anything, "sess1", "user1").Return(result, nil)
+				mockService.On("CheckoutGuestCart", mock.Anything, "sess1", "550e8400-e29b-41d4-a716-446655440000").Return(result, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: CartResponse{
 				Message: "Guest order created successfully",
-				OrderID: "order123",
+				OrderID: "550e8400-e29b-41d4-a716-446655440000",
 			},
 		},
 		{
 			name:           "missing session ID",
 			sessionID:      "",
-			body:           map[string]string{"user_id": "user1"},
+			body:           map[string]string{"user_id": "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Missing session ID"},
@@ -156,10 +156,10 @@ func TestHandlerCheckoutGuestCart(t *testing.T) {
 		{
 			name:      "service error",
 			sessionID: "sess1",
-			body:      map[string]string{"user_id": "user1"},
+			body:      map[string]string{"user_id": "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				err := &handlers.AppError{Code: "cart_empty", Message: "Cart is empty"}
-				mockService.On("CheckoutGuestCart", mock.Anything, "sess1", "user1").Return(nil, err)
+				mockService.On("CheckoutGuestCart", mock.Anything, "sess1", "550e8400-e29b-41d4-a716-446655440000").Return(nil, err)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   map[string]any{"error": "Cart is empty", "code": "cart_empty"},

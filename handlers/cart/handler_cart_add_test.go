@@ -34,8 +34,8 @@ func TestHandlerAddItemToUserCart_Success(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	reqBody := CartItemRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
 	mockService.On("AddItemToUserCart", mock.Anything, user.ID, reqBody.ProductID, reqBody.Quantity).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "add_item_to_cart", "Added item to cart", mock.Anything, mock.Anything).Return()
@@ -59,7 +59,7 @@ func TestHandlerAddItemToUserCart_InvalidJSON(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	badBody := []byte(`{"bad":}`)
 	mockLogger.On("LogHandlerError", mock.Anything, "add_item_to_cart", "invalid request body", "Failed to parse body", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -81,7 +81,7 @@ func TestHandlerAddItemToUserCart_MissingFields(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reqBody := CartItemRequest{ProductID: "", Quantity: 0}
 	jsonBody, _ := json.Marshal(reqBody)
 	mockLogger.On("LogHandlerError", mock.Anything, "add_item_to_cart", "missing fields", "Required fields are missing", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -104,8 +104,8 @@ func TestHandlerAddItemToUserCart_ServiceError(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	reqBody := CartItemRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
 	err := &handlers.AppError{Code: "product_not_found", Message: "not found", Err: errors.New("fail")}
 	mockService.On("AddItemToUserCart", mock.Anything, user.ID, reqBody.ProductID, reqBody.Quantity).Return(err)
@@ -130,7 +130,7 @@ func TestHandlerAddItemToGuestCart_Success(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
+	reqBody := CartItemRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
 	mockService.On("AddItemToGuestCart", mock.Anything, testSessionIDAdd, reqBody.ProductID, reqBody.Quantity).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "add_item_guest_cart", "Added item to guest cart", mock.Anything, mock.Anything).Return()
@@ -238,7 +238,7 @@ func TestHandlerAddItemToGuestCart_ServiceError(t *testing.T) {
 		Logger:      mockLogger,
 		CartService: mockService,
 	}
-	reqBody := CartItemRequest{ProductID: "p1", Quantity: 2}
+	reqBody := CartItemRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Quantity: 2}
 	jsonBody, _ := json.Marshal(reqBody)
 	err := &handlers.AppError{Code: "cart_full", Message: "full", Err: errors.New("fail")}
 	mockService.On("AddItemToGuestCart", mock.Anything, testSessionIDAdd, reqBody.ProductID, reqBody.Quantity).Return(err)

@@ -30,7 +30,7 @@ func TestHandlerUpdateUser_Success(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "A", Email: "a@b.com", Phone: "123", Address: "Addr"}
 	mockService.On("UpdateUser", mock.Anything, user, params).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "update_user", "User info updated", mock.Anything, mock.Anything).Return()
@@ -63,7 +63,7 @@ func TestHandlerUpdateUser_ValidationError(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Send invalid JSON that will fail auth.DecodeAndValidate
 	invalidJSON := `{"name": "A", "email": "a@b.com", "phone": 123}` // phone should be string, not number
 	body := []byte(invalidJSON)
@@ -93,7 +93,7 @@ func TestHandlerUpdateUser_InvalidJSON(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	invalidJSON := `{"name": "A", "email": "a@b.com"` // missing closing brace
 
 	// Expect error logging for invalid JSON
@@ -131,7 +131,7 @@ func TestHandlerUpdateUser_ServiceError(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "A", Email: "a@b.com", Phone: "123", Address: "Addr"}
 	mockService.On("UpdateUser", mock.Anything, user, params).Return(errors.New("fail"))
 	mockLogger.On("LogHandlerError", mock.Anything, "update_user", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()

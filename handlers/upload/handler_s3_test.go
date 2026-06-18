@@ -21,7 +21,7 @@ func TestHandlerS3UpdateProductImageByID_Success(t *testing.T) {
 	mockLogger := new(mockS3Logger)
 	mockService := new(mockS3UploadService)
 	cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
 	chiURLParam = func(_ *http.Request, _ string) string {
@@ -49,7 +49,7 @@ func TestHandlerS3UpdateProductImageByID_MissingProductID(t *testing.T) {
 	mockLogger := new(mockS3Logger)
 	mockService := new(mockS3UploadService)
 	cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
 	chiURLParam = func(_ *http.Request, _ string) string {
@@ -74,7 +74,7 @@ func TestHandlerS3UpdateProductImageByID_Error(t *testing.T) {
 	mockLogger := new(mockS3Logger)
 	mockService := new(mockS3UploadService)
 	cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Patch chiURLParam for test
 	oldURLParam := chiURLParam
 	chiURLParam = func(_ *http.Request, _ string) string {

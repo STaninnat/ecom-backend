@@ -29,15 +29,15 @@ func (cfg *HandlersProductConfig) HandlerDeleteProduct(w http.ResponseWriter, r 
 	ctx := r.Context()
 
 	productID := chi.URLParam(r, "id")
-	if productID == "" {
+	if productID == "" || !utils.IsValidUUID(productID) {
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"delete_product",
 			"invalid_request",
-			"Product ID is required",
+			"Valid Product ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Product ID is required")
 		return
 	}
 

@@ -23,7 +23,7 @@ import (
 // handler_review_get_test.go: Tests for get review handler and type assertion failures with proper request setup and logging verification.
 
 const (
-	testProductID = "p1"
+	testProductID = "550e8400-e29b-41d4-a716-446655440000"
 )
 
 // makeGetRequestWithProductID creates a GET HTTP request for retrieving reviews by product ID.
@@ -104,7 +104,7 @@ func TestHandlerGetReviewsByProductID_MissingProductID(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "invalid_request", "Product ID is required", mock.Anything, mock.Anything, nil).Return()
+	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_product_id", "invalid_request", "Valid Product ID is required", mock.Anything, mock.Anything, nil).Return()
 
 	r := makeGetRequestWithProductID("")
 	w := httptest.NewRecorder()
@@ -148,7 +148,7 @@ func TestHandlerGetReviewsByUserID_Success(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	expectedResult := PaginatedReviewsResponse{
 		Data:       []*models.Review{{ID: testReviewID, UserID: user.ID}},
 		TotalCount: 1,
@@ -187,7 +187,7 @@ func TestHandlerGetReviewsByUserID_ServiceError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
 	mockService.On("GetReviewsByUserIDPaginated", mock.Anything, user.ID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return(nil, err)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_user", "internal_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
@@ -243,7 +243,7 @@ func TestHandlerGetReviewByID_MissingID(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	mockLogger.On("LogHandlerError", mock.Anything, "get_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
+	mockLogger.On("LogHandlerError", mock.Anything, "get_review_by_id", "invalid_request", "Valid Review ID is required", mock.Anything, mock.Anything, nil).Return()
 
 	r := makeGetRequestWithReviewID("")
 	w := httptest.NewRecorder()
@@ -310,7 +310,7 @@ func TestHandlerGetReviewsByUserID_TypeAssertionFailure(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Return wrong type
 	mockService.On("GetReviewsByUserIDPaginated", mock.Anything, user.ID, 1, 10, (*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), "").Return("wrong_type", nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_reviews_by_user", "internal_error", "Unexpected response type", mock.Anything, mock.Anything, nil).Return()

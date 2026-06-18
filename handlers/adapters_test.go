@@ -33,7 +33,7 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 
 	tokenString := testTokenString
 	secret := testSecret
-	expectedClaims := &Claims{UserID: "user123"}
+	expectedClaims := &Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockAuthService.On("ValidateAccessToken", tokenString, secret).Return(expectedClaims, nil)
 
@@ -41,7 +41,7 @@ func TestHandlerConfigAuthAdapter_ValidateAccessToken_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, claims)
-	assert.Equal(t, "user123", claims.UserID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", claims.UserID)
 	mockAuthService.AssertExpectations(t)
 }
 
@@ -72,7 +72,7 @@ func TestHandlerConfigUserAdapter_GetUserByID_Success(t *testing.T) {
 	adapter := &handlerConfigUserAdapter{userService: mockUserService}
 
 	ctx := context.Background()
-	userID := "user123"
+	userID := "550e8400-e29b-41d4-a716-446655440000"
 	expectedUser := database.User{ID: userID, Email: "test@example.com"}
 
 	mockUserService.On("GetUserByID", ctx, userID).Return(expectedUser, nil)
@@ -91,7 +91,7 @@ func TestHandlerConfigUserAdapter_GetUserByID_Error(t *testing.T) {
 	adapter := &handlerConfigUserAdapter{userService: mockUserService}
 
 	ctx := context.Background()
-	userID := "nonexistent"
+	userID := "11111111-2222-3333-4444-555555555555"
 	expectedError := assert.AnError
 
 	mockUserService.On("GetUserByID", ctx, userID).Return(database.User{}, expectedError)
@@ -194,7 +194,7 @@ func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 
 	tokenString := testTokenString
 	secret := testSecret
-	expectedAuthClaims := &auth.Claims{UserID: "user123"}
+	expectedAuthClaims := &auth.Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockAuth.On("ValidateAccessToken", tokenString, secret).Return(expectedAuthClaims, nil)
 
@@ -202,7 +202,7 @@ func TestLegacyAuthService_ValidateAccessToken_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, claims)
-	assert.Equal(t, "user123", claims.UserID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", claims.UserID)
 	mockAuth.AssertExpectations(t)
 }
 
@@ -248,7 +248,7 @@ func TestLegacyUserService_GetUserByID(t *testing.T) {
 	adapter := &legacyUserService{db: queries}
 
 	ctx := context.Background()
-	userID := "user123"
+	userID := "550e8400-e29b-41d4-a716-446655440000"
 	expectedUser := database.User{ID: userID, Name: "Test User", Email: "test@example.com"}
 
 	// Set up expected query and result

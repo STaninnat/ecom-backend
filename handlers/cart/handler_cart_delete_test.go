@@ -32,17 +32,17 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 	}{
 		{
 			name: "success",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body: DeleteItemRequest{ProductID: "prod1"},
 			setupMock: func(mockService *MockCartService) {
-				mockService.On("RemoveItem", mock.Anything, "user1", "prod1").Return(nil)
+				mockService.On("RemoveItem", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "prod1").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   handlers.HandlerResponse{Message: "Item removed from cart"},
 		},
 		{
 			name:           "invalid json",
-			user:           database.User{ID: "user1"},
+			user:           database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body:           "not json",
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
@@ -50,19 +50,19 @@ func TestHandlerRemoveItemFromUserCart(t *testing.T) {
 		},
 		{
 			name:           "missing product ID",
-			user:           database.User{ID: "user1"},
+			user:           database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body:           DeleteItemRequest{ProductID: ""},
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]any{"error": "Product ID is required"},
+			expectedBody:   map[string]any{"error": "Valid Product ID is required"},
 		},
 		{
 			name: "service error",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body: DeleteItemRequest{ProductID: "prod1"},
 			setupMock: func(mockService *MockCartService) {
 				err := &handlers.AppError{Code: "item_not_found", Message: "Item not found"}
-				mockService.On("RemoveItem", mock.Anything, "user1", "prod1").Return(err)
+				mockService.On("RemoveItem", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "prod1").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   map[string]any{"error": "Item not found", "code": "item_not_found"},
@@ -119,19 +119,19 @@ func TestHandlerClearUserCart(t *testing.T) {
 	}{
 		{
 			name: "success",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
-				mockService.On("DeleteUserCart", mock.Anything, "user1").Return(nil)
+				mockService.On("DeleteUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   handlers.HandlerResponse{Message: "Cart cleared"},
 		},
 		{
 			name: "service error",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				err := &handlers.AppError{Code: "cart_not_found", Message: "Cart not found"}
-				mockService.On("DeleteUserCart", mock.Anything, "user1").Return(err)
+				mockService.On("DeleteUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   map[string]any{"error": "Cart not found", "code": "cart_not_found"},
@@ -209,7 +209,7 @@ func TestHandlerRemoveItemFromGuestCart(t *testing.T) {
 			body:           DeleteItemRequest{ProductID: ""},
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   map[string]any{"error": "Product ID is required"},
+			expectedBody:   map[string]any{"error": "Valid Product ID is required"},
 		},
 		{
 			name:      "service error",

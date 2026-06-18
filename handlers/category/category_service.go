@@ -188,7 +188,7 @@ func (s *categoryServiceImpl) UpdateCategory(ctx context.Context, params Categor
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
 	}
 	if params.ID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Category ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Category ID is required"}
 	}
 	if params.Name == "" {
 		return &handlers.AppError{Code: "invalid_request", Message: "Category name is required"}
@@ -238,7 +238,7 @@ func (s *categoryServiceImpl) DeleteCategory(ctx context.Context, categoryID str
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
 	}
 	if categoryID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Category ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Category ID is required"}
 	}
 
 	tx, err := s.dbConn.BeginTx(ctx, nil)

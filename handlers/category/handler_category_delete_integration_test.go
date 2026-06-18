@@ -31,20 +31,20 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 	}{
 		{
 			name:       "successful deletion",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "test-category-id").Return(nil)
+				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category deleted successfully"}`,
 		},
 		{
 			name:       "service error",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "test-category-id").Return(&handlers.AppError{Code: "delete_category_error", Message: "Category not found"})
+				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(&handlers.AppError{Code: "delete_category_error", Message: "Category not found"})
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Something went wrong, please try again later"}`,
@@ -55,7 +55,7 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 			user:           database.User{ID: "test-user-id"},
 			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 		{
 			name:           "empty category ID",
@@ -63,14 +63,14 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 			user:           database.User{ID: "test-user-id"},
 			mockSetup:      func(_ *MockCategoryService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 		{
 			name:       "service returns non-AppError",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "test-category-id").Return(assert.AnError)
+				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(assert.AnError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Internal server error"}`,

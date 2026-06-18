@@ -50,9 +50,9 @@ func TestHandlerUpdateReviewByID_Success(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
+	existing := &models.Review{UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 4, Comment: "Updated!", MediaURLs: []string{"url1"}}
 	jsonBody, _ := json.Marshal(updateReq)
@@ -86,8 +86,8 @@ func TestHandlerUpdateReviewByID_MissingID(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Valid Review ID is required", mock.Anything, mock.Anything, nil).Return()
 
 	r := makeUpdateRequestWithID("", []byte(`{}`))
 	w := httptest.NewRecorder()
@@ -107,7 +107,7 @@ func TestHandlerUpdateReviewByID_ReviewNotFound(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return((*models.Review)(nil), err)
@@ -132,9 +132,9 @@ func TestHandlerUpdateReviewByID_Unauthorized(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	existing := &models.Review{UserID: "other", ProductID: "p1"}
+	existing := &models.Review{UserID: "other", ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "unauthorized", "You can only update your own reviews", mock.Anything, mock.Anything, nil).Return()
 
@@ -156,9 +156,9 @@ func TestHandlerUpdateReviewByID_InvalidPayload(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
+	existing := &models.Review{UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "update_review_by_id", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -180,9 +180,9 @@ func TestHandlerUpdateReviewByID_ValidationError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
+	existing := &models.Review{UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 0, Comment: ""} // Invalid
 	jsonBody, _ := json.Marshal(updateReq)
@@ -207,9 +207,9 @@ func TestHandlerUpdateReviewByID_ServiceError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	existing := &models.Review{UserID: user.ID, ProductID: "p1"}
+	existing := &models.Review{UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(existing, nil)
 	updateReq := ReviewUpdateRequest{Rating: 4, Comment: "Updated!"}
 	jsonBody, _ := json.Marshal(updateReq)

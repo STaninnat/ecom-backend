@@ -16,3 +16,22 @@ func NewUUIDString() string {
 func NewUUID() uuid.UUID {
 	return uuid.New()
 }
+
+// IsValidUUID checks if the given string is a valid UUID.
+func IsValidUUID(u string) bool {
+	_, err := uuid.Parse(u)
+	return err == nil
+}
+
+// IsValidObjectID checks if the given string is a valid MongoDB ObjectID (24 hex characters).
+func IsValidObjectID(u string) bool {
+	if len(u) != 24 {
+		return false
+	}
+	for _, c := range u {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}

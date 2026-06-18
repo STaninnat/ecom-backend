@@ -306,10 +306,10 @@ func NewCartService(
 func (s *cartServiceImpl) AddItemToUserCart(ctx context.Context, userID string, productID string, quantity int) error {
 	// Validate inputs
 	if userID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 	if quantity <= 0 {
 		return &handlers.AppError{Code: "invalid_request", Message: "Quantity must be greater than 0"}
@@ -350,7 +350,7 @@ func (s *cartServiceImpl) AddItemToGuestCart(ctx context.Context, sessionID stri
 		return &handlers.AppError{Code: "invalid_request", Message: "Session ID is required"}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 	if quantity <= 0 {
 		return &handlers.AppError{Code: "invalid_request", Message: "Quantity must be greater than 0"}
@@ -422,7 +422,7 @@ func (s *cartServiceImpl) AddItemToGuestCart(ctx context.Context, sessionID stri
 // GetUserCart retrieves a user's cart
 func (s *cartServiceImpl) GetUserCart(ctx context.Context, userID string) (*models.Cart, error) {
 	if userID == "" {
-		return nil, &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return nil, &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 
 	cart, err := s.cartMongo.GetCartByUserID(ctx, userID)
@@ -451,7 +451,7 @@ func validateItemQuantityInputs(id, idType, productID string, quantity int) erro
 		return &handlers.AppError{Code: "invalid_request", Message: idType + " is required"}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 	if quantity <= 0 {
 		return &handlers.AppError{Code: "invalid_request", Message: "Quantity must be greater than 0"}
@@ -485,10 +485,10 @@ func (s *cartServiceImpl) UpdateGuestItemQuantity(ctx context.Context, sessionID
 // RemoveItem removes an item from a user's cart
 func (s *cartServiceImpl) RemoveItem(ctx context.Context, userID string, productID string) error {
 	if userID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 
 	if err := s.cartMongo.RemoveItemFromCart(ctx, userID, productID); err != nil {
@@ -503,7 +503,7 @@ func (s *cartServiceImpl) RemoveGuestItem(ctx context.Context, sessionID string,
 		return &handlers.AppError{Code: "invalid_request", Message: "Session ID is required"}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 
 	if err := s.redis.RemoveGuestItem(ctx, sessionID, productID); err != nil {
@@ -515,7 +515,7 @@ func (s *cartServiceImpl) RemoveGuestItem(ctx context.Context, sessionID string,
 // DeleteUserCart clears a user's cart
 func (s *cartServiceImpl) DeleteUserCart(ctx context.Context, userID string) error {
 	if userID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 
 	if err := s.cartMongo.ClearCart(ctx, userID); err != nil {
@@ -539,7 +539,7 @@ func (s *cartServiceImpl) DeleteGuestCart(ctx context.Context, sessionID string)
 // CheckoutUserCart processes checkout for a user's cart
 func (s *cartServiceImpl) CheckoutUserCart(ctx context.Context, userID string) (*CartCheckoutResult, error) {
 	if userID == "" {
-		return nil, &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return nil, &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 
 	cart, err := s.cartMongo.GetCartByUserID(ctx, userID)
@@ -560,7 +560,7 @@ func (s *cartServiceImpl) CheckoutGuestCart(ctx context.Context, sessionID strin
 		return nil, &handlers.AppError{Code: "invalid_request", Message: "Session ID is required"}
 	}
 	if userID == "" {
-		return nil, &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return nil, &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 
 	cart, err := s.redis.GetGuestCart(ctx, sessionID)

@@ -300,14 +300,14 @@ func TestCategoryServiceImpl_GetAllCategories(t *testing.T) {
 			setupMocks: func(mockDB *MockCategoryDBQueries) {
 				expectedCategories := []database.Category{
 					{
-						ID:          "cat1",
+						ID:          "550e8400-e29b-41d4-a716-446655440000",
 						Name:        "Category 1",
 						Description: utils.ToNullString("Description 1"),
 						CreatedAt:   time.Now(),
 						UpdatedAt:   time.Now(),
 					},
 					{
-						ID:          "cat2",
+						ID:          "550e8400-e29b-41d4-a716-446655440000",
 						Name:        "Category 2",
 						Description: utils.ToNullString("Description 2"),
 						CreatedAt:   time.Now(),
@@ -318,14 +318,14 @@ func TestCategoryServiceImpl_GetAllCategories(t *testing.T) {
 			},
 			expectedResult: []database.Category{
 				{
-					ID:          "cat1",
+					ID:          "550e8400-e29b-41d4-a716-446655440000",
 					Name:        "Category 1",
 					Description: utils.ToNullString("Description 1"),
 					CreatedAt:   time.Now(),
 					UpdatedAt:   time.Now(),
 				},
 				{
-					ID:          "cat2",
+					ID:          "550e8400-e29b-41d4-a716-446655440000",
 					Name:        "Category 2",
 					Description: utils.ToNullString("Description 2"),
 					CreatedAt:   time.Now(),

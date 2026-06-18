@@ -21,7 +21,7 @@ import (
 // handler_review_delete_test.go: Tests for review deletion handler with success, error, and edge case coverage.
 
 const (
-	testReviewID = "r1"
+	testReviewID = "507f1f77bcf86cd799439011"
 )
 
 // makeDeleteRequestWithID creates a DELETE HTTP request with the specified review ID in the URL path.
@@ -50,9 +50,9 @@ func TestHandlerDeleteReviewByID_Success(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "p1"}
+	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	mockService.On("DeleteReviewByID", mock.Anything, reviewID).Return(nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "delete_review_by_id", "Review deleted successfully", mock.Anything, mock.Anything).Return()
@@ -81,8 +81,8 @@ func TestHandlerDeleteReviewByID_MissingID(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "invalid_request", "Review ID is required", mock.Anything, mock.Anything, nil).Return()
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "invalid_request", "Valid Review ID is required", mock.Anything, mock.Anything, nil).Return()
 
 	r := makeDeleteRequestWithID("")
 	w := httptest.NewRecorder()
@@ -102,7 +102,7 @@ func TestHandlerDeleteReviewByID_ReviewNotFound(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
 	err := &handlers.AppError{Code: "not_found", Message: "Review not found"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return((*models.Review)(nil), err)
@@ -127,9 +127,9 @@ func TestHandlerDeleteReviewByID_Unauthorized(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	review := &models.Review{ID: reviewID, UserID: "other", ProductID: "p1"}
+	review := &models.Review{ID: reviewID, UserID: "other", ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	mockLogger.On("LogHandlerError", mock.Anything, "delete_review_by_id", "unauthorized", "You can only delete your own reviews", mock.Anything, mock.Anything, nil).Return()
 
@@ -151,9 +151,9 @@ func TestHandlerDeleteReviewByID_ServiceError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reviewID := testReviewID
-	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "p1"}
+	review := &models.Review{ID: reviewID, UserID: user.ID, ProductID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetReviewByID", mock.Anything, reviewID).Return(review, nil)
 	err := &handlers.AppError{Code: "internal_error", Message: "fail"}
 	mockService.On("DeleteReviewByID", mock.Anything, reviewID).Return(err)

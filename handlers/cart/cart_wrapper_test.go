@@ -131,11 +131,11 @@ func TestNewCartServiceWithDeps(t *testing.T) {
 // It verifies that the struct has the expected fields and JSON tags.
 func TestCartCheckoutResult_Structure(t *testing.T) {
 	result := CartCheckoutResult{
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 		Message: "Order placed successfully",
 	}
 
-	assert.Equal(t, "order123", result.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", result.OrderID)
 	assert.Equal(t, "Order placed successfully", result.Message)
 }
 
@@ -143,11 +143,11 @@ func TestCartCheckoutResult_Structure(t *testing.T) {
 // It verifies that the struct has the expected fields and JSON tags.
 func TestCartItemRequest_Structure(t *testing.T) {
 	request := CartItemRequest{
-		ProductID: "product123",
+		ProductID: "550e8400-e29b-41d4-a716-446655440000",
 		Quantity:  5,
 	}
 
-	assert.Equal(t, "product123", request.ProductID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", request.ProductID)
 	assert.Equal(t, 5, request.Quantity)
 }
 
@@ -155,11 +155,11 @@ func TestCartItemRequest_Structure(t *testing.T) {
 // It verifies that the struct has the expected fields and JSON tags.
 func TestCartUpdateRequest_Structure(t *testing.T) {
 	request := CartUpdateRequest{
-		ProductID: "product123",
+		ProductID: "550e8400-e29b-41d4-a716-446655440000",
 		Quantity:  3,
 	}
 
-	assert.Equal(t, "product123", request.ProductID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", request.ProductID)
 	assert.Equal(t, 3, request.Quantity)
 }
 
@@ -168,9 +168,9 @@ func TestCartUpdateRequest_Structure(t *testing.T) {
 func TestCartResponse_Structure(t *testing.T) {
 	response := CartResponse{
 		Message: "Item added to cart",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	assert.Equal(t, "Item added to cart", response.Message)
-	assert.Equal(t, "order123", response.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", response.OrderID)
 }

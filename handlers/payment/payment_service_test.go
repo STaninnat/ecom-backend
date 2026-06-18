@@ -32,9 +32,9 @@ func TestCreatePayment_InvalidRequest(t *testing.T) {
 		name   string
 		params CreatePaymentParams
 	}{
-		{"empty_order_id", CreatePaymentParams{OrderID: "", UserID: "user123", Currency: "USD"}},
-		{"empty_user_id", CreatePaymentParams{OrderID: "order123", UserID: "", Currency: "USD"}},
-		{"empty_currency", CreatePaymentParams{OrderID: "order123", UserID: "user123", Currency: ""}},
+		{"empty_order_id", CreatePaymentParams{OrderID: "", UserID: "550e8400-e29b-41d4-a716-446655440000", Currency: "USD"}},
+		{"empty_user_id", CreatePaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "", Currency: "USD"}},
+		{"empty_currency", CreatePaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000", Currency: ""}},
 	}
 
 	for _, tt := range tests {
@@ -51,8 +51,8 @@ func TestCreatePayment_InvalidCurrency(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "INVALID",
 	}
 
@@ -66,12 +66,12 @@ func TestCreatePayment_OrderNotFound(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := CreatePaymentParams{
-		OrderID:  "nonexistent",
-		UserID:   "user123",
+		OrderID:  "11111111-2222-3333-4444-555555555555",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
-	mockDB.On("GetOrderByID", mock.Anything, "nonexistent").Return(database.Order{}, sql.ErrNoRows)
+	mockDB.On("GetOrderByID", mock.Anything, "11111111-2222-3333-4444-555555555555").Return(database.Order{}, sql.ErrNoRows)
 
 	_, err := service.CreatePayment(context.Background(), params)
 	require.Error(t, err)
@@ -93,12 +93,12 @@ func runCreatePaymentOrderErrorTest(t *testing.T, order database.Order, params C
 
 func TestCreatePayment_UnauthorizedOrder(t *testing.T) {
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 	order := database.Order{
-		ID:     "order123",
+		ID:     "550e8400-e29b-41d4-a716-446655440000",
 		UserID: "different_user",
 		Status: "pending",
 	}
@@ -107,13 +107,13 @@ func TestCreatePayment_UnauthorizedOrder(t *testing.T) {
 
 func TestCreatePayment_InvalidOrderStatus(t *testing.T) {
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 	order := database.Order{
-		ID:     "order123",
-		UserID: "user123",
+		ID:     "550e8400-e29b-41d4-a716-446655440000",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 		Status: "paid",
 	}
 	runCreatePaymentOrderErrorTest(t, order, params, "Order already paid or invalid")
@@ -124,25 +124,25 @@ func TestCreatePayment_PaymentExists(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
 	order := database.Order{
-		ID:          "order123",
-		UserID:      "user123",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
+		UserID:      "550e8400-e29b-41d4-a716-446655440000",
 		Status:      "pending",
 		TotalAmount: "100.00",
 	}
 
 	existingPayment := database.Payment{
 		ID:      "existing_payment",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(existingPayment, nil)
+	mockDB.On("GetOrderByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(order, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(existingPayment, nil)
 
 	_, err := service.CreatePayment(context.Background(), params)
 	require.Error(t, err)
@@ -158,8 +158,8 @@ func TestConfirmPayment_InvalidRequest(t *testing.T) {
 		name   string
 		params ConfirmPaymentParams
 	}{
-		{"empty_order_id", ConfirmPaymentParams{OrderID: "", UserID: "user123"}},
-		{"empty_user_id", ConfirmPaymentParams{OrderID: "order123", UserID: ""}},
+		{"empty_order_id", ConfirmPaymentParams{OrderID: "", UserID: "550e8400-e29b-41d4-a716-446655440000"}},
+		{"empty_user_id", ConfirmPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: ""}},
 	}
 
 	for _, tt := range tests {
@@ -176,11 +176,11 @@ func TestConfirmPayment_PaymentNotFound(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
 	require.Error(t, err)
@@ -193,17 +193,17 @@ func TestConfirmPayment_UnauthorizedPayment(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 		UserID:  "different_user",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
 	_, err := service.ConfirmPayment(context.Background(), params)
 	require.Error(t, err)
@@ -216,9 +216,9 @@ func TestGetPayment_NotFound(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 
-	_, err := service.GetPayment(context.Background(), "order123", "user123")
+	_, err := service.GetPayment(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment not found")
 	mockDB.AssertExpectations(t)
@@ -231,13 +231,13 @@ func TestGetPayment_Unauthorized(t *testing.T) {
 
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 		UserID:  "different_user",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
-	_, err := service.GetPayment(context.Background(), "order123", "user123")
+	_, err := service.GetPayment(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Payment does not belong to user")
 	mockDB.AssertExpectations(t)
@@ -251,8 +251,8 @@ func TestGetPaymentHistory_Success(t *testing.T) {
 	payments := []database.Payment{
 		{
 			ID:                "payment1",
-			OrderID:           "order1",
-			UserID:            "user123",
+			OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+			UserID:            "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "100.00",
 			Currency:          "USD",
 			Status:            "succeeded",
@@ -263,7 +263,7 @@ func TestGetPaymentHistory_Success(t *testing.T) {
 		{
 			ID:                "payment2",
 			OrderID:           "order2",
-			UserID:            "user123",
+			UserID:            "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "200.00",
 			Currency:          "USD",
 			Status:            "succeeded",
@@ -273,9 +273,9 @@ func TestGetPaymentHistory_Success(t *testing.T) {
 		},
 	}
 
-	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return(payments, nil)
+	mockDB.On("GetPaymentsByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payments, nil)
 
-	result, err := service.GetPaymentHistory(context.Background(), "user123")
+	result, err := service.GetPaymentHistory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
 	assert.Equal(t, "payment1", result[0].ID)
@@ -291,8 +291,8 @@ func TestGetAllPayments_Success(t *testing.T) {
 	payments := []database.Payment{
 		{
 			ID:                "payment1",
-			OrderID:           "order1",
-			UserID:            "user123",
+			OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+			UserID:            "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "100.00",
 			Currency:          "USD",
 			Status:            "succeeded",
@@ -319,8 +319,8 @@ func TestRefundPayment_InvalidRequest(t *testing.T) {
 		name   string
 		params RefundPaymentParams
 	}{
-		{"empty_order_id", RefundPaymentParams{OrderID: "", UserID: "user123"}},
-		{"empty_user_id", RefundPaymentParams{OrderID: "order123", UserID: ""}},
+		{"empty_order_id", RefundPaymentParams{OrderID: "", UserID: "550e8400-e29b-41d4-a716-446655440000"}},
+		{"empty_user_id", RefundPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: ""}},
 	}
 
 	for _, tt := range tests {
@@ -337,11 +337,11 @@ func TestRefundPayment_PaymentNotFound(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 
 	err := service.RefundPayment(context.Background(), params)
 	require.Error(t, err)
@@ -354,17 +354,17 @@ func TestRefundPayment_UnauthorizedPayment(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 		UserID:  "different_user",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
 	require.Error(t, err)
@@ -377,18 +377,18 @@ func TestRefundPayment_InvalidStatus(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil}
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 		Status:  "pending",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
 	require.Error(t, err)
@@ -557,21 +557,21 @@ func TestCreatePayment_Success(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
 	order := database.Order{
-		ID:          "order123",
-		UserID:      "user123",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
+		UserID:      "550e8400-e29b-41d4-a716-446655440000",
 		Status:      "pending",
 		TotalAmount: "100.00",
 	}
 
 	// Set up mock expectations
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetOrderByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(order, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("CreatePayment", mock.Anything, mock.Anything).Return(nil)
@@ -603,20 +603,20 @@ func TestCreatePayment_InvalidAmount(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
 	order := database.Order{
-		ID:          "order123",
-		UserID:      "user123",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
+		UserID:      "550e8400-e29b-41d4-a716-446655440000",
 		Status:      "pending",
 		TotalAmount: "invalid_amount",
 	}
 
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetOrderByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(order, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 
 	_, err := service.CreatePayment(context.Background(), params)
 	require.Error(t, err)
@@ -633,20 +633,20 @@ func TestCreatePayment_TransactionError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
 	order := database.Order{
-		ID:          "order123",
-		UserID:      "user123",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
+		UserID:      "550e8400-e29b-41d4-a716-446655440000",
 		Status:      "pending",
 		TotalAmount: "100.00",
 	}
 
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetOrderByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(order, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 	mockStripe.On("CreatePaymentIntent", mock.Anything).Return(&stripe.PaymentIntent{
 		ID:           "pi_test_123",
 		Status:       stripe.PaymentIntentStatusRequiresPaymentMethod,
@@ -672,20 +672,20 @@ func TestCreatePayment_CreatePaymentError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := CreatePaymentParams{
-		OrderID:  "order123",
-		UserID:   "user123",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 
 	order := database.Order{
-		ID:          "order123",
-		UserID:      "user123",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
+		UserID:      "550e8400-e29b-41d4-a716-446655440000",
 		Status:      "pending",
 		TotalAmount: "100.00",
 	}
 
-	mockDB.On("GetOrderByID", mock.Anything, "order123").Return(order, nil)
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(database.Payment{}, sql.ErrNoRows)
+	mockDB.On("GetOrderByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(order, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Payment{}, sql.ErrNoRows)
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("CreatePayment", mock.Anything, mock.Anything).Return(errors.New("database error"))
@@ -717,14 +717,14 @@ func TestConfirmPayment_Success(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "created",
@@ -733,7 +733,7 @@ func TestConfirmPayment_Success(t *testing.T) {
 	}
 
 	// Set up mock expectations
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("UpdatePaymentStatus", mock.Anything, mock.Anything).Return(nil)
@@ -772,26 +772,26 @@ func runConfirmPaymentMissingProviderIDTest(t *testing.T, payment database.Payme
 
 func TestConfirmPayment_OrderNotFound(t *testing.T) {
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 	runConfirmPaymentMissingProviderIDTest(t, payment, params)
 }
 
 func TestConfirmPayment_InvalidOrderStatus(t *testing.T) {
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 	runConfirmPaymentMissingProviderIDTest(t, payment, params)
 }
@@ -803,8 +803,8 @@ func TestGetPayment_Success(t *testing.T) {
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -813,14 +813,14 @@ func TestGetPayment_Success(t *testing.T) {
 		CreatedAt:         time.Now(),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
-	result, err := service.GetPayment(context.Background(), "order123", "user123")
+	result, err := service.GetPayment(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "payment123", result.ID)
-	assert.Equal(t, "order123", result.OrderID)
-	assert.Equal(t, "user123", result.UserID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", result.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", result.UserID)
 	assert.InEpsilon(t, 100.0, result.Amount, 0.001)
 	assert.Equal(t, "USD", result.Currency)
 	assert.Equal(t, "succeeded", result.Status)
@@ -845,8 +845,8 @@ func runGetPaymentInvalidAmountTest(t *testing.T, payment database.Payment) {
 func TestGetPayment_InvalidAmount(t *testing.T) {
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 		Amount:  "invalid_amount",
 		Status:  "succeeded",
 	}
@@ -862,14 +862,14 @@ func TestRefundPayment_Success(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -877,7 +877,7 @@ func TestRefundPayment_Success(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("UpdatePaymentStatusByID", mock.Anything, mock.Anything).Return(nil)
@@ -906,19 +906,19 @@ func TestRefundPayment_InvalidAmount(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 		Amount:  "invalid_amount",
 		Status:  "succeeded",
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 
 	err := service.RefundPayment(context.Background(), params)
 	require.Error(t, err)
@@ -936,7 +936,7 @@ func TestHandleWebhook_Success(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	// Mock webhook payload and signature
-	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","metadata":{"order_id":"order123","user_id":"user123"}}}}`)
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_test_123","metadata":{"order_id":"550e8400-e29b-41d4-a716-446655440000","user_id":"550e8400-e29b-41d4-a716-446655440000"}}}}`)
 	signature := testSignatureService
 	secret := testSecret
 
@@ -944,7 +944,7 @@ func TestHandleWebhook_Success(t *testing.T) {
 	event := stripe.Event{
 		Type: "payment_intent.succeeded",
 		Data: &stripe.EventData{
-			Raw: []byte(`{"id":"pi_test_123","metadata":{"order_id":"order123","user_id":"user123"}}`),
+			Raw: []byte(`{"id":"pi_test_123","metadata":{"order_id":"550e8400-e29b-41d4-a716-446655440000","user_id":"550e8400-e29b-41d4-a716-446655440000"}}`),
 		},
 	}
 	mockStripe.On("ParseWebhook", payload, signature, secret).Return(event, nil)
@@ -1223,14 +1223,14 @@ func TestConfirmPayment_PendingStatuses(t *testing.T) {
 			service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 			params := ConfirmPaymentParams{
-				OrderID: "order123",
-				UserID:  "user123",
+				OrderID: "550e8400-e29b-41d4-a716-446655440000",
+				UserID:  "550e8400-e29b-41d4-a716-446655440000",
 			}
 
 			payment := database.Payment{
 				ID:                "payment123",
-				OrderID:           "order123",
-				UserID:            "user123",
+				OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+				UserID:            "550e8400-e29b-41d4-a716-446655440000",
 				Amount:            "100.00",
 				Currency:          "USD",
 				Status:            "pending",
@@ -1238,7 +1238,7 @@ func TestConfirmPayment_PendingStatuses(t *testing.T) {
 				ProviderPaymentID: utils.ToNullString("pi_test_123"),
 			}
 
-			mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+			mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 			mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
 				ID:     "pi_test_123",
 				Status: tt.intentStatus,
@@ -1269,14 +1269,14 @@ func TestConfirmPayment_StripeError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "pending",
@@ -1284,7 +1284,7 @@ func TestConfirmPayment_StripeError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(nil, errors.New("stripe error"))
 
 	_, err := service.ConfirmPayment(context.Background(), params)
@@ -1303,14 +1303,14 @@ func TestConfirmPayment_TransactionError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "pending",
@@ -1318,7 +1318,7 @@ func TestConfirmPayment_TransactionError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
 		ID:     "pi_test_123",
 		Status: stripe.PaymentIntentStatusSucceeded,
@@ -1344,14 +1344,14 @@ func TestConfirmPayment_DatabaseUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "pending",
@@ -1359,7 +1359,7 @@ func TestConfirmPayment_DatabaseUpdateError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
 		ID:     "pi_test_123",
 		Status: stripe.PaymentIntentStatusSucceeded,
@@ -1389,14 +1389,14 @@ func TestConfirmPayment_OrderUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "pending",
@@ -1404,7 +1404,7 @@ func TestConfirmPayment_OrderUpdateError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
 		ID:     "pi_test_123",
 		Status: stripe.PaymentIntentStatusSucceeded,
@@ -1435,14 +1435,14 @@ func TestConfirmPayment_CommitError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := ConfirmPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "pending",
@@ -1450,7 +1450,7 @@ func TestConfirmPayment_CommitError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("GetPaymentIntent", "pi_test_123").Return(&stripe.PaymentIntent{
 		ID:     "pi_test_123",
 		Status: stripe.PaymentIntentStatusSucceeded,
@@ -1478,9 +1478,9 @@ func TestGetPaymentHistory_DatabaseError(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
-	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return(nil, errors.New("database error"))
+	mockDB.On("GetPaymentsByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil, errors.New("database error"))
 
-	_, err := service.GetPaymentHistory(context.Background(), "user123")
+	_, err := service.GetPaymentHistory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to fetch payment history")
 
@@ -1492,9 +1492,9 @@ func TestGetPaymentHistory_EmptyResult(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
-	mockDB.On("GetPaymentsByUserID", mock.Anything, "user123").Return([]database.Payment{}, nil)
+	mockDB.On("GetPaymentsByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return([]database.Payment{}, nil)
 
-	result, err := service.GetPaymentHistory(context.Background(), "user123")
+	result, err := service.GetPaymentHistory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.Empty(t, result)
 
@@ -1509,8 +1509,8 @@ func TestGetAllPayments_WithStatusFilter(t *testing.T) {
 	payments := []database.Payment{
 		{
 			ID:                "payment123",
-			OrderID:           "order123",
-			UserID:            "user123",
+			OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+			UserID:            "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "100.00",
 			Currency:          "USD",
 			Status:            "succeeded",
@@ -1579,14 +1579,14 @@ func TestRefundPayment_StripeError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -1594,7 +1594,7 @@ func TestRefundPayment_StripeError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("CreateRefund", mock.Anything).Return(nil, errors.New("stripe error"))
 
 	err := service.RefundPayment(context.Background(), params)
@@ -1613,14 +1613,14 @@ func TestRefundPayment_TransactionError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -1628,7 +1628,7 @@ func TestRefundPayment_TransactionError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("CreateRefund", mock.Anything).Return(&stripe.Refund{
 		ID:     "re_test_123",
 		Status: stripe.RefundStatusSucceeded,
@@ -1653,14 +1653,14 @@ func TestRefundPayment_PaymentUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -1668,7 +1668,7 @@ func TestRefundPayment_PaymentUpdateError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("CreateRefund", mock.Anything).Return(&stripe.Refund{
 		ID:     "re_test_123",
 		Status: stripe.RefundStatusSucceeded,
@@ -1700,14 +1700,14 @@ func TestRefundPayment_OrderUpdateError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -1715,7 +1715,7 @@ func TestRefundPayment_OrderUpdateError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("CreateRefund", mock.Anything).Return(&stripe.Refund{
 		ID:     "re_test_123",
 		Status: stripe.RefundStatusSucceeded,
@@ -1748,14 +1748,14 @@ func TestRefundPayment_CommitError(t *testing.T) {
 	service := &paymentServiceImpl{db: mockDB, dbConn: mockDBConn, apiKey: "sk_test_123", stripe: mockStripe}
 
 	params := RefundPaymentParams{
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	payment := database.Payment{
 		ID:                "payment123",
-		OrderID:           "order123",
-		UserID:            "user123",
+		OrderID:           "550e8400-e29b-41d4-a716-446655440000",
+		UserID:            "550e8400-e29b-41d4-a716-446655440000",
 		Amount:            "100.00",
 		Currency:          "USD",
 		Status:            "succeeded",
@@ -1763,7 +1763,7 @@ func TestRefundPayment_CommitError(t *testing.T) {
 		ProviderPaymentID: utils.ToNullString("pi_test_123"),
 	}
 
-	mockDB.On("GetPaymentByOrderID", mock.Anything, "order123").Return(payment, nil)
+	mockDB.On("GetPaymentByOrderID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(payment, nil)
 	mockStripe.On("CreateRefund", mock.Anything).Return(&stripe.Refund{
 		ID:     "re_test_123",
 		Status: stripe.RefundStatusSucceeded,
@@ -1890,7 +1890,7 @@ func TestGetPaymentHistory_EmptyUserID(t *testing.T) {
 
 	_, err := service.GetPaymentHistory(context.Background(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "User ID is required")
+	assert.Contains(t, err.Error(), "Valid User ID is required")
 }
 
 // TestGetPayment_EmptyOrderID tests empty order ID
@@ -1898,9 +1898,9 @@ func TestGetPayment_EmptyOrderID(t *testing.T) {
 	mockDB := new(mockPaymentDBQueries)
 	service := &paymentServiceImpl{db: mockDB, dbConn: nil, apiKey: "sk_test_123"}
 
-	_, err := service.GetPayment(context.Background(), "", "user123")
+	_, err := service.GetPayment(context.Background(), "", "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Order ID is required")
+	assert.Contains(t, err.Error(), "Valid Order ID is required")
 }
 
 // Helper for GetPayment error scenarios
@@ -1918,21 +1918,21 @@ func runGetPaymentErrorTest(t *testing.T, payment database.Payment, orderID, use
 func TestGetPayment_EmptyUserID(t *testing.T) {
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 		UserID:  "",
 		Amount:  "100.00",
 		Status:  "succeeded",
 	}
-	runGetPaymentErrorTest(t, payment, "order123", "user123", "Payment does not belong to user")
+	runGetPaymentErrorTest(t, payment, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "Payment does not belong to user")
 }
 
 func TestGetPayment_InvalidAmountParsing(t *testing.T) {
 	payment := database.Payment{
 		ID:      "payment123",
-		OrderID: "order123",
-		UserID:  "user123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
+		UserID:  "550e8400-e29b-41d4-a716-446655440000",
 		Amount:  "not_a_number",
 		Status:  "succeeded",
 	}
-	runGetPaymentErrorTest(t, payment, "order123", "user123", "Invalid payment amount")
+	runGetPaymentErrorTest(t, payment, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "Invalid payment amount")
 }

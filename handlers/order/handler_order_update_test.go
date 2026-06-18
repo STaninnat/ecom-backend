@@ -34,7 +34,7 @@ func TestHandlerUpdateOrderStatus_Success(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	orderID := testOrderID
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
@@ -80,7 +80,7 @@ func TestHandlerUpdateOrderStatus_InvalidRequest(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	invalidJSON := `{"status": "shipped"`
 	mockLogger.On("LogHandlerError", mock.Anything, "update_order_status", "invalid_request", "Failed to parse request body", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -120,7 +120,7 @@ func TestHandlerUpdateOrderStatus_MissingOrderID(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
 	}
@@ -145,7 +145,7 @@ func TestHandlerUpdateOrderStatus_MissingOrderID(t *testing.T) {
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "Order ID is required", response["error"])
+	assert.Equal(t, "Valid Order ID is required", response["error"])
 
 	mockLogger.AssertExpectations(t)
 	mockOrderService.AssertNotCalled(t, "UpdateOrderStatus")
@@ -164,8 +164,8 @@ func TestHandlerUpdateOrderStatus_OrderNotFound(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
-	orderID := "nonexistent"
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	orderID := "11111111-2222-3333-4444-555555555555"
 	requestBody := UpdateOrderStatusRequest{
 		Status: "shipped",
 	}
@@ -242,7 +242,7 @@ func TestHandlerUpdateOrderStatus_ErrorScenarios(t *testing.T) {
 				Logger:       mockLogger,
 				orderService: mockOrderService,
 			}
-			user := database.User{ID: "user123"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			mockOrderService.On("UpdateOrderStatus", mock.Anything, tc.orderID, tc.status).Return(tc.serviceErr)
 			if tc.loggerCall != nil {
 				tc.loggerCall(mockLogger)
@@ -288,7 +288,7 @@ func TestHandlerUpdateOrderStatus_ValidStatuses(t *testing.T) {
 				orderService: mockOrderService,
 			}
 
-			user := database.User{ID: "user123"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			requestBody := UpdateOrderStatusRequest{
 				Status: status,
 			}

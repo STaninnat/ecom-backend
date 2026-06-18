@@ -29,8 +29,8 @@ func TestHandlerGetAllProducts_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := &database.User{ID: "u1", Role: "admin"}
-	products := []database.Product{{ID: "p1"}, {ID: "p2"}}
+	user := &database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"}
+	products := []database.Product{{ID: "550e8400-e29b-41d4-a716-446655440000"}, {ID: "550e8400-e29b-41d4-a716-446655440000"}}
 	mockService.On("GetAllProducts", mock.Anything, true).Return(products, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "get_products", "Get all products success", mock.Anything, mock.Anything).Return()
 
@@ -54,7 +54,7 @@ func TestHandlerGetAllProducts_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := &database.User{ID: "u1", Role: "admin"}
+	user := &database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"}
 	err := &handlers.AppError{Code: "transaction_error", Message: "fail", Err: errors.New("fail")}
 	mockService.On("GetAllProducts", mock.Anything, true).Return(nil, err)
 	mockLog.On("LogHandlerError", mock.Anything, "get_products", "transaction_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
@@ -79,13 +79,13 @@ func TestHandlerGetProductByID_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1", Role: "admin"}
-	product := database.Product{ID: "p1"}
-	mockService.On("GetProductByID", mock.Anything, "p1", true).Return(product, nil)
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"}
+	product := database.Product{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockService.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", true).Return(product, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "get_product_by_id", "Get products success", mock.Anything, mock.Anything).Return()
 
 	routeCtx := chi.NewRouteContext()
-	routeCtx.URLParams.Add("id", "p1")
+	routeCtx.URLParams.Add("id", "550e8400-e29b-41d4-a716-446655440000")
 	req := httptest.NewRequest("GET", "/products/p1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
 	w := httptest.NewRecorder()
@@ -107,8 +107,8 @@ func TestHandlerGetProductByID_MissingID(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1", Role: "admin"}
-	mockLog.On("LogHandlerError", mock.Anything, "get_product_by_id", "invalid_request", "Missing product ID", mock.Anything, mock.Anything, mock.Anything).Return()
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"}
+	mockLog.On("LogHandlerError", mock.Anything, "get_product_by_id", "invalid_request", "Valid Product ID is required", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("GET", "/products/", nil)
 	w := httptest.NewRecorder()
@@ -129,13 +129,13 @@ func TestHandlerGetProductByID_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1", Role: "admin"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"}
 	err := &handlers.AppError{Code: "product_not_found", Message: "fail", Err: errors.New("fail")}
-	mockService.On("GetProductByID", mock.Anything, "p1", true).Return(database.Product{}, err)
+	mockService.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", true).Return(database.Product{}, err)
 	mockLog.On("LogHandlerError", mock.Anything, "get_product_by_id", "product_not_found", "fail", mock.Anything, mock.Anything, err.Err).Return()
 
 	routeCtx := chi.NewRouteContext()
-	routeCtx.URLParams.Add("id", "p1")
+	routeCtx.URLParams.Add("id", "550e8400-e29b-41d4-a716-446655440000")
 	req := httptest.NewRequest("GET", "/products/p1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
 	w := httptest.NewRecorder()

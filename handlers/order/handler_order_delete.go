@@ -31,16 +31,16 @@ func (cfg *HandlersOrderConfig) HandlerDeleteOrder(w http.ResponseWriter, r *htt
 
 	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
-	if orderID == "" {
+	if orderID == "" || !utils.IsValidUUID(orderID) {
 		// Log error for missing order ID
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"delete_order",
-			"missing_order_id",
-			"Order ID not found in URL",
+			"invalid_request",
+			"Valid Order ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing order_id")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Order ID is required")
 		return
 	}
 

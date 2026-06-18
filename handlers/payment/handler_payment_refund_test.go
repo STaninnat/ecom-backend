@@ -29,14 +29,14 @@ func TestHandlerRefundPayment_Success(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := RefundPaymentParams{OrderID: "order1", UserID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := RefundPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("RefundPayment", mock.Anything, params).Return(nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "refund_payment", "Refund successful", mock.Anything, mock.Anything).Return()
 
 	r := httptest.NewRequest("POST", "/payments/order1/refund", nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("order_id", "order1")
+	rctx.URLParams.Add("order_id", "550e8400-e29b-41d4-a716-446655440000")
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	w := httptest.NewRecorder()
 
@@ -61,7 +61,7 @@ func TestHandlerRefundPayment_MissingOrderID(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	testutil.RunHandlerMissingOrderIDTest(
 		t,
 		func(cfg any, w http.ResponseWriter, r *http.Request, user any) {
@@ -112,14 +112,14 @@ func TestHandlerRefundPayment_ErrorScenarios(t *testing.T) {
 				Logger:         mockLog,
 				paymentService: mockService,
 			}
-			user := database.User{ID: "u1"}
-			params := RefundPaymentParams{OrderID: "order1", UserID: "u1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+			params := RefundPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000"}
 			mockService.On("RefundPayment", mock.Anything, params).Return(tt.err)
 			mockLog.On("LogHandlerError", mock.Anything, "refund_payment", tt.logCode, tt.logMsg, mock.Anything, mock.Anything, tt.err.Err).Return()
 
 			r := httptest.NewRequest("POST", "/payments/order1/refund", nil)
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("order_id", "order1")
+			rctx.URLParams.Add("order_id", "550e8400-e29b-41d4-a716-446655440000")
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 			w := httptest.NewRecorder()
 
@@ -140,15 +140,15 @@ func TestHandlerRefundPayment_ValidationError(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := RefundPaymentParams{OrderID: "order1", UserID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := RefundPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000"}
 	err := &handlers.AppError{Code: "invalid_request", Message: "Invalid order ID", Err: errors.New("invalid order")}
 	mockService.On("RefundPayment", mock.Anything, params).Return(err)
 	mockLog.On("LogHandlerError", mock.Anything, "refund_payment", "invalid_request", "Invalid order ID", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	r := httptest.NewRequest("POST", "/payments/order1/refund", nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("order_id", "order1")
+	rctx.URLParams.Add("order_id", "550e8400-e29b-41d4-a716-446655440000")
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	w := httptest.NewRecorder()
 

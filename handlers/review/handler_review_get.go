@@ -116,9 +116,9 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewsByProductID(w http.ResponseWri
 	ctx := r.Context()
 
 	productID := chi.URLParam(r, "product_id")
-	if productID == "" {
-		cfg.Logger.LogHandlerError(ctx, "get_reviews_by_product_id", "invalid_request", "Product ID is required", ip, userAgent, nil)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
+	if productID == "" || !utils.IsValidUUID(productID) {
+		cfg.Logger.LogHandlerError(ctx, "get_reviews_by_product_id", "invalid_request", "Valid Product ID is required", ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Product ID is required")
 		return
 	}
 
@@ -212,9 +212,9 @@ func (cfg *HandlersReviewConfig) HandlerGetReviewByID(w http.ResponseWriter, r *
 	ctx := r.Context()
 
 	reviewID := chi.URLParam(r, "id")
-	if reviewID == "" {
-		cfg.Logger.LogHandlerError(ctx, "get_review_by_id", "invalid_request", "Review ID is required", ip, userAgent, nil)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Review ID is required")
+	if reviewID == "" || !utils.IsValidObjectID(reviewID) {
+		cfg.Logger.LogHandlerError(ctx, "get_review_by_id", "invalid_request", "Valid Review ID is required", ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Review ID is required")
 		return
 	}
 

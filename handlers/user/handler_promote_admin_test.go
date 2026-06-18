@@ -59,7 +59,7 @@ func TestHandlerPromoteUserToAdmin_ErrorScenarios(t *testing.T) {
 	}{
 		{
 			name:           "NonAdminForbidden",
-			actingUser:     database.User{ID: "u1", Role: "user"},
+			actingUser:     database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"},
 			mockReturn:     &handlers.AppError{Code: "unauthorized_user", Message: "Admin privileges required"},
 			expectedStatus: http.StatusForbidden,
 		},

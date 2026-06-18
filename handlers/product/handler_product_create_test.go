@@ -30,10 +30,10 @@ func TestHandlerCreateProduct_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	jsonBody, _ := json.Marshal(params)
-	mockService.On("CreateProduct", mock.Anything, params).Return("pid1", nil)
+	mockService.On("CreateProduct", mock.Anything, params).Return("550e8400-e29b-41d4-a716-446655440000", nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "create_product", "Created product successful", mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("POST", "/products", bytes.NewBuffer(jsonBody))
@@ -45,7 +45,7 @@ func TestHandlerCreateProduct_Success(t *testing.T) {
 	err := json.NewDecoder(w.Body).Decode(&resp)
 	require.NoError(t, err)
 	assert.Equal(t, "Product created successfully", resp.Message)
-	assert.Equal(t, "pid1", resp.ProductID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", resp.ProductID)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
 }
@@ -89,7 +89,7 @@ func TestHandlerProduct_InvalidPayload(t *testing.T) {
 				Logger:         mockLog,
 				productService: mockService,
 			}
-			user := database.User{ID: "u1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			badBody := []byte(`{"bad":}`)
 			mockLog.On("LogHandlerError", mock.Anything, tc.logOp, "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -114,8 +114,8 @@ func TestHandlerCreateProduct_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	jsonBody, _ := json.Marshal(params)
 	err := &handlers.AppError{Code: "create_product_error", Message: "fail", Err: errors.New("fail")}
 	mockService.On("CreateProduct", mock.Anything, params).Return("", err)

@@ -62,11 +62,11 @@ func TestHandlerUpdateCategory(t *testing.T) {
 					Name: "Test Category",
 				}).Return(&handlers.AppError{
 					Code:    "invalid_request",
-					Message: "Category ID is required",
+					Message: "Valid Category ID is required",
 				})
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 		{
 			name: "service error",
@@ -79,11 +79,11 @@ func TestHandlerUpdateCategory(t *testing.T) {
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
-					Message: "Category ID is required",
+					Message: "Valid Category ID is required",
 				})
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 	}
 
@@ -249,11 +249,11 @@ func TestHandlerUpdateCategory_EdgeCases(t *testing.T) {
 			setupMocks: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, mock.Anything).Return(&handlers.AppError{
 					Code:    "invalid_request",
-					Message: "Category ID is required",
+					Message: "Valid Category ID is required",
 				})
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 		{
 			name: "ID is very long",

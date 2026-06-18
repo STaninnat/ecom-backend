@@ -24,7 +24,7 @@ import (
 // cart_service_test.go: Tests for interfaces, adapters, and services for managing shopping carts and checkout processes.
 
 const (
-	testUserID           = "user123"
+	testUserID           = "550e8400-e29b-41d4-a716-446655440000"
 	testSessionIDService = "sess123"
 )
 
@@ -40,9 +40,9 @@ func TestAddItemToUserCart_ProductNotFound(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	dbErr := errors.New("product not found")
-	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(database.Product{}, dbErr)
+	mockProduct.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Product{}, dbErr)
 
-	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
+	err := svc.AddItemToUserCart(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 2)
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -63,14 +63,14 @@ func TestAddItemToUserCart_InvalidPrice(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	product := database.Product{
-		ID:    "product123",
+		ID:    "550e8400-e29b-41d4-a716-446655440000",
 		Name:  "Test Product",
 		Price: "invalid_price",
 	}
 
-	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(product, nil)
+	mockProduct.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(product, nil)
 
-	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
+	err := svc.AddItemToUserCart(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 2)
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -91,16 +91,16 @@ func TestAddItemToUserCart_AddFailed(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	product := database.Product{
-		ID:    "product123",
+		ID:    "550e8400-e29b-41d4-a716-446655440000",
 		Name:  "Test Product",
 		Price: "10.50",
 	}
 
 	dbErr := errors.New("add to cart failed")
-	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(product, nil)
-	mockCartMongo.On("AddItemToCart", mock.Anything, "user123", mock.AnythingOfType("models.CartItem")).Return(dbErr)
+	mockProduct.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(product, nil)
+	mockCartMongo.On("AddItemToCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", mock.AnythingOfType("models.CartItem")).Return(dbErr)
 
-	err := svc.AddItemToUserCart(context.Background(), "user123", "product123", 2)
+	err := svc.AddItemToUserCart(context.Background(), "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 2)
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -123,7 +123,7 @@ func TestAddItemToGuestCart_Success(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	product := database.Product{
-		ID:    "product123",
+		ID:    "550e8400-e29b-41d4-a716-446655440000",
 		Name:  "Test Product",
 		Price: "10.50",
 	}
@@ -136,11 +136,11 @@ func TestAddItemToGuestCart_Success(t *testing.T) {
 		UpdatedAt: time.Now().UTC(),
 	}
 
-	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(product, nil)
+	mockProduct.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(product, nil)
 	mockRedis.On("GetGuestCart", mock.Anything, "session123").Return(existingCart, nil)
 	mockRedis.On("SaveGuestCart", mock.Anything, "session123", mock.AnythingOfType("*models.Cart")).Return(nil)
 
-	err := svc.AddItemToGuestCart(context.Background(), "session123", "product123", 2)
+	err := svc.AddItemToGuestCart(context.Background(), "session123", "550e8400-e29b-41d4-a716-446655440000", 2)
 	require.NoError(t, err)
 	mockProduct.AssertExpectations(t)
 	mockRedis.AssertExpectations(t)
@@ -164,11 +164,11 @@ func TestAddItemToGuestCart_InvalidInputs(t *testing.T) {
 		quantity  int
 		wantCode  string
 	}{
-		{"empty sessionID", "", "product123", 2, "invalid_request"},
+		{"empty sessionID", "", "550e8400-e29b-41d4-a716-446655440000", 2, "invalid_request"},
 		{"empty productID", "session123", "", 2, "invalid_request"},
-		{"zero quantity", "session123", "product123", 0, "invalid_request"},
-		{"negative quantity", "session123", "product123", -1, "invalid_request"},
-		{"excessive quantity", "session123", "product123", 1001, "invalid_request"},
+		{"zero quantity", "session123", "550e8400-e29b-41d4-a716-446655440000", 0, "invalid_request"},
+		{"negative quantity", "session123", "550e8400-e29b-41d4-a716-446655440000", -1, "invalid_request"},
+		{"excessive quantity", "session123", "550e8400-e29b-41d4-a716-446655440000", 1001, "invalid_request"},
 	}
 
 	for _, tc := range cases {
@@ -195,7 +195,7 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
 	product := database.Product{
-		ID:    "product123",
+		ID:    "550e8400-e29b-41d4-a716-446655440000",
 		Name:  "Test Product",
 		Price: "10.50",
 	}
@@ -219,10 +219,10 @@ func TestAddItemToGuestCart_CartFull(t *testing.T) {
 		UpdatedAt: time.Now().UTC(),
 	}
 
-	mockProduct.On("GetProductByID", mock.Anything, "product123").Return(product, nil)
+	mockProduct.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(product, nil)
 	mockRedis.On("GetGuestCart", mock.Anything, "session123").Return(fullCart, nil)
 
-	err := svc.AddItemToGuestCart(context.Background(), "session123", "product123", 2)
+	err := svc.AddItemToGuestCart(context.Background(), "session123", "550e8400-e29b-41d4-a716-446655440000", 2)
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -264,8 +264,8 @@ func TestCartScenarios(t *testing.T) {
 	userSetups := []func(){
 		func() {
 			mockCartMongo.ExpectedCalls = nil
-			expectedCart := &models.Cart{ID: "user123", UserID: "user123", Items: []models.CartItem{}}
-			mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return(expectedCart, nil)
+			expectedCart := &models.Cart{ID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000", Items: []models.CartItem{}}
+			mockCartMongo.On("GetCartByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(expectedCart, nil)
 		},
 		func() {
 			mockCartMongo.ExpectedCalls = nil
@@ -273,19 +273,19 @@ func TestCartScenarios(t *testing.T) {
 		func() {
 			mockCartMongo.ExpectedCalls = nil
 			dbErr := errors.New("get cart failed")
-			mockCartMongo.On("GetCartByUserID", mock.Anything, "user123").Return((*models.Cart)(nil), dbErr)
+			mockCartMongo.On("GetCartByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return((*models.Cart)(nil), dbErr)
 		},
 	}
 	userExpectedCarts := []*models.Cart{
-		{ID: "user123", UserID: "user123", Items: []models.CartItem{}},
+		{ID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000", Items: []models.CartItem{}},
 		nil,
 		nil,
 	}
 	userExpectedErrCodes := []string{"", "invalid_request", "get_failed"}
 
-	runGetCartTest(t, "UserCart/A", svc.GetUserCart, "user123", userSetups[0], userExpectedCarts[0], userExpectedErrCodes[0])
+	runGetCartTest(t, "UserCart/A", svc.GetUserCart, "550e8400-e29b-41d4-a716-446655440000", userSetups[0], userExpectedCarts[0], userExpectedErrCodes[0])
 	runGetCartTest(t, "UserCart/B", svc.GetUserCart, "", userSetups[1], userExpectedCarts[1], userExpectedErrCodes[1])
-	runGetCartTest(t, "UserCart/C", svc.GetUserCart, "user123", userSetups[2], userExpectedCarts[2], userExpectedErrCodes[2])
+	runGetCartTest(t, "UserCart/C", svc.GetUserCart, "550e8400-e29b-41d4-a716-446655440000", userSetups[2], userExpectedCarts[2], userExpectedErrCodes[2])
 
 	// Guest cart scenarios
 	guestSetups := []func(){
@@ -353,16 +353,16 @@ func TestUpdateQuantity_InvalidInputs(t *testing.T) {
 		wantCode   string
 		updateFunc func(context.Context, string, string, int) error
 	}{
-		{"empty userID", "", "product123", 5, "invalid_request", svc.UpdateItemQuantity},
-		{"empty productID", "user123", "", 5, "invalid_request", svc.UpdateItemQuantity},
-		{"zero quantity", "user123", "product123", 0, "invalid_request", svc.UpdateItemQuantity},
-		{"negative quantity", "user123", "product123", -1, "invalid_request", svc.UpdateItemQuantity},
-		{"excessive quantity", "user123", "product123", 1001, "invalid_request", svc.UpdateItemQuantity},
-		{"empty sessionID", "", "product123", 5, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"empty userID", "", "550e8400-e29b-41d4-a716-446655440000", 5, "invalid_request", svc.UpdateItemQuantity},
+		{"empty productID", "550e8400-e29b-41d4-a716-446655440000", "", 5, "invalid_request", svc.UpdateItemQuantity},
+		{"zero quantity", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 0, "invalid_request", svc.UpdateItemQuantity},
+		{"negative quantity", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", -1, "invalid_request", svc.UpdateItemQuantity},
+		{"excessive quantity", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 1001, "invalid_request", svc.UpdateItemQuantity},
+		{"empty sessionID", "", "550e8400-e29b-41d4-a716-446655440000", 5, "invalid_request", svc.UpdateGuestItemQuantity},
 		{"empty productID (guest)", "session123", "", 5, "invalid_request", svc.UpdateGuestItemQuantity},
-		{"zero quantity (guest)", "session123", "product123", 0, "invalid_request", svc.UpdateGuestItemQuantity},
-		{"negative quantity (guest)", "session123", "product123", -1, "invalid_request", svc.UpdateGuestItemQuantity},
-		{"excessive quantity (guest)", "session123", "product123", 1001, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"zero quantity (guest)", "session123", "550e8400-e29b-41d4-a716-446655440000", 0, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"negative quantity (guest)", "session123", "550e8400-e29b-41d4-a716-446655440000", -1, "invalid_request", svc.UpdateGuestItemQuantity},
+		{"excessive quantity (guest)", "session123", "550e8400-e29b-41d4-a716-446655440000", 1001, "invalid_request", svc.UpdateGuestItemQuantity},
 	}
 
 	for _, tc := range cases {
@@ -384,18 +384,18 @@ func TestUpdateQuantity_Failure(t *testing.T) {
 	t.Run("UpdateItemQuantity_Failure", func(t *testing.T) {
 		setupMock := func() {
 			dbErr := errors.New("update quantity failed")
-			mockCartMongo.On("UpdateItemQuantity", mock.Anything, "user123", "product123", 5).Return(dbErr)
+			mockCartMongo.On("UpdateItemQuantity", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 5).Return(dbErr)
 		}
-		runUpdateQuantityFailureTest(t, svc.UpdateItemQuantity, setupMock, "user123", "product123", 5, "update_failed")
+		runUpdateQuantityFailureTest(t, svc.UpdateItemQuantity, setupMock, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", 5, "update_failed")
 		mockCartMongo.AssertExpectations(t)
 	})
 
 	t.Run("UpdateGuestItemQuantity_Failure", func(t *testing.T) {
 		setupMock := func() {
 			redisErr := errors.New("update guest quantity failed")
-			mockRedis.On("UpdateGuestItemQuantity", mock.Anything, "session123", "product123", 5).Return(redisErr)
+			mockRedis.On("UpdateGuestItemQuantity", mock.Anything, "session123", "550e8400-e29b-41d4-a716-446655440000", 5).Return(redisErr)
 		}
-		runUpdateQuantityFailureTest(t, svc.UpdateGuestItemQuantity, setupMock, "session123", "product123", 5, "update_failed")
+		runUpdateQuantityFailureTest(t, svc.UpdateGuestItemQuantity, setupMock, "session123", "550e8400-e29b-41d4-a716-446655440000", 5, "update_failed")
 		mockRedis.AssertExpectations(t)
 	})
 }
@@ -437,9 +437,9 @@ func TestRemoveItem_InvalidInputs(t *testing.T) {
 		wantCode   string
 		removeFunc func(context.Context, string, string) error
 	}{
-		{"empty userID", "", "product123", "invalid_request", svc.RemoveItem},
-		{"empty productID", "user123", "", "invalid_request", svc.RemoveItem},
-		{"empty sessionID", "", "product123", "invalid_request", svc.RemoveGuestItem},
+		{"empty userID", "", "550e8400-e29b-41d4-a716-446655440000", "invalid_request", svc.RemoveItem},
+		{"empty productID", "550e8400-e29b-41d4-a716-446655440000", "", "invalid_request", svc.RemoveItem},
+		{"empty sessionID", "", "550e8400-e29b-41d4-a716-446655440000", "invalid_request", svc.RemoveGuestItem},
 		{"empty productID (guest)", "session123", "", "invalid_request", svc.RemoveGuestItem},
 	}
 
@@ -462,18 +462,18 @@ func TestRemoveItem_Failure(t *testing.T) {
 	t.Run("RemoveItem_Failure", func(t *testing.T) {
 		setupMock := func() {
 			dbErr := errors.New("remove item failed")
-			mockCartMongo.On("RemoveItemFromCart", mock.Anything, "user123", "product123").Return(dbErr)
+			mockCartMongo.On("RemoveItemFromCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000").Return(dbErr)
 		}
-		runRemoveItemFailureTest(t, svc.RemoveItem, setupMock, "user123", "product123", "remove_failed")
+		runRemoveItemFailureTest(t, svc.RemoveItem, setupMock, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", "remove_failed")
 		mockCartMongo.AssertExpectations(t)
 	})
 
 	t.Run("RemoveGuestItem_Failure", func(t *testing.T) {
 		setupMock := func() {
 			redisErr := errors.New("remove guest item failed")
-			mockRedis.On("RemoveGuestItem", mock.Anything, "session123", "product123").Return(redisErr)
+			mockRedis.On("RemoveGuestItem", mock.Anything, "session123", "550e8400-e29b-41d4-a716-446655440000").Return(redisErr)
 		}
-		runRemoveItemFailureTest(t, svc.RemoveGuestItem, setupMock, "session123", "product123", "remove_failed")
+		runRemoveItemFailureTest(t, svc.RemoveGuestItem, setupMock, "session123", "550e8400-e29b-41d4-a716-446655440000", "remove_failed")
 		mockRedis.AssertExpectations(t)
 	})
 }
@@ -489,9 +489,9 @@ func TestDeleteUserCart_Success(t *testing.T) {
 
 	svc := NewCartService(mockCartMongo, mockProduct, mockOrder, mockDBConn, mockRedis)
 
-	mockCartMongo.On("ClearCart", mock.Anything, "user123").Return(nil)
+	mockCartMongo.On("ClearCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 
-	err := svc.DeleteUserCart(context.Background(), "user123")
+	err := svc.DeleteUserCart(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	mockCartMongo.AssertExpectations(t)
 }
@@ -538,9 +538,9 @@ func TestDeleteCart_Failure(t *testing.T) {
 	t.Run("DeleteUserCart_Failure", func(t *testing.T) {
 		setupMock := func() {
 			dbErr := errors.New("clear cart failed")
-			mockCartMongo.On("ClearCart", mock.Anything, "user123").Return(dbErr)
+			mockCartMongo.On("ClearCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(dbErr)
 		}
-		runDeleteCartFailureTest(t, svc.DeleteUserCart, setupMock, "user123", "clear_failed")
+		runDeleteCartFailureTest(t, svc.DeleteUserCart, setupMock, "550e8400-e29b-41d4-a716-446655440000", "clear_failed")
 		mockCartMongo.AssertExpectations(t)
 	})
 

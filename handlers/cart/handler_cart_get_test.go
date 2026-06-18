@@ -31,7 +31,7 @@ func TestHandlerGetUserCart(t *testing.T) {
 	}{
 		{
 			name: "success",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
 				expectedCart := &models.Cart{
 					ID: "cart1",
@@ -39,7 +39,7 @@ func TestHandlerGetUserCart(t *testing.T) {
 						{ProductID: "prod1", Quantity: 2},
 					},
 				}
-				mockService.On("GetUserCart", mock.Anything, "user1").Return(expectedCart, nil)
+				mockService.On("GetUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(expectedCart, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: &models.Cart{
@@ -51,9 +51,9 @@ func TestHandlerGetUserCart(t *testing.T) {
 		},
 		{
 			name: "cart not found",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
-				mockService.On("GetUserCart", mock.Anything, "user1").Return(nil, &handlers.AppError{Code: "cart_not_found", Message: "Cart not found"})
+				mockService.On("GetUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil, &handlers.AppError{Code: "cart_not_found", Message: "Cart not found"})
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody: map[string]any{
@@ -63,9 +63,9 @@ func TestHandlerGetUserCart(t *testing.T) {
 		},
 		{
 			name: "database error",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			setupMock: func(mockService *MockCartService) {
-				mockService.On("GetUserCart", mock.Anything, "user1").Return(nil, &handlers.AppError{Code: "database_error", Message: "Database error"})
+				mockService.On("GetUserCart", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil, &handlers.AppError{Code: "database_error", Message: "Database error"})
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody: map[string]any{

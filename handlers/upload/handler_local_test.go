@@ -17,7 +17,7 @@ import (
 // handler_local_test.go: Tests upload and update product image handlers for success, error, and missing ID cases, verifying correct HTTP responses and proper logging behavior.
 
 const (
-	testProductID = "prod123"
+	testProductID = "550e8400-e29b-41d4-a716-446655440000"
 )
 
 func TestHandlerUploadProductImage_Scenarios(t *testing.T) {
@@ -35,7 +35,7 @@ func TestHandlerUploadProductImage_Scenarios(t *testing.T) {
 				mockLogger := new(mockLogger)
 				mockService := new(mockUploadService)
 				cfg := &HandlersUploadConfig{Logger: mockLogger, Service: mockService}
-				user := database.User{ID: "user123"}
+				user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 				req := httptest.NewRequest("POST", "/upload", nil)
 				w := httptest.NewRecorder()
 				return cfg, w, req, user, &mockService.Mock, &mockLogger.Mock
@@ -56,7 +56,7 @@ func TestHandlerUploadProductImage_Scenarios(t *testing.T) {
 				mockLogger := new(mockLogger)
 				mockService := new(mockUploadService)
 				cfg := &HandlersUploadConfig{Logger: mockLogger, Service: mockService}
-				user := database.User{ID: "user123"}
+				user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 				req := httptest.NewRequest("POST", "/upload", nil)
 				w := httptest.NewRecorder()
 				return cfg, w, req, user, &mockService.Mock, &mockLogger.Mock
@@ -78,7 +78,7 @@ func TestHandlerUploadProductImage_Scenarios(t *testing.T) {
 				mockLogger := new(mockS3Logger)
 				mockService := new(mockS3UploadService)
 				cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-				user := database.User{ID: "user123"}
+				user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 				req := httptest.NewRequest("POST", "/upload", nil)
 				w := httptest.NewRecorder()
 				return cfg, w, req, user, &mockService.Mock, &mockLogger.Mock
@@ -99,7 +99,7 @@ func TestHandlerUploadProductImage_Scenarios(t *testing.T) {
 				mockLogger := new(mockS3Logger)
 				mockService := new(mockS3UploadService)
 				cfg := &HandlersUploadS3Config{Logger: mockLogger, Service: mockService}
-				user := database.User{ID: "user123"}
+				user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 				req := httptest.NewRequest("POST", "/upload", nil)
 				w := httptest.NewRecorder()
 				return cfg, w, req, user, &mockService.Mock, &mockLogger.Mock
@@ -136,7 +136,7 @@ func TestHandlerUpdateProductImageByID_Success(t *testing.T) {
 	mockLogger := new(mockLogger)
 	mockService := new(mockUploadService)
 	cfg := &HandlersUploadConfig{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	req := httptest.NewRequest("POST", "/update/123", nil)
 	w := httptest.NewRecorder()
 
@@ -165,7 +165,7 @@ func TestHandlerUpdateProductImageByID_MissingProductID(t *testing.T) {
 	mockLogger := new(mockLogger)
 	mockService := new(mockUploadService)
 	cfg := &HandlersUploadConfig{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	req := httptest.NewRequest("POST", "/update", nil)
 	w := httptest.NewRecorder()
 
@@ -190,7 +190,7 @@ func TestHandlerUpdateProductImageByID_Error(t *testing.T) {
 	mockLogger := new(mockLogger)
 	mockService := new(mockUploadService)
 	cfg := &HandlersUploadConfig{Logger: mockLogger, Service: mockService}
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	req := httptest.NewRequest("POST", "/update/123", nil)
 	w := httptest.NewRecorder()
 

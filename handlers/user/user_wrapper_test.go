@@ -260,7 +260,7 @@ func TestAuthHandlerGetUser_CallsUnderlyingHandlerWithUserInContext(t *testing.T
 	cfg := &testUserConfig{}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/users", nil)
-	user := database.User{ID: "u1", Name: "Test User"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Name: "Test User"}
 	cfg.AuthHandlerGetUser(w, r, user)
 	assert.True(t, cfg.calledGetUser, "HandlerGetUser should be called")
 	assert.Equal(t, user, cfg.gotUser, "User should be injected into context")
@@ -272,7 +272,7 @@ func TestAuthHandlerUpdateUser_CallsUnderlyingHandlerWithUserInContext(t *testin
 	cfg := &testUserConfig{}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("PUT", "/users", nil)
-	user := database.User{ID: "u2", Name: "Update User"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Name: "Update User"}
 	cfg.AuthHandlerUpdateUser(w, r, user)
 	assert.True(t, cfg.calledUpdateUser, "HandlerUpdateUser should be called")
 	assert.Equal(t, user, cfg.gotUser, "User should be injected into context")
@@ -309,7 +309,7 @@ func TestUserExtractionMiddleware_HappyPath(t *testing.T) {
 
 	// Create a valid JWT
 	claims := &authpkg.Claims{
-		UserID: "u1",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "test-issuer",
 			Audience:  []string{"test-audience"},
@@ -321,13 +321,13 @@ func TestUserExtractionMiddleware_HappyPath(t *testing.T) {
 	tokenStr, err := token.SignedString([]byte("testsecret"))
 	require.NoError(t, err)
 
-	mockDB.On("GetUserByID", mock.Anything, "u1").Return(database.User{ID: "u1"}, nil)
+	mockDB.On("GetUserByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}, nil)
 
 	called := false
 	h := cfg.UserExtractionMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		user, ok := r.Context().Value(contextKeyUser).(database.User)
 		assert.True(t, ok)
-		assert.Equal(t, "u1", user.ID)
+		assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", user.ID)
 		called = true
 	}))
 	w := httptest.NewRecorder()
@@ -354,7 +354,7 @@ func TestExtractUserFromRequest_InvalidToken(t *testing.T) {
 
 	// Generate a JWT with the wrong secret
 	claims := &authpkg.Claims{
-		UserID: "u1",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "issuer",
 			Audience:  []string{"aud"},
@@ -391,7 +391,7 @@ func TestExtractUserFromRequest_ExpiredToken(t *testing.T) {
 
 	// Generate an expired JWT
 	claims := &authpkg.Claims{
-		UserID: "u1",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "issuer",
 			Audience:  []string{"aud"},
@@ -428,7 +428,7 @@ func TestExtractUserFromRequest_UserNotFound(t *testing.T) {
 
 	// Generate a valid JWT
 	claims := &authpkg.Claims{
-		UserID: "u1",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "issuer",
 			Audience:  []string{"aud"},
@@ -443,7 +443,7 @@ func TestExtractUserFromRequest_UserNotFound(t *testing.T) {
 	r := httptest.NewRequest("GET", "/user", nil)
 	r.Header.Set("Authorization", "Bearer "+tokenStr)
 
-	mockUserService.On("GetUserByID", mock.Anything, "u1").Return(database.User{}, errors.New("user not found")).Once()
+	mockUserService.On("GetUserByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.User{}, errors.New("user not found")).Once()
 
 	user, err := cfg.extractUserFromRequest(r)
 	require.Error(t, err)

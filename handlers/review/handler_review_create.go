@@ -22,7 +22,7 @@ import (
 //   - error: AppError with appropriate code and message if validation fails, nil otherwise
 func (r *ReviewCreateRequest) Validate() error {
 	if r.ProductID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 	if r.Rating < 1 || r.Rating > 5 {
 		return &handlers.AppError{Code: "invalid_request", Message: "Rating must be between 1 and 5"}

@@ -30,9 +30,9 @@ func TestHandlerCreateReview_Success(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reqBody := ReviewCreateRequest{
-		ProductID: "p1",
+		ProductID: "550e8400-e29b-41d4-a716-446655440000",
 		Rating:    5,
 		Comment:   "Great!",
 		MediaURLs: []string{"url1"},
@@ -73,7 +73,7 @@ func TestHandlerCreateReview_InvalidPayload(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	badBody := []byte(`{"bad":}`)
 	mockLogger.On("LogHandlerError", mock.Anything, "create_review", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -95,7 +95,7 @@ func TestHandlerCreateReview_ValidationError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Missing ProductID
 	reqBody := ReviewCreateRequest{
 		ProductID: "",
@@ -103,7 +103,7 @@ func TestHandlerCreateReview_ValidationError(t *testing.T) {
 		Comment:   "Great!",
 	}
 	jsonBody, _ := json.Marshal(reqBody)
-	mockLogger.On("LogHandlerError", mock.Anything, "create_review", "invalid_request", "Product ID is required", mock.Anything, mock.Anything, mock.Anything).Return()
+	mockLogger.On("LogHandlerError", mock.Anything, "create_review", "invalid_request", "Valid Product ID is required", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("POST", "/reviews", bytes.NewBuffer(jsonBody))
 	w := httptest.NewRecorder()
@@ -123,9 +123,9 @@ func TestHandlerCreateReview_ServiceError(t *testing.T) {
 		Logger:        mockLogger,
 		ReviewService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	reqBody := ReviewCreateRequest{
-		ProductID: "p1",
+		ProductID: "550e8400-e29b-41d4-a716-446655440000",
 		Rating:    5,
 		Comment:   "Great!",
 	}
@@ -160,30 +160,30 @@ func TestReviewCreateRequest_Validate_EdgeCases(t *testing.T) {
 	}{
 		{
 			name:    "rating too low",
-			request: ReviewCreateRequest{ProductID: "p1", Rating: 0, Comment: "test"},
+			request: ReviewCreateRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Rating: 0, Comment: "test"},
 			wantErr: true,
 			errCode: "invalid_request",
 		},
 		{
 			name:    "rating too high",
-			request: ReviewCreateRequest{ProductID: "p1", Rating: 6, Comment: "test"},
+			request: ReviewCreateRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Rating: 6, Comment: "test"},
 			wantErr: true,
 			errCode: "invalid_request",
 		},
 		{
 			name:    "empty comment",
-			request: ReviewCreateRequest{ProductID: "p1", Rating: 5, Comment: ""},
+			request: ReviewCreateRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Rating: 5, Comment: ""},
 			wantErr: true,
 			errCode: "invalid_request",
 		},
 		{
 			name:    "valid rating boundaries",
-			request: ReviewCreateRequest{ProductID: "p1", Rating: 1, Comment: "test"},
+			request: ReviewCreateRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Rating: 1, Comment: "test"},
 			wantErr: false,
 		},
 		{
 			name:    "valid rating boundaries max",
-			request: ReviewCreateRequest{ProductID: "p1", Rating: 5, Comment: "test"},
+			request: ReviewCreateRequest{ProductID: "550e8400-e29b-41d4-a716-446655440000", Rating: 5, Comment: "test"},
 			wantErr: false,
 		},
 	}

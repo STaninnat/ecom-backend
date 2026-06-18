@@ -186,7 +186,7 @@ func HandleCategoryDelete[
 	ctx := r.Context()
 
 	categoryID := chi.URLParam(r, "id")
-	if categoryID == "" {
+	if categoryID == "" || !utils.IsValidObjectID(categoryID) {
 		logger.LogHandlerError(
 			ctx,
 			"delete_category",
@@ -194,7 +194,7 @@ func HandleCategoryDelete[
 			"Category ID not found in URL",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Category ID is required")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Category ID is required")
 		return
 	}
 

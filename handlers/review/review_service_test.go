@@ -25,7 +25,7 @@ import (
 func TestCreateReview_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	review := &models.Review{ID: "r1"}
+	review := &models.Review{ID: "507f1f77bcf86cd799439011"}
 	m.On("CreateReview", mock.Anything, review).Return(nil)
 	err := svc.CreateReview(context.Background(), review)
 	require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestCreateReview_Success(t *testing.T) {
 func TestCreateReview_Failure(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	review := &models.Review{ID: "r1"}
+	review := &models.Review{ID: "507f1f77bcf86cd799439011"}
 	m.On("CreateReview", mock.Anything, review).Return(errors.New("db fail"))
 	err := svc.CreateReview(context.Background(), review)
 	require.Error(t, err)
@@ -54,9 +54,9 @@ func TestCreateReview_Failure(t *testing.T) {
 func TestGetReviewByID_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	review := &models.Review{ID: "r1"}
-	m.On("GetReviewByID", mock.Anything, "r1").Return(review, nil)
-	got, err := svc.GetReviewByID(context.Background(), "r1")
+	review := &models.Review{ID: "507f1f77bcf86cd799439011"}
+	m.On("GetReviewByID", mock.Anything, "507f1f77bcf86cd799439011").Return(review, nil)
+	got, err := svc.GetReviewByID(context.Background(), "507f1f77bcf86cd799439011")
 	require.NoError(t, err)
 	assert.Equal(t, review, got)
 	m.AssertExpectations(t)
@@ -83,8 +83,8 @@ func TestGetReviewByID_ErrorScenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := new(mockReviewMongo)
 			svc := NewReviewService(m)
-			m.On("GetReviewByID", mock.Anything, "r1").Return((*models.Review)(nil), tt.dbErr)
-			got, err := svc.GetReviewByID(context.Background(), "r1")
+			m.On("GetReviewByID", mock.Anything, "507f1f77bcf86cd799439011").Return((*models.Review)(nil), tt.dbErr)
+			got, err := svc.GetReviewByID(context.Background(), "507f1f77bcf86cd799439011")
 			assert.Nil(t, got)
 			appErr := &handlers.AppError{}
 			ok := errors.As(err, &appErr)
@@ -101,9 +101,9 @@ func TestGetReviewByID_ErrorScenarios(t *testing.T) {
 func TestGetReviewsByProductID_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	reviews := []*models.Review{{ID: "r1"}}
-	m.On("GetReviewsByProductID", mock.Anything, "p1").Return(reviews, nil)
-	got, err := svc.GetReviewsByProductID(context.Background(), "p1")
+	reviews := []*models.Review{{ID: "507f1f77bcf86cd799439011"}}
+	m.On("GetReviewsByProductID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(reviews, nil)
+	got, err := svc.GetReviewsByProductID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.Equal(t, reviews, got)
 	m.AssertExpectations(t)
@@ -120,14 +120,14 @@ func TestGetReviewsByID_FailureScenarios(t *testing.T) {
 		{
 			name:         "ProductID_Failure",
 			method:       "GetReviewsByProductID",
-			id:           "p1",
+			id:           "550e8400-e29b-41d4-a716-446655440000",
 			dbErr:        errors.New("db fail"),
 			expectedCode: "get_failed",
 		},
 		{
 			name:         "UserID_Failure",
 			method:       "GetReviewsByUserID",
-			id:           "u1",
+			id:           "550e8400-e29b-41d4-a716-446655440000",
 			dbErr:        errors.New("db fail"),
 			expectedCode: "get_failed",
 		},
@@ -165,9 +165,9 @@ func TestGetReviewsByID_FailureScenarios(t *testing.T) {
 func TestGetReviewsByUserID_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	reviews := []*models.Review{{ID: "r1"}}
-	m.On("GetReviewsByUserID", mock.Anything, "u1").Return(reviews, nil)
-	got, err := svc.GetReviewsByUserID(context.Background(), "u1")
+	reviews := []*models.Review{{ID: "507f1f77bcf86cd799439011"}}
+	m.On("GetReviewsByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(reviews, nil)
+	got, err := svc.GetReviewsByUserID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.Equal(t, reviews, got)
 	m.AssertExpectations(t)
@@ -179,8 +179,8 @@ func TestGetReviewsByUserID_Failure(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
 	dbErr := errors.New("db fail")
-	m.On("GetReviewsByUserID", mock.Anything, "u1").Return(([]*models.Review)(nil), dbErr)
-	got, err := svc.GetReviewsByUserID(context.Background(), "u1")
+	m.On("GetReviewsByUserID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(([]*models.Review)(nil), dbErr)
+	got, err := svc.GetReviewsByUserID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	assert.Nil(t, got)
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
@@ -195,9 +195,9 @@ func TestGetReviewsByUserID_Failure(t *testing.T) {
 func TestUpdateReviewByID_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	review := &models.Review{ID: "r1"}
-	m.On("UpdateReviewByID", mock.Anything, "r1", review).Return(nil)
-	err := svc.UpdateReviewByID(context.Background(), "r1", review)
+	review := &models.Review{ID: "507f1f77bcf86cd799439011"}
+	m.On("UpdateReviewByID", mock.Anything, "507f1f77bcf86cd799439011", review).Return(nil)
+	err := svc.UpdateReviewByID(context.Background(), "507f1f77bcf86cd799439011", review)
 	require.NoError(t, err)
 	m.AssertExpectations(t)
 }
@@ -223,9 +223,9 @@ func TestUpdateReviewByID_ErrorScenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := new(mockReviewMongo)
 			svc := NewReviewService(m)
-			review := &models.Review{ID: "r1"}
-			m.On("UpdateReviewByID", mock.Anything, "r1", review).Return(tt.dbErr)
-			err := svc.UpdateReviewByID(context.Background(), "r1", review)
+			review := &models.Review{ID: "507f1f77bcf86cd799439011"}
+			m.On("UpdateReviewByID", mock.Anything, "507f1f77bcf86cd799439011", review).Return(tt.dbErr)
+			err := svc.UpdateReviewByID(context.Background(), "507f1f77bcf86cd799439011", review)
 			appErr := &handlers.AppError{}
 			ok := errors.As(err, &appErr)
 			assert.True(t, ok)
@@ -241,8 +241,8 @@ func TestUpdateReviewByID_ErrorScenarios(t *testing.T) {
 func TestDeleteReviewByID_Success(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
-	m.On("DeleteReviewByID", mock.Anything, "r1").Return(nil)
-	err := svc.DeleteReviewByID(context.Background(), "r1")
+	m.On("DeleteReviewByID", mock.Anything, "507f1f77bcf86cd799439011").Return(nil)
+	err := svc.DeleteReviewByID(context.Background(), "507f1f77bcf86cd799439011")
 	require.NoError(t, err)
 	m.AssertExpectations(t)
 }
@@ -253,8 +253,8 @@ func TestDeleteReviewByID_NotFound(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
 	dbErr := errors.New("review not found")
-	m.On("DeleteReviewByID", mock.Anything, "r1").Return(dbErr)
-	err := svc.DeleteReviewByID(context.Background(), "r1")
+	m.On("DeleteReviewByID", mock.Anything, "507f1f77bcf86cd799439011").Return(dbErr)
+	err := svc.DeleteReviewByID(context.Background(), "507f1f77bcf86cd799439011")
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -268,8 +268,8 @@ func TestDeleteReviewByID_Failure(t *testing.T) {
 	m := new(mockReviewMongo)
 	svc := NewReviewService(m)
 	dbErr := errors.New("db fail")
-	m.On("DeleteReviewByID", mock.Anything, "r1").Return(dbErr)
-	err := svc.DeleteReviewByID(context.Background(), "r1")
+	m.On("DeleteReviewByID", mock.Anything, "507f1f77bcf86cd799439011").Return(dbErr)
+	err := svc.DeleteReviewByID(context.Background(), "507f1f77bcf86cd799439011")
 	appErr := &handlers.AppError{}
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok)
@@ -289,10 +289,10 @@ func TestGetReviewsByPaginated_Scenarios(t *testing.T) {
 		{
 			name:   "Product_WithFilters",
 			method: "product",
-			id:     "p1",
+			id:     "550e8400-e29b-41d4-a716-446655440000",
 			params: []any{(*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), ""},
 			result: &intmongo.PaginatedResult[*models.Review]{
-				Data:       []*models.Review{{ID: "r1"}},
+				Data:       []*models.Review{{ID: "507f1f77bcf86cd799439011"}},
 				TotalCount: 1,
 				Page:       1,
 				PageSize:   10,
@@ -304,10 +304,10 @@ func TestGetReviewsByPaginated_Scenarios(t *testing.T) {
 		{
 			name:   "User_WithFilters",
 			method: "user",
-			id:     "u1",
+			id:     "550e8400-e29b-41d4-a716-446655440000",
 			params: []any{(*int)(nil), (*int)(nil), (*int)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil), ""},
 			result: &intmongo.PaginatedResult[*models.Review]{
-				Data:       []*models.Review{{ID: "r1"}},
+				Data:       []*models.Review{{ID: "507f1f77bcf86cd799439011"}},
 				TotalCount: 1,
 				Page:       1,
 				PageSize:   10,
@@ -369,7 +369,7 @@ func TestGetReviewsByPaginated_EdgeCases(t *testing.T) {
 	testCases := []testCase{
 		{
 			name:       "ProductIDPaginated",
-			id:         "p1",
+			id:         "550e8400-e29b-41d4-a716-446655440000",
 			mockMethod: "GetReviewsByProductIDPaginated",
 			callFunc: func(svc ReviewService, ctx context.Context, id string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
 				return svc.GetReviewsByProductIDPaginated(ctx, id, page, pageSize, rating, minRating, maxRating, from, to, hasMedia, sort)
@@ -377,7 +377,7 @@ func TestGetReviewsByPaginated_EdgeCases(t *testing.T) {
 		},
 		{
 			name:       "UserIDPaginated",
-			id:         "u1",
+			id:         "550e8400-e29b-41d4-a716-446655440000",
 			mockMethod: "GetReviewsByUserIDPaginated",
 			callFunc: func(svc ReviewService, ctx context.Context, id string, page, pageSize int, rating, minRating, maxRating *int, from, to *time.Time, hasMedia *bool, sort string) (any, error) {
 				return svc.GetReviewsByUserIDPaginated(ctx, id, page, pageSize, rating, minRating, maxRating, from, to, hasMedia, sort)
@@ -390,7 +390,7 @@ func TestGetReviewsByPaginated_EdgeCases(t *testing.T) {
 			m := new(mockReviewMongo)
 			svc := NewReviewService(m)
 			result := &intmongo.PaginatedResult[*models.Review]{
-				Data:       []*models.Review{{ID: "r1"}},
+				Data:       []*models.Review{{ID: "507f1f77bcf86cd799439011"}},
 				TotalCount: 1,
 				Page:       1,
 				PageSize:   10,

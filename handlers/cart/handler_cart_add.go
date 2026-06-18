@@ -26,7 +26,7 @@ var getSessionIDFromRequest = utils.GetSessionIDFromRequest
 // @Router       /v1/cart/items [post]
 func (cfg *HandlersCartConfig) HandlerAddItemToUserCart(w http.ResponseWriter, r *http.Request, user database.User) {
 	cfg.handleCartItemOperation(
-		w, r, user.ID, "User ID is required",
+		w, r, user.ID, "Valid User ID is required",
 		func(r *http.Request) (string, string, int, error) {
 			var req CartItemRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

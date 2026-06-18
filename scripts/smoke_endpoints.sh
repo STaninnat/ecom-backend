@@ -12,6 +12,7 @@ PASSWORD="SmokeTest123!"
 CATEGORY_NAME="Smoke Category $(date +%s)"
 PRODUCT_NAME="Smoke Product $(date +%s)"
 MISSING_UUID="00000000-0000-0000-0000-000000000000"
+MISSING_OBJECTID="000000000000000000000000"
 ADMIN_JAR="$TMP_DIR/admin.cookies"
 USER_JAR="$TMP_DIR/user.cookies"
 GUEST_JAR="$TMP_DIR/guest.cookies"
@@ -168,7 +169,7 @@ require_status GET /reviews/user 200 "" "$USER_COOKIE"
 require_status GET "/reviews/$REVIEW_ID" 200
 require_status PUT "/reviews/$REVIEW_ID" 200 '{"rating":4,"comment":"Updated smoke review","media_urls":[]}' "$USER_COOKIE"
 require_status DELETE "/reviews/$REVIEW_ID" 200 "" "$USER_COOKIE"
-require_status GET "/reviews/$MISSING_UUID" 404
+require_status GET "/reviews/$MISSING_OBJECTID" 404
 
 require_status POST /admin/user/promote 403 '{"user_id":"nobody"}' "$USER_COOKIE"
 

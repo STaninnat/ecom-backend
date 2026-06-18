@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/STaninnat/ecom-backend/utils"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/STaninnat/ecom-backend/handlers"
@@ -47,7 +49,7 @@ func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, 
 
 	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
-	if orderID == "" {
+	if orderID == "" || !utils.IsValidUUID(orderID) {
 		// Log error for missing order ID
 		cfg.Logger.LogHandlerError(
 			ctx,
@@ -56,7 +58,7 @@ func (cfg *HandlersOrderConfig) HandlerUpdateOrderStatus(w http.ResponseWriter, 
 			"Order ID must be provided",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Order ID is required")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Order ID is required")
 		return
 	}
 

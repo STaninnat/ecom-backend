@@ -123,11 +123,11 @@ func TestOAuthConfig_Complete(t *testing.T) {
 func TestClaims_Complete(t *testing.T) {
 	// Test that Claims can be created and marshaled
 	claims := &Claims{
-		UserID: "user123",
+		UserID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	assert.NotNil(t, claims)
-	assert.Equal(t, "user123", claims.UserID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", claims.UserID)
 }
 
 // TestRefreshTokenData_Complete tests creation and field access of RefreshTokenData.

@@ -33,7 +33,7 @@ func TestHandlerCreateOrder_Success(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2, Price: 10.50},
@@ -46,7 +46,7 @@ func TestHandlerCreateOrder_Success(t *testing.T) {
 
 	expectedResult := &OrderResponse{
 		Message: "Created order successful",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(expectedResult, nil)
@@ -64,7 +64,7 @@ func TestHandlerCreateOrder_Success(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "Created order successful", response.Message)
-	assert.Equal(t, "order123", response.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", response.OrderID)
 
 	mockOrderService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
@@ -83,7 +83,7 @@ func TestHandlerCreateOrder_InvalidRequest(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	invalidJSON := `{"items": [{"product_id": "prod1", "quantity": 2, "price": 10.50}`
 	mockLogger.On("LogHandlerError", mock.Anything, "create_order", "invalid_request", "Failed to parse request body", mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -116,7 +116,7 @@ func TestHandlerCreateOrder_EmptyItems(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{},
 	}
@@ -144,7 +144,7 @@ func TestHandlerCreateOrder_EmptyItems(t *testing.T) {
 
 // TestHandlerCreateOrder_InvalidQuantity checks that invalid quantity returns the correct error.
 func TestHandlerCreateOrder_InvalidQuantity(t *testing.T) {
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 0, Price: 10.50},
@@ -157,7 +157,7 @@ func TestHandlerCreateOrder_InvalidQuantity(t *testing.T) {
 
 // TestHandlerCreateOrder_QuantityOverflow checks that quantity overflow returns the correct error.
 func TestHandlerCreateOrder_QuantityOverflow(t *testing.T) {
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2147483648, Price: 10.50}, // Exceeds int32 max
@@ -173,7 +173,7 @@ func TestHandlerCreateOrder_QuantityOverflow(t *testing.T) {
 
 // TestHandlerCreateOrder_TransactionError ensures a transaction error is handled correctly.
 func TestHandlerCreateOrder_TransactionError(t *testing.T) {
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
@@ -186,7 +186,7 @@ func TestHandlerCreateOrder_TransactionError(t *testing.T) {
 
 // TestHandlerCreateOrder_CreateOrderError ensures a create order error is handled correctly.
 func TestHandlerCreateOrder_CreateOrderError(t *testing.T) {
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
@@ -210,7 +210,7 @@ func TestHandlerCreateOrder_UnknownError(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 1, Price: 10.50},
@@ -251,7 +251,7 @@ func TestHandlerCreateOrder_CompleteRequest(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	requestBody := CreateOrderRequest{
 		Items: []OrderItemInput{
 			{ProductID: "prod1", Quantity: 2, Price: 10.50},
@@ -265,7 +265,7 @@ func TestHandlerCreateOrder_CompleteRequest(t *testing.T) {
 
 	expectedResult := &OrderResponse{
 		Message: "Created order successful",
-		OrderID: "order123",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 
 	mockOrderService.On("CreateOrder", mock.Anything, user, requestBody).Return(expectedResult, nil)
@@ -283,7 +283,7 @@ func TestHandlerCreateOrder_CompleteRequest(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "Created order successful", response.Message)
-	assert.Equal(t, "order123", response.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", response.OrderID)
 
 	mockOrderService.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)

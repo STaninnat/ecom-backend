@@ -445,7 +445,7 @@ func (s *paymentServiceImpl) ConfirmPayment(ctx context.Context, params ConfirmP
 // Validates ownership and returns payment details or an error.
 func (s *paymentServiceImpl) GetPayment(ctx context.Context, orderID string, userID string) (*GetPaymentResult, error) {
 	if orderID == "" {
-		return nil, &handlers.AppError{Code: "invalid_request", Message: "Order ID is required"}
+		return nil, &handlers.AppError{Code: "invalid_request", Message: "Valid Order ID is required"}
 	}
 
 	payment, err := s.db.GetPaymentByOrderID(ctx, orderID)
@@ -479,7 +479,7 @@ func (s *paymentServiceImpl) GetPayment(ctx context.Context, orderID string, use
 // Returns a list of payment history items or an error.
 func (s *paymentServiceImpl) GetPaymentHistory(ctx context.Context, userID string) ([]PaymentHistoryItem, error) {
 	if userID == "" {
-		return nil, &handlers.AppError{Code: "invalid_request", Message: "User ID is required"}
+		return nil, &handlers.AppError{Code: "invalid_request", Message: "Valid User ID is required"}
 	}
 
 	payments, err := s.db.GetPaymentsByUserID(ctx, userID)

@@ -33,7 +33,7 @@ func TestHandlerGetAllOrders_Success(t *testing.T) {
 	}
 
 	expectedOrders := []database.Order{
-		{ID: "order1", UserID: "user1", TotalAmount: "100.00", Status: "pending"},
+		{ID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000", TotalAmount: "100.00", Status: "pending"},
 		{ID: "order2", UserID: "user2", TotalAmount: "200.00", Status: "completed"},
 	}
 
@@ -100,9 +100,9 @@ func TestHandlerGetUserOrders_Success(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	expectedOrders := []UserOrderResponse{
-		{OrderID: "order1", TotalAmount: "100.00", Status: "pending"},
+		{OrderID: "550e8400-e29b-41d4-a716-446655440000", TotalAmount: "100.00", Status: "pending"},
 		{OrderID: "order2", TotalAmount: "200.00", Status: "completed"},
 	}
 
@@ -137,7 +137,7 @@ func TestHandlerGetUserOrders_ServiceError(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	appError := &handlers.AppError{Code: "database_error", Message: "Database connection failed"}
 	mockOrderService.On("GetUserOrders", mock.Anything, user).Return(([]UserOrderResponse)(nil), appError)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_user_orders", "internal_error", "Database connection failed", mock.Anything, mock.Anything, nil).Return()
@@ -170,7 +170,7 @@ func TestHandlerGetOrderByID_Success(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	orderID := testOrderID
 	expectedOrder := &OrderDetailResponse{
 		Order: database.Order{ID: orderID, UserID: user.ID, TotalAmount: "100.00", Status: "pending"},
@@ -217,15 +217,15 @@ func TestHandlerGetOrderByID_Scenarios(t *testing.T) {
 			serviceReturn: nil,
 			serviceErr:    nil,
 			loggerCall: func(l *mockHandlerLogger) {
-				l.On("LogHandlerError", mock.Anything, "get_order_by_id", "missing_order_id", "Order ID not found in URL", mock.Anything, mock.Anything, nil).Return()
+				l.On("LogHandlerError", mock.Anything, "get_order_by_id", "missing_order_id", "Valid Order ID is required", mock.Anything, mock.Anything, nil).Return()
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedMsg:    "Missing order ID",
+			expectedMsg:    "Valid Order ID is required",
 			expectedField:  "error",
 		},
 		{
 			name:          "OrderNotFound",
-			orderID:       "nonexistent",
+			orderID:       "11111111-2222-3333-4444-555555555555",
 			setOrderID:    true,
 			serviceReturn: nil,
 			serviceErr:    &handlers.AppError{Code: "order_not_found", Message: "Order not found"},
@@ -247,7 +247,7 @@ func TestHandlerGetOrderByID_Scenarios(t *testing.T) {
 				Logger:       mockLogger,
 				orderService: mockOrderService,
 			}
-			user := database.User{ID: "user123"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			if tc.setOrderID {
 				mockOrderService.On("GetOrderByID", mock.Anything, tc.orderID, user).Return(tc.serviceReturn, tc.serviceErr)
 			}
@@ -326,7 +326,7 @@ func TestHandlerGetOrderItemsByOrderID_MissingOrderID(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	mockLogger.On("LogHandlerError", mock.Anything, "get_order_items", "missing_order_id", "Order ID not found in URL", mock.Anything, mock.Anything, nil).Return()
+	mockLogger.On("LogHandlerError", mock.Anything, "get_order_items", "missing_order_id", "Valid Order ID is required", mock.Anything, mock.Anything, nil).Return()
 
 	req := httptest.NewRequest("GET", "/orders//items", nil)
 	w := httptest.NewRecorder()
@@ -337,7 +337,7 @@ func TestHandlerGetOrderItemsByOrderID_MissingOrderID(t *testing.T) {
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "Missing order_id", response["error"])
+	assert.Equal(t, "Valid Order ID is required", response["error"])
 
 	mockLogger.AssertExpectations(t)
 	mockOrderService.AssertNotCalled(t, "GetOrderItemsByOrderID")
@@ -423,7 +423,7 @@ func TestHandlerGetUserOrders_UnknownError(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	unknownError := errors.New("unknown database error")
 	mockOrderService.On("GetUserOrders", mock.Anything, user).Return(([]UserOrderResponse)(nil), unknownError)
 	mockLogger.On("LogHandlerError", mock.Anything, "get_user_orders", "unknown_error", "Unknown error occurred", mock.Anything, mock.Anything, unknownError).Return()
@@ -456,7 +456,7 @@ func TestHandlerGetOrderByID_UnknownError(t *testing.T) {
 		orderService: mockOrderService,
 	}
 
-	user := database.User{ID: "user123"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	orderID := testOrderID
 	unknownError := errors.New("unknown database error")
 	mockOrderService.On("GetOrderByID", mock.Anything, orderID, user).Return(nil, unknownError)

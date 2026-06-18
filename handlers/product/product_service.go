@@ -228,7 +228,7 @@ func (s *productServiceImpl) DeleteProduct(ctx context.Context, productID string
 		return &handlers.AppError{Code: "transaction_error", Message: "DB connection is nil", Err: fmt.Errorf("dbConn is nil")}
 	}
 	if productID == "" {
-		return &handlers.AppError{Code: "invalid_request", Message: "Product ID is required"}
+		return &handlers.AppError{Code: "invalid_request", Message: "Valid Product ID is required"}
 	}
 	tx, err := s.dbConn.BeginTx(ctx, nil)
 	if err != nil {
@@ -274,7 +274,11 @@ func (s *productServiceImpl) GetProductByID(ctx context.Context, productID strin
 		return database.Product{}, &handlers.AppError{Code: "transaction_error", Message: "DB is nil", Err: fmt.Errorf("db is nil")}
 	}
 	if productID == "" {
-		return database.Product{}, &handlers.AppError{Code: "invalid_request", Message: "Missing product ID"}
+		return database.Product{}, &handlers.AppError{
+			Code:    "invalid_request",
+			Message: "Valid Product ID is required",
+			Err:     errors.New("product id is required"),
+		}
 	}
 	var (
 		product database.Product

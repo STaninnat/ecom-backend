@@ -29,13 +29,13 @@ func TestHandlerDeleteProduct_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	mockService.On("DeleteProduct", mock.Anything, "pid1").Return(nil)
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockService.On("DeleteProduct", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "delete_product", "Delete success", mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("DELETE", "/products/pid1", nil)
 	routeCtx := chi.NewRouteContext()
-	routeCtx.URLParams.Add("id", "pid1")
+	routeCtx.URLParams.Add("id", "550e8400-e29b-41d4-a716-446655440000")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
 	w := httptest.NewRecorder()
 
@@ -58,8 +58,8 @@ func TestHandlerDeleteProduct_MissingID(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	mockLog.On("LogHandlerError", mock.Anything, "delete_product", "invalid_request", "Product ID is required", mock.Anything, mock.Anything, mock.Anything).Return()
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockLog.On("LogHandlerError", mock.Anything, "delete_product", "invalid_request", "Valid Product ID is required", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("DELETE", "/products/", nil)
 	w := httptest.NewRecorder()
@@ -80,14 +80,14 @@ func TestHandlerDeleteProduct_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	err := &handlers.AppError{Code: "delete_product_error", Message: "fail", Err: errors.New("fail")}
-	mockService.On("DeleteProduct", mock.Anything, "pid1").Return(err)
+	mockService.On("DeleteProduct", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(err)
 	mockLog.On("LogHandlerError", mock.Anything, "delete_product", "delete_product_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
 
 	req := httptest.NewRequest("DELETE", "/products/pid1", nil)
 	routeCtx := chi.NewRouteContext()
-	routeCtx.URLParams.Add("id", "pid1")
+	routeCtx.URLParams.Add("id", "550e8400-e29b-41d4-a716-446655440000")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
 	w := httptest.NewRecorder()
 

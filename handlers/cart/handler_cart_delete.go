@@ -51,10 +51,10 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromUserCart(w http.ResponseWrit
 			ctx,
 			"remove_item_from_cart",
 			"missing product ID",
-			"Product ID is required",
+			"Valid Product ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Product ID is required")
 		return
 	}
 
@@ -141,10 +141,10 @@ func (cfg *HandlersCartConfig) HandlerRemoveItemFromGuestCart(w http.ResponseWri
 			ctx,
 			"remove_item_from_guest_cart",
 			"missing product ID",
-			"Product ID is required",
+			"Valid Product ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Product ID is required")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Product ID is required")
 		return
 	}
 

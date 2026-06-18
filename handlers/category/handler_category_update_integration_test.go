@@ -35,9 +35,9 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 	}{
 		{
 			name:       "successful update",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
-				ID:          "test-category-id",
+				ID:          "5f8d04b39b34335500000000",
 				Name:        "Updated Electronics",
 				Description: "Updated description for electronics",
 			},
@@ -45,7 +45,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:          "test-category-id",
+					ID:          "5f8d04b39b34335500000000",
 					Name:        "Updated Electronics",
 					Description: "Updated description for electronics",
 				}).Return(nil)
@@ -55,9 +55,9 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "service error",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
-				ID:          "test-category-id",
+				ID:          "5f8d04b39b34335500000000",
 				Name:        "Updated Electronics",
 				Description: "Updated description for electronics",
 			},
@@ -65,7 +65,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:          "test-category-id",
+					ID:          "5f8d04b39b34335500000000",
 					Name:        "Updated Electronics",
 					Description: "Updated description for electronics",
 				}).Return(&handlers.AppError{Code: "update_category_error", Message: "Category not found"})
@@ -75,7 +75,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:           "invalid JSON",
-			categoryID:     "test-category-id",
+			categoryID:     "5f8d04b39b34335500000000",
 			requestBody:    `{"invalid": json}`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
@@ -85,7 +85,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:           "missing content type",
-			categoryID:     "test-category-id",
+			categoryID:     "5f8d04b39b34335500000000",
 			requestBody:    `{"invalid": json}`,
 			contentType:    "",
 			user:           database.User{ID: "test-user-id"},
@@ -95,16 +95,16 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "empty name",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
-				ID:   "test-category-id",
+				ID:   "5f8d04b39b34335500000000",
 				Name: "",
 			},
 			contentType: "application/json",
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:   "test-category-id",
+					ID:   "5f8d04b39b34335500000000",
 					Name: "",
 				}).Return(&handlers.AppError{Code: "invalid_request", Message: "Category name is required"})
 			},
@@ -113,7 +113,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "empty ID",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
 				ID:   "",
 				Name: "Updated Electronics",
@@ -124,23 +124,23 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
 					ID:   "",
 					Name: "Updated Electronics",
-				}).Return(&handlers.AppError{Code: "invalid_request", Message: "Category ID is required"})
+				}).Return(&handlers.AppError{Code: "invalid_request", Message: "Valid Category ID is required"})
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"Category ID is required"}`,
+			expectedBody:   `{"error":"Valid Category ID is required"}`,
 		},
 		{
 			name:       "name too long",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
-				ID:   "test-category-id",
+				ID:   "5f8d04b39b34335500000000",
 				Name: strings.Repeat("a", 101),
 			},
 			contentType: "application/json",
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:   "test-category-id",
+					ID:   "5f8d04b39b34335500000000",
 					Name: strings.Repeat("a", 101),
 				}).Return(&handlers.AppError{Code: "invalid_request", Message: "Category name too long (max 100 characters)"})
 			},
@@ -149,9 +149,9 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:       "description too long",
-			categoryID: "test-category-id",
+			categoryID: "5f8d04b39b34335500000000",
 			requestBody: CategoryRequest{
-				ID:          "test-category-id",
+				ID:          "5f8d04b39b34335500000000",
 				Name:        "Updated Electronics",
 				Description: strings.Repeat("a", 501),
 			},
@@ -159,7 +159,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:          "test-category-id",
+					ID:          "5f8d04b39b34335500000000",
 					Name:        "Updated Electronics",
 					Description: strings.Repeat("a", 501),
 				}).Return(&handlers.AppError{Code: "invalid_request", Message: "Category description too long (max 500 characters)"})
@@ -169,7 +169,7 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:           "empty request body",
-			categoryID:     "test-category-id",
+			categoryID:     "5f8d04b39b34335500000000",
 			requestBody:    "",
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
@@ -179,8 +179,8 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:           "malformed json",
-			categoryID:     "test-category-id",
-			requestBody:    `{"id":"test-category-id","name":}`,
+			categoryID:     "5f8d04b39b34335500000000",
+			requestBody:    `{"id":"5f8d04b39b34335500000000","name":}`,
 			contentType:    "application/json",
 			user:           database.User{ID: "test-user-id"},
 			mockSetup:      func(_ *MockCategoryService) {},
@@ -189,13 +189,13 @@ func TestIntegration_HandlerUpdateCategory(t *testing.T) {
 		},
 		{
 			name:        "service returns non-AppError",
-			categoryID:  "test-category-id",
-			requestBody: `{"id":"test-category-id","name":"Updated Category"}`,
+			categoryID:  "5f8d04b39b34335500000000",
+			requestBody: `{"id":"5f8d04b39b34335500000000","name":"Updated Category"}`,
 			contentType: "application/json",
 			user:        database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
 				mockService.On("UpdateCategory", mock.Anything, CategoryRequest{
-					ID:   "test-category-id",
+					ID:   "5f8d04b39b34335500000000",
 					Name: "Updated Category",
 				}).Return(assert.AnError)
 			},

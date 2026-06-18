@@ -30,8 +30,8 @@ func TestHandlerUpdateProduct_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	jsonBody, _ := json.Marshal(params)
 	mockService.On("UpdateProduct", mock.Anything, params).Return(nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "update_product", "Updated product successfully", mock.Anything, mock.Anything).Return()
@@ -60,8 +60,8 @@ func TestHandlerUpdateProduct_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	jsonBody, _ := json.Marshal(params)
 	err := &handlers.AppError{Code: "update_failed", Message: "fail", Err: errors.New("fail")}
 	mockService.On("UpdateProduct", mock.Anything, params).Return(err)

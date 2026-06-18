@@ -179,8 +179,8 @@ func TestHandlerConfig_HandlerMiddleware_Success(t *testing.T) {
 		func(cfg *HandlerConfig, handler AuthHandler) http.HandlerFunc {
 			return cfg.HandlerMiddleware(handler)
 		},
-		database.User{ID: "user123", Role: "user"},
-		&Claims{UserID: "user123"},
+		database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"},
+		&Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"},
 	)
 }
 
@@ -309,8 +309,8 @@ func TestHandlerConfig_HandlerAdminOnlyMiddleware_AdminUser(t *testing.T) {
 		func(cfg *HandlerConfig, handler AuthHandler) http.HandlerFunc {
 			return cfg.HandlerAdminOnlyMiddleware(handler)
 		},
-		database.User{ID: "user123", Role: "admin"},
-		&Claims{UserID: "user123"},
+		database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "admin"},
+		&Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"},
 	)
 }
 
@@ -334,13 +334,13 @@ func TestHandlerConfig_HandlerAdminOnlyMiddleware_NonAdminUser(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
 	w := httptest.NewRecorder()
 
-	expectedUser := database.User{ID: "user123", Role: "user"}
-	expectedClaims := &Claims{UserID: "user123"}
+	expectedUser := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
+	expectedClaims := &Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+	mockUser.On("GetUserByID", req.Context(), "550e8400-e29b-41d4-a716-446655440000").Return(expectedUser, nil)
 	mockLogger.On("Error", "unauthorized access attempt").Return()
 
 	handlerCalled := false
@@ -428,13 +428,13 @@ func TestHandlerMiddleware_HandlerWritesError(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
 	w := httptest.NewRecorder()
 
-	expectedUser := database.User{ID: "user123", Role: "user"}
-	expectedClaims := &Claims{UserID: "user123"}
+	expectedUser := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
+	expectedClaims := &Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+	mockUser.On("GetUserByID", req.Context(), "550e8400-e29b-41d4-a716-446655440000").Return(expectedUser, nil)
 
 	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, _ database.User) {
 		http.Error(w, "handler error", http.StatusTeapot)
@@ -509,13 +509,13 @@ func TestHandlerMiddleware_LoggerServiceNil(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
 	w := httptest.NewRecorder()
 
-	expectedUser := database.User{ID: "user123", Role: "user"}
-	expectedClaims := &Claims{UserID: "user123"}
+	expectedUser := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
+	expectedClaims := &Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+	mockUser.On("GetUserByID", req.Context(), "550e8400-e29b-41d4-a716-446655440000").Return(expectedUser, nil)
 
 	handlerCalled := false
 	testHandler := AuthHandler(func(_ http.ResponseWriter, _ *http.Request, user database.User) {
@@ -559,13 +559,13 @@ func TestHandlerOptionalMiddleware_Success(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: "test-token"})
 	w := httptest.NewRecorder()
 
-	expectedUser := database.User{ID: "user123", Role: "user"}
-	expectedClaims := &Claims{UserID: "user123"}
+	expectedUser := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
+	expectedClaims := &Claims{UserID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	mockRequestMetadata.On("GetIPAddress", req).Return("192.168.1.1")
 	mockRequestMetadata.On("GetUserAgent", req).Return("test-user-agent")
 	mockAuth.On("ValidateAccessToken", "test-token", "test-secret").Return(expectedClaims, nil)
-	mockUser.On("GetUserByID", req.Context(), "user123").Return(expectedUser, nil)
+	mockUser.On("GetUserByID", req.Context(), "550e8400-e29b-41d4-a716-446655440000").Return(expectedUser, nil)
 
 	handlerCalled := false
 	testHandler := OptionalHandler(func(_ http.ResponseWriter, _ *http.Request, user *database.User) {

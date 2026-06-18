@@ -29,21 +29,21 @@ func TestHandlerGetPayment_Success(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	expectedResult := &GetPaymentResult{
-		ID:       "p1",
-		OrderID:  "order1",
-		UserID:   "u1",
+		ID:       "550e8400-e29b-41d4-a716-446655440000",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Amount:   100.0,
 		Currency: "USD",
 		Status:   "succeeded",
 	}
-	mockService.On("GetPayment", mock.Anything, "order1", "u1").Return(expectedResult, nil)
+	mockService.On("GetPayment", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000").Return(expectedResult, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "get_payment", "Get Payment success", mock.Anything, mock.Anything).Return()
 
 	r := httptest.NewRequest("GET", "/payments/order1", nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("order_id", "order1")
+	rctx.URLParams.Add("order_id", "550e8400-e29b-41d4-a716-446655440000")
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	w := httptest.NewRecorder()
 
@@ -53,7 +53,7 @@ func TestHandlerGetPayment_Success(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Errorf("Failed to decode response: %v", err)
 	}
-	assert.Equal(t, "p1", resp.ID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", resp.ID)
 	mockService.AssertExpectations(t)
 	mockLog.AssertExpectations(t)
 }
@@ -72,13 +72,13 @@ func runHandlerGetPaymentErrorTest(
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	mockService.On("GetPayment", mock.Anything, "order1", "u1").Return(nil, appErr)
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockService.On("GetPayment", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000").Return(nil, appErr)
 	mockLog.On("LogHandlerError", mock.Anything, "get_payment", expectedLogCode, appErr.Message, mock.Anything, mock.Anything, mock.Anything).Return()
 
 	r := httptest.NewRequest("GET", "/payments/order1", nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("order_id", "order1")
+	rctx.URLParams.Add("order_id", "550e8400-e29b-41d4-a716-446655440000")
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 	w := httptest.NewRecorder()
 
@@ -115,7 +115,7 @@ func TestHandlerGetPayment_MissingOrderID(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	testutil.RunHandlerMissingOrderIDTest(
 		t,
 		func(cfg any, w http.ResponseWriter, r *http.Request, user any) {
@@ -204,12 +204,12 @@ func TestHandlerGetPayments_Success(t *testing.T) {
 			},
 			serviceMethod: "GetPaymentHistory",
 			serviceReturn: []PaymentHistoryItem{
-				{ID: "p1", OrderID: "order1", Amount: "100.00", Currency: "USD", Status: "succeeded", Provider: "stripe", ProviderPaymentID: "pi_123"},
-				{ID: "p2", OrderID: "order2", Amount: "200.00", Currency: "USD", Status: "pending", Provider: "stripe", ProviderPaymentID: "pi_456"},
+				{ID: "550e8400-e29b-41d4-a716-446655440000", OrderID: "550e8400-e29b-41d4-a716-446655440000", Amount: "100.00", Currency: "USD", Status: "succeeded", Provider: "stripe", ProviderPaymentID: "pi_123"},
+				{ID: "550e8400-e29b-41d4-a716-446655440000", OrderID: "order2", Amount: "200.00", Currency: "USD", Status: "pending", Provider: "stripe", ProviderPaymentID: "pi_456"},
 			},
 			logMethod:    "LogHandlerSuccess",
 			logMessage:   "Get Payment history success",
-			user:         database.User{ID: "u1"},
+			user:         database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			url:          "/payments/history",
 			statusFilter: "",
 			expectedLen:  2,
@@ -221,8 +221,8 @@ func TestHandlerGetPayments_Success(t *testing.T) {
 			},
 			serviceMethod: "GetAllPayments",
 			serviceReturn: []PaymentHistoryItem{
-				{ID: "p1", OrderID: "order1", Amount: "100.00", Currency: "USD", Status: "succeeded", Provider: "stripe", ProviderPaymentID: "pi_123"},
-				{ID: "p2", OrderID: "order2", Amount: "200.00", Currency: "USD", Status: "pending", Provider: "stripe", ProviderPaymentID: "pi_456"},
+				{ID: "550e8400-e29b-41d4-a716-446655440000", OrderID: "550e8400-e29b-41d4-a716-446655440000", Amount: "100.00", Currency: "USD", Status: "succeeded", Provider: "stripe", ProviderPaymentID: "pi_123"},
+				{ID: "550e8400-e29b-41d4-a716-446655440000", OrderID: "order2", Amount: "200.00", Currency: "USD", Status: "pending", Provider: "stripe", ProviderPaymentID: "pi_456"},
 			},
 			logMethod:    "LogHandlerSuccess",
 			logMessage:   "Get all payments success",
@@ -292,7 +292,7 @@ func runHandlerGetPaymentsErrorTest(
 // TestHandlerGetPaymentHistory_ServiceError tests internal error from service
 func TestHandlerGetPaymentHistory_ServiceError(t *testing.T) {
 	err := &handlers.AppError{Code: "get_history_error", Message: "fail", Err: errors.New("fail")}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	runHandlerGetPaymentsErrorTest(
 		t,
 		func(cfg *HandlersPaymentConfig, w http.ResponseWriter, r *http.Request, user database.User) {
@@ -313,8 +313,8 @@ func TestHandlerGetPaymentHistory_ServiceError(t *testing.T) {
 func TestHandlerAdminGetPayments_Success(t *testing.T) {
 	expectedPayments := []PaymentHistoryItem{
 		{
-			ID:                "p1",
-			OrderID:           "order1",
+			ID:                "550e8400-e29b-41d4-a716-446655440000",
+			OrderID:           "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "100.00",
 			Currency:          "USD",
 			Status:            "succeeded",
@@ -322,7 +322,7 @@ func TestHandlerAdminGetPayments_Success(t *testing.T) {
 			ProviderPaymentID: "pi_123",
 		},
 		{
-			ID:                "p2",
+			ID:                "550e8400-e29b-41d4-a716-446655440000",
 			OrderID:           "order2",
 			Amount:            "200.00",
 			Currency:          "USD",
@@ -352,8 +352,8 @@ func TestHandlerAdminGetPayments_Success(t *testing.T) {
 func TestHandlerAdminGetPayments_WithStatusFilter(t *testing.T) {
 	expectedPayments := []PaymentHistoryItem{
 		{
-			ID:                "p1",
-			OrderID:           "order1",
+			ID:                "550e8400-e29b-41d4-a716-446655440000",
+			OrderID:           "550e8400-e29b-41d4-a716-446655440000",
 			Amount:            "100.00",
 			Currency:          "USD",
 			Status:            "succeeded",

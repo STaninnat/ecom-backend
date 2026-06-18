@@ -34,17 +34,17 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 	}{
 		{
 			name: "success",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body: CartUpdateRequest{ProductID: "prod1", Quantity: 2},
 			setupMock: func(mockService *MockCartService) {
-				mockService.On("UpdateItemQuantity", mock.Anything, "user1", "prod1", 2).Return(nil)
+				mockService.On("UpdateItemQuantity", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "prod1", 2).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   handlers.HandlerResponse{Message: "Item quantity updated"},
 		},
 		{
 			name:           "invalid json",
-			user:           database.User{ID: "user1"},
+			user:           database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body:           "not json",
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
@@ -52,7 +52,7 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 		},
 		{
 			name:           "missing fields",
-			user:           database.User{ID: "user1"},
+			user:           database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body:           CartUpdateRequest{ProductID: "", Quantity: 0},
 			setupMock:      func(_ *MockCartService) {},
 			expectedStatus: http.StatusBadRequest,
@@ -60,11 +60,11 @@ func TestHandlerUpdateItemQuantity(t *testing.T) {
 		},
 		{
 			name: "service error",
-			user: database.User{ID: "user1"},
+			user: database.User{ID: "550e8400-e29b-41d4-a716-446655440000"},
 			body: CartUpdateRequest{ProductID: "prod1", Quantity: 2},
 			setupMock: func(mockService *MockCartService) {
 				err := &handlers.AppError{Code: "product_not_found", Message: "Product not found"}
-				mockService.On("UpdateItemQuantity", mock.Anything, "user1", "prod1", 2).Return(err)
+				mockService.On("UpdateItemQuantity", mock.Anything, "550e8400-e29b-41d4-a716-446655440000", "prod1", 2).Return(err)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   map[string]any{"error": "Product not found", "code": "product_not_found"},

@@ -22,7 +22,7 @@ func TestCreateProduct_Success(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
@@ -45,7 +45,7 @@ func TestUpdateProduct_Success(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
@@ -67,7 +67,7 @@ func TestDeleteProduct_Success(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	productID := "pid1"
+	productID := "550e8400-e29b-41d4-a716-446655440000"
 
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
@@ -88,7 +88,7 @@ func TestDeleteProduct_Success(t *testing.T) {
 func TestGetAllProducts_Success(t *testing.T) {
 	mockDB := new(mockDBQueries)
 	service := &productServiceImpl{db: mockDB}
-	products := []database.Product{{ID: "p1"}, {ID: "p2"}}
+	products := []database.Product{{ID: "550e8400-e29b-41d4-a716-446655440000"}, {ID: "550e8400-e29b-41d4-a716-446655440000"}}
 	mockDB.On("GetAllProducts", mock.Anything).Return(products, nil)
 	res, err := service.GetAllProducts(context.Background(), true)
 	require.NoError(t, err)
@@ -101,9 +101,9 @@ func TestGetAllProducts_Success(t *testing.T) {
 func TestGetProductByID_Success(t *testing.T) {
 	mockDB := new(mockDBQueries)
 	service := &productServiceImpl{db: mockDB}
-	product := database.Product{ID: "p1"}
-	mockDB.On("GetProductByID", mock.Anything, "p1").Return(product, nil)
-	res, err := service.GetProductByID(context.Background(), "p1", true)
+	product := database.Product{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	mockDB.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(product, nil)
+	res, err := service.GetProductByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", true)
 	require.NoError(t, err)
 	assert.Equal(t, product, res)
 	mockDB.AssertExpectations(t)
@@ -115,7 +115,7 @@ func TestFilterProducts_Success(t *testing.T) {
 	mockDB := new(mockDBQueries)
 	service := &productServiceImpl{db: mockDB}
 	params := FilterProductsRequest{}
-	products := []database.Product{{ID: "p1"}, {ID: "p2"}}
+	products := []database.Product{{ID: "550e8400-e29b-41d4-a716-446655440000"}, {ID: "550e8400-e29b-41d4-a716-446655440000"}}
 	mockDB.On("FilterProducts", mock.Anything, mock.Anything).Return(products, nil)
 	res, err := service.FilterProducts(context.Background(), params)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestFilterProducts_Success(t *testing.T) {
 // - Error committing transaction
 func TestCreateProduct_DBConnNil(t *testing.T) {
 	service := &productServiceImpl{db: nil, dbConn: nil}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	_, err := service.CreateProduct(context.Background(), params)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
@@ -147,7 +147,7 @@ func TestCreateProduct_BeginTxError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: new(mockDBQueries), dbConn: mockConn}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, assert.AnError)
 	_, err := service.CreateProduct(context.Background(), params)
 	require.Error(t, err)
@@ -158,7 +158,7 @@ func TestCreateProduct_CreateProductError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("CreateProduct", mock.Anything, mock.Anything).Return(assert.AnError)
@@ -172,7 +172,7 @@ func TestCreateProduct_CommitError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("CreateProduct", mock.Anything, mock.Anything).Return(nil)
@@ -191,7 +191,7 @@ func TestCreateProduct_CommitError(t *testing.T) {
 // - Error committing transaction
 func TestUpdateProduct_DBConnNil(t *testing.T) {
 	service := &productServiceImpl{db: nil, dbConn: nil}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	err := service.UpdateProduct(context.Background(), params)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
@@ -207,7 +207,7 @@ func TestUpdateProduct_BeginTxError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: new(mockDBQueries), dbConn: mockConn}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, assert.AnError)
 	err := service.UpdateProduct(context.Background(), params)
 	require.Error(t, err)
@@ -218,7 +218,7 @@ func TestUpdateProduct_UpdateProductError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("UpdateProduct", mock.Anything, mock.Anything).Return(assert.AnError)
@@ -232,7 +232,7 @@ func TestUpdateProduct_CommitError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
-	params := ProductRequest{ID: "pid1", CategoryID: "c1", Name: "P", Price: 10, Stock: 1}
+	params := ProductRequest{ID: "550e8400-e29b-41d4-a716-446655440000", CategoryID: "550e8400-e29b-41d4-a716-446655440000", Name: "P", Price: 10, Stock: 1}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
 	mockDB.On("UpdateProduct", mock.Anything, mock.Anything).Return(nil)
@@ -252,7 +252,7 @@ func TestUpdateProduct_CommitError(t *testing.T) {
 // - Error committing transaction
 func TestDeleteProduct_DBConnNil(t *testing.T) {
 	service := &productServiceImpl{db: nil, dbConn: nil}
-	err := service.DeleteProduct(context.Background(), "pid1")
+	err := service.DeleteProduct(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB connection is nil")
 }
@@ -260,14 +260,14 @@ func TestDeleteProduct_InvalidInput(t *testing.T) {
 	service := &productServiceImpl{db: nil, dbConn: new(mockDBConn)}
 	err := service.DeleteProduct(context.Background(), "")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Product ID is required")
+	assert.Contains(t, err.Error(), "Valid Product ID is required")
 }
 func TestDeleteProduct_BeginTxError(t *testing.T) {
 	mockConn := new(mockDBConn)
 	mockTx := new(mockTx)
 	service := &productServiceImpl{db: new(mockDBQueries), dbConn: mockConn}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, assert.AnError)
-	err := service.DeleteProduct(context.Background(), "pid1")
+	err := service.DeleteProduct(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error starting transaction")
 }
@@ -278,9 +278,9 @@ func TestDeleteProduct_GetProductByIDError(t *testing.T) {
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("GetProductByID", mock.Anything, "pid1").Return(database.Product{}, assert.AnError)
+	mockDB.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Product{}, assert.AnError)
 	mockTx.On("Rollback").Return(nil)
-	err := service.DeleteProduct(context.Background(), "pid1")
+	err := service.DeleteProduct(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Product not found")
 }
@@ -291,10 +291,10 @@ func TestDeleteProduct_DeleteProductByIDError(t *testing.T) {
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("GetProductByID", mock.Anything, "pid1").Return(database.Product{ID: "pid1"}, nil)
-	mockDB.On("DeleteProductByID", mock.Anything, "pid1").Return(assert.AnError)
+	mockDB.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Product{ID: "550e8400-e29b-41d4-a716-446655440000"}, nil)
+	mockDB.On("DeleteProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(assert.AnError)
 	mockTx.On("Rollback").Return(nil)
-	err := service.DeleteProduct(context.Background(), "pid1")
+	err := service.DeleteProduct(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error deleting product")
 }
@@ -305,11 +305,11 @@ func TestDeleteProduct_CommitError(t *testing.T) {
 	service := &productServiceImpl{db: mockDB, dbConn: mockConn}
 	mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("GetProductByID", mock.Anything, "pid1").Return(database.Product{ID: "pid1"}, nil)
-	mockDB.On("DeleteProductByID", mock.Anything, "pid1").Return(nil)
+	mockDB.On("GetProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(database.Product{ID: "550e8400-e29b-41d4-a716-446655440000"}, nil)
+	mockDB.On("DeleteProductByID", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 	mockTx.On("Commit").Return(assert.AnError)
 	mockTx.On("Rollback").Return(nil)
-	err := service.DeleteProduct(context.Background(), "pid1")
+	err := service.DeleteProduct(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Error committing transaction")
 }
@@ -325,7 +325,7 @@ func TestGetAllProducts_DBNil(t *testing.T) {
 }
 func TestGetProductByID_DBNil(t *testing.T) {
 	service := &productServiceImpl{db: nil}
-	_, err := service.GetProductByID(context.Background(), "pid1", true)
+	_, err := service.GetProductByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000", true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "DB is nil")
 }
@@ -334,7 +334,7 @@ func TestGetProductByID_InvalidInput(t *testing.T) {
 	service := &productServiceImpl{db: mockDB}
 	_, err := service.GetProductByID(context.Background(), "", true)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing product ID")
+	assert.Contains(t, err.Error(), "Valid Product ID is required")
 }
 func TestFilterProducts_DBNil(t *testing.T) {
 	service := &productServiceImpl{db: nil}

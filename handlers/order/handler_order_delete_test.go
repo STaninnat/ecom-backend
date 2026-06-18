@@ -21,8 +21,8 @@ import (
 // handler_order_delete_test.go: Tests for HandlerDeleteOrder covering all typical and edge cases.
 
 const (
-	testOrderID     = "order123"
-	testNonexistent = "nonexistent"
+	testOrderID     = "550e8400-e29b-41d4-a716-446655440000"
+	testNonexistent = "11111111-2222-3333-4444-555555555555"
 )
 
 // Helper to set chi URL param in request context
@@ -62,10 +62,10 @@ func TestHandlerDeleteOrder_Scenarios(t *testing.T) {
 			setOrderID: false,
 			serviceErr: nil,
 			loggerCall: func(l *mockHandlerLogger) {
-				l.On("LogHandlerError", mock.Anything, "delete_order", "missing_order_id", "Order ID not found in URL", mock.Anything, mock.Anything, nil).Return()
+				l.On("LogHandlerError", mock.Anything, "delete_order", "invalid_request", "Valid Order ID is required", mock.Anything, mock.Anything, nil).Return()
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedMsg:    "Missing order_id",
+			expectedMsg:    "Valid Order ID is required",
 			expectedField:  "error",
 		},
 		{
@@ -115,7 +115,7 @@ func TestHandlerDeleteOrder_Scenarios(t *testing.T) {
 				Logger:       mockLogger,
 				orderService: mockOrderService,
 			}
-			user := database.User{ID: "user123"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			if tc.setOrderID {
 				mockOrderService.On("DeleteOrder", mock.Anything, tc.orderID).Return(tc.serviceErr)
 			}

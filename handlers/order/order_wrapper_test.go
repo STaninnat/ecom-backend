@@ -317,7 +317,7 @@ func TestRequestResponseStructs(t *testing.T) {
 
 	// Test UserOrderResponse
 	userOrderResp := UserOrderResponse{
-		OrderID:         "order1",
+		OrderID:         "550e8400-e29b-41d4-a716-446655440000",
 		TotalAmount:     "47.97",
 		Status:          "pending",
 		PaymentMethod:   "credit_card",
@@ -326,7 +326,7 @@ func TestRequestResponseStructs(t *testing.T) {
 		ContactPhone:    "555-1234",
 		Items:           []OrderItemResponse{itemResp},
 	}
-	assert.Equal(t, "order1", userOrderResp.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", userOrderResp.OrderID)
 	assert.Equal(t, "47.97", userOrderResp.TotalAmount)
 	assert.Equal(t, "pending", userOrderResp.Status)
 	assert.Equal(t, "credit_card", userOrderResp.PaymentMethod)
@@ -338,10 +338,10 @@ func TestRequestResponseStructs(t *testing.T) {
 	// Test OrderResponse
 	orderResp := OrderResponse{
 		Message: "Order created successfully",
-		OrderID: "order1",
+		OrderID: "550e8400-e29b-41d4-a716-446655440000",
 	}
 	assert.Equal(t, "Order created successfully", orderResp.Message)
-	assert.Equal(t, "order1", orderResp.OrderID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", orderResp.OrderID)
 }
 
 // TestHandlersOrderConfig_ConcurrentAccess tests that the HandlersOrderConfig can handle concurrent access safely.

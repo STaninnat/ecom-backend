@@ -87,16 +87,16 @@ func (cfg *HandlersOrderConfig) HandlerGetOrderByID(w http.ResponseWriter, r *ht
 
 	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "orderID")
-	if orderID == "" {
+	if orderID == "" || !utils.IsValidUUID(orderID) {
 		// Log error for missing order ID
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_order_by_id",
 			"missing_order_id",
-			"Order ID not found in URL",
+			"Valid Order ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing order ID")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Order ID is required")
 		return
 	}
 
@@ -132,16 +132,16 @@ func (cfg *HandlersOrderConfig) HandlerGetOrderItemsByOrderID(w http.ResponseWri
 
 	// Extract order ID from URL parameters
 	orderID := chi.URLParam(r, "order_id")
-	if orderID == "" {
+	if orderID == "" || !utils.IsValidUUID(orderID) {
 		// Log error for missing order ID
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"get_order_items",
 			"missing_order_id",
-			"Order ID not found in URL",
+			"Valid Order ID is required",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing order_id")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Order ID is required")
 		return
 	}
 

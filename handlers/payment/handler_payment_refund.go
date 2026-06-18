@@ -29,7 +29,7 @@ func (cfg *HandlersPaymentConfig) HandlerRefundPayment(w http.ResponseWriter, r 
 	ctx := r.Context()
 
 	orderID := chi.URLParam(r, "order_id")
-	if orderID == "" {
+	if orderID == "" || !utils.IsValidUUID(orderID) {
 		cfg.Logger.LogHandlerError(
 			ctx,
 			"refund_payment",
@@ -37,7 +37,7 @@ func (cfg *HandlersPaymentConfig) HandlerRefundPayment(w http.ResponseWriter, r 
 			"Order ID not found in URL",
 			ip, userAgent, nil,
 		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Missing order_id")
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Order ID is required")
 		return
 	}
 

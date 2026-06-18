@@ -36,14 +36,14 @@ func TestHandlerGetAllCategories(t *testing.T) {
 			setupMocks: func(mockService *MockCategoryService) {
 				expectedCategories := []database.Category{
 					{
-						ID:          "cat1",
+						ID:          "550e8400-e29b-41d4-a716-446655440000",
 						Name:        "Category 1",
 						Description: utils.ToNullString("Description 1"),
 						CreatedAt:   time.Now(),
 						UpdatedAt:   time.Now(),
 					},
 					{
-						ID:          "cat2",
+						ID:          "550e8400-e29b-41d4-a716-446655440000",
 						Name:        "Category 2",
 						Description: utils.ToNullString("Description 2"),
 						CreatedAt:   time.Now(),
@@ -53,7 +53,7 @@ func TestHandlerGetAllCategories(t *testing.T) {
 				mockService.On("GetAllCategories", mock.Anything).Return(expectedCategories, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `[{"id":"cat1","name":"Category 1","description":"Description 1","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"},{"id":"cat2","name":"Category 2","description":"Description 2","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"}]`,
+			expectedBody:   `[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Category 1","description":"Description 1","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"},{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Category 2","description":"Description 2","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"}]`,
 		},
 		{
 			name: "successful retrieval without user",
@@ -61,7 +61,7 @@ func TestHandlerGetAllCategories(t *testing.T) {
 			setupMocks: func(mockService *MockCategoryService) {
 				expectedCategories := []database.Category{
 					{
-						ID:          "cat1",
+						ID:          "550e8400-e29b-41d4-a716-446655440000",
 						Name:        "Category 1",
 						Description: utils.ToNullString("Description 1"),
 						CreatedAt:   time.Now(),
@@ -71,7 +71,7 @@ func TestHandlerGetAllCategories(t *testing.T) {
 				mockService.On("GetAllCategories", mock.Anything).Return(expectedCategories, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `[{"id":"cat1","name":"Category 1","description":"Description 1","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"}]`,
+			expectedBody:   `[{"id":"550e8400-e29b-41d4-a716-446655440000","name":"Category 1","description":"Description 1","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z"}]`,
 		},
 		{
 			name: "service error",
@@ -113,7 +113,7 @@ func TestHandlerGetAllCategories(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedStatus == http.StatusOK {
-				assert.Contains(t, w.Body.String(), `"id":"cat1"`)
+				assert.Contains(t, w.Body.String(), `"id":"550e8400-e29b-41d4-a716-446655440000"`)
 				assert.Contains(t, w.Body.String(), `"name":"Category 1"`)
 			} else {
 				assert.JSONEq(t, tt.expectedBody, w.Body.String())

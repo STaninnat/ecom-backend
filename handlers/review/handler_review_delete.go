@@ -29,9 +29,9 @@ func (cfg *HandlersReviewConfig) HandlerDeleteReviewByID(w http.ResponseWriter, 
 	ctx := r.Context()
 
 	reviewID := chi.URLParam(r, "id")
-	if reviewID == "" {
-		cfg.Logger.LogHandlerError(ctx, "delete_review_by_id", "invalid_request", "Review ID is required", ip, userAgent, nil)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Review ID is required")
+	if reviewID == "" || !utils.IsValidObjectID(reviewID) {
+		cfg.Logger.LogHandlerError(ctx, "delete_review_by_id", "invalid_request", "Valid Review ID is required", ip, userAgent, nil)
+		middlewares.RespondWithError(w, http.StatusBadRequest, "Valid Review ID is required")
 		return
 	}
 

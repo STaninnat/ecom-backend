@@ -28,16 +28,16 @@ func TestHandlerCreatePayment_Success(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	req := CreatePaymentIntentRequest{
-		OrderID:  "order1",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 	jsonBody, _ := json.Marshal(req)
 
 	expectedParams := CreatePaymentParams{
-		OrderID:  "order1",
-		UserID:   "u1",
+		OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+		UserID:   "550e8400-e29b-41d4-a716-446655440000",
 		Currency: "USD",
 	}
 	expectedResult := &CreatePaymentResult{
@@ -73,7 +73,7 @@ func TestHandlerCreatePayment_InvalidPayload(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	testInvalidPayload(t, cfg.HandlerCreatePayment, mockLog, user, "POST", "/payments", "create_payment")
 }
@@ -108,15 +108,15 @@ func TestHandlerCreatePayment_ErrorCases(t *testing.T) {
 				Logger:         mockLog,
 				paymentService: mockService,
 			}
-			user := database.User{ID: "u1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			req := CreatePaymentIntentRequest{
-				OrderID:  "order1",
+				OrderID:  "550e8400-e29b-41d4-a716-446655440000",
 				Currency: "USD",
 			}
 			jsonBody, _ := json.Marshal(req)
 			expectedParams := CreatePaymentParams{
-				OrderID:  "order1",
-				UserID:   "u1",
+				OrderID:  "550e8400-e29b-41d4-a716-446655440000",
+				UserID:   "550e8400-e29b-41d4-a716-446655440000",
 				Currency: "USD",
 			}
 			mockService.On("CreatePayment", mock.Anything, expectedParams).Return(nil, tc.err)

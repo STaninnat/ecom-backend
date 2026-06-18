@@ -25,11 +25,11 @@ func TestHandlerFilterProducts_Success(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := &database.User{ID: "u1"}
+	user := &database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	params := FilterProductsRequest{}
 	params.CategoryID.Valid = true
-	params.CategoryID.String = "cat1"
+	params.CategoryID.String = "550e8400-e29b-41d4-a716-446655440000"
 	params.IsActive.Valid = true
 	params.IsActive.Bool = true
 	params.MinPrice.Valid = true
@@ -37,11 +37,11 @@ func TestHandlerFilterProducts_Success(t *testing.T) {
 	params.MaxPrice.Valid = true
 	params.MaxPrice.Float64 = 100.0
 
-	products := []database.Product{{ID: "00000000-0000-0000-0000-000000000001"}, {ID: "p2"}}
+	products := []database.Product{{ID: "00000000-0000-0000-0000-000000000001"}, {ID: "550e8400-e29b-41d4-a716-446655440000"}}
 	mockService.On("FilterProducts", mock.Anything, params).Return(products, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "filter_products", "Filter products success", mock.Anything, mock.Anything).Return()
 
-	req := httptest.NewRequest("GET", "/products/filter?category_id=cat1&is_active=true&min_price=10.5&max_price=100", nil)
+	req := httptest.NewRequest("GET", "/products/filter?category_id=550e8400-e29b-41d4-a716-446655440000&is_active=true&min_price=10.5&max_price=100", nil)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerFilterProducts(w, req, user)
@@ -59,7 +59,7 @@ func TestHandlerFilterProducts_InvalidMinPrice(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := &database.User{ID: "u1"}
+	user := &database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockLog.On("LogHandlerError", mock.Anything, "filter_products", "invalid_request", "Invalid min_price", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	req := httptest.NewRequest("GET", "/products/filter?min_price=abc", nil)
@@ -79,7 +79,7 @@ func TestHandlerFilterProducts_ServiceError(t *testing.T) {
 		Logger:         mockLog,
 		productService: mockService,
 	}
-	user := &database.User{ID: "u1"}
+	user := &database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := FilterProductsRequest{}
 	err := &handlers.AppError{Code: "transaction_error", Message: "fail", Err: errors.New("fail")}
 	mockService.On("FilterProducts", mock.Anything, params).Return(nil, err)

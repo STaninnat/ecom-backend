@@ -31,7 +31,7 @@ func TestUserService_GetUser(t *testing.T) {
 	service := &userServiceImpl{db: db, dbConn: nil}
 
 	dbUser := database.User{
-		ID:      "u1",
+		ID:      "550e8400-e29b-41d4-a716-446655440000",
 		Name:    "Alice",
 		Email:   "alice@example.com",
 		Phone:   sql.NullString{String: "123", Valid: true},
@@ -41,7 +41,7 @@ func TestUserService_GetUser(t *testing.T) {
 	resp, err := service.GetUser(context.Background(), dbUser)
 	require.NoError(t, err)
 	assert.Equal(t, &UserResponse{
-		ID:      "u1",
+		ID:      "550e8400-e29b-41d4-a716-446655440000",
 		Name:    "Alice",
 		Email:   "alice@example.com",
 		Phone:   "123",
@@ -55,7 +55,7 @@ func TestUserService_UpdateUser_TransactionError(t *testing.T) {
 	db := &database.Queries{}
 	// Pass nil dbConn to simulate transaction error
 	service := &userServiceImpl{db: db, dbConn: nil}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
 
 	err := service.UpdateUser(context.Background(), user, params)
@@ -96,7 +96,7 @@ func TestUserService_UpdateUser_ErrorScenarios(t *testing.T) {
 			db, mock, _ := sqlmock.New()
 			queries := database.New(db)
 			service := &userServiceImpl{db: queries, dbConn: db}
-			user := database.User{ID: "u1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 			params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
 
 			tt.mockSetup(mock)
@@ -123,7 +123,7 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 	service := &userServiceImpl{db: queries, dbConn: db}
 
 	expectedUser := database.User{
-		ID:      "u1",
+		ID:      "550e8400-e29b-41d4-a716-446655440000",
 		Name:    "Alice",
 		Email:   "alice@example.com",
 		Phone:   sql.NullString{String: "123", Valid: true},
@@ -131,12 +131,12 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 	}
 
 	// Mock the database query
-	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("u1").WillReturnRows(
+	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "name", "email", "phone", "address", "password", "provider", "provider_id", "role", "created_at", "updated_at"}).
 			AddRow(expectedUser.ID, expectedUser.Name, expectedUser.Email, expectedUser.Phone.String, expectedUser.Address.String, nil, "", nil, "", time.Now(), time.Now()),
 	)
 
-	user, err := service.GetUserByID(context.Background(), "u1")
+	user, err := service.GetUserByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.NoError(t, err)
 	assert.Equal(t, expectedUser.ID, user.ID)
 	assert.Equal(t, expectedUser.Name, user.Name)
@@ -148,7 +148,7 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 func TestUserService_GetUserByID_NilDB(t *testing.T) {
 	service := &userServiceImpl{db: nil, dbConn: nil}
 
-	user, err := service.GetUserByID(context.Background(), "u1")
+	user, err := service.GetUserByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Contains(t, err.Error(), "db is nil")
@@ -162,9 +162,9 @@ func TestUserService_GetUserByID_DBError(t *testing.T) {
 	service := &userServiceImpl{db: queries, dbConn: db}
 
 	// Mock the database query to return an error
-	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("u1").WillReturnError(errors.New("database error"))
+	mock.ExpectQuery("SELECT (.+) FROM users").WithArgs("550e8400-e29b-41d4-a716-446655440000").WillReturnError(errors.New("database error"))
 
-	user, err := service.GetUserByID(context.Background(), "u1")
+	user, err := service.GetUserByID(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
 	assert.Equal(t, database.User{}, user)
 	assert.Contains(t, err.Error(), "database error")
@@ -192,7 +192,7 @@ func TestUserService_UpdateUser_SuccessScenarios(t *testing.T) {
 			db, mock, _ := sqlmock.New()
 			queries := database.New(db)
 			service := &userServiceImpl{db: queries, dbConn: db}
-			user := database.User{ID: "u1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 			mock.ExpectBegin()
 			mock.ExpectExec("UPDATE users").WithArgs(
@@ -213,7 +213,7 @@ func TestUserService_UpdateUser_PartialParams(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"} // Phone and Address empty
 
 	mock.ExpectBegin()
@@ -233,7 +233,7 @@ func TestUserService_UpdateUser_BeginTxError(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 	queries := database.New(db)
 	service := &userServiceImpl{db: queries, dbConn: db}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "Bob", Email: "bob@example.com"}
 
 	mock.ExpectBegin().WillReturnError(errors.New("begin transaction error"))
@@ -271,7 +271,7 @@ func TestUserService_PromoteUserToAdmin_Success(t *testing.T) {
 // an error when the requesting user is not an admin
 func TestUserService_PromoteUserToAdmin_Unauthorized(t *testing.T) {
 	service := &userServiceImpl{}
-	nonAdmin := database.User{ID: "u1", Role: "user"}
+	nonAdmin := database.User{ID: "550e8400-e29b-41d4-a716-446655440000", Role: "user"}
 	err := service.PromoteUserToAdmin(context.Background(), nonAdmin, "target")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Admin privileges required")
@@ -398,17 +398,17 @@ func TestNewUserService_ReturnsNonNil(t *testing.T) {
 // users with empty/null fields
 func TestUserService_GetUser_EmptyFields(t *testing.T) {
 	service := &userServiceImpl{}
-	dbUser := database.User{ID: "u2"} // All other fields zero values
+	dbUser := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"} // All other fields zero values
 	resp, err := service.GetUser(context.Background(), dbUser)
 	require.NoError(t, err)
-	assert.Equal(t, &UserResponse{ID: "u2", Name: "", Email: "", Phone: "", Address: ""}, resp)
+	assert.Equal(t, &UserResponse{ID: "550e8400-e29b-41d4-a716-446655440000", Name: "", Email: "", Phone: "", Address: ""}, resp)
 }
 
 // TestUserService_UpdateUser_NilDBAndDBConn tests that UpdateUser returns an error
 // when both database and database connection are nil
 func TestUserService_UpdateUser_NilDBAndDBConn(t *testing.T) {
 	service := &userServiceImpl{db: nil, dbConn: nil}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	params := UpdateUserParams{Name: "Test", Email: "test@example.com"}
 	err := service.UpdateUser(context.Background(), user, params)
 	require.Error(t, err)

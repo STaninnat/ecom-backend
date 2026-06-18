@@ -30,8 +30,8 @@ func TestHandlerGetUser_Success(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	resp := &UserResponse{ID: "u1", Name: "Test"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	resp := &UserResponse{ID: "550e8400-e29b-41d4-a716-446655440000", Name: "Test"}
 	mockService.On("GetUser", mock.Anything, user).Return(resp, nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "get_user", "Get user info success", mock.Anything, mock.Anything).Return()
 	r := httptest.NewRequest("GET", "/user", nil)
@@ -60,7 +60,7 @@ func TestHandlerGetUser_ServiceError(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	mockService.On("GetUser", mock.Anything, user).Return(nil, errors.New("fail"))
 	mockLogger.On("LogHandlerError", mock.Anything, "get_user", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -119,9 +119,9 @@ func TestHandlerGetUser_EmptyUserData(t *testing.T) {
 		Logger:      mockLogger,
 		userService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 	// Return user with empty/null fields
-	resp := &UserResponse{ID: "u1", Name: "", Email: "", Phone: "", Address: ""}
+	resp := &UserResponse{ID: "550e8400-e29b-41d4-a716-446655440000", Name: "", Email: "", Phone: "", Address: ""}
 	mockService.On("GetUser", mock.Anything, user).Return(resp, nil)
 	mockLogger.On("LogHandlerSuccess", mock.Anything, "get_user", "Get user info success", mock.Anything, mock.Anything).Return()
 
@@ -136,7 +136,7 @@ func TestHandlerGetUser_EmptyUserData(t *testing.T) {
 	var response UserResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "u1", response.ID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", response.ID)
 	assert.Empty(t, response.Name)
 	assert.Empty(t, response.Email)
 	mockService.AssertExpectations(t)

@@ -27,10 +27,10 @@ func TestHandlerConfirmPayment_Success(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
-	req := ConfirmPaymentRequest{OrderID: "order1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+	req := ConfirmPaymentRequest{OrderID: "550e8400-e29b-41d4-a716-446655440000"}
 	jsonBody, _ := json.Marshal(req)
-	expectedParams := ConfirmPaymentParams{OrderID: "order1", UserID: "u1"}
+	expectedParams := ConfirmPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000"}
 	expectedResult := &ConfirmPaymentResult{Status: "succeeded"}
 	mockService.On("ConfirmPayment", mock.Anything, expectedParams).Return(expectedResult, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "confirm_payment", "Payment confirmation success", mock.Anything, mock.Anything).Return()
@@ -58,7 +58,7 @@ func TestHandlerConfirmPayment_InvalidPayload(t *testing.T) {
 		Logger:         mockLog,
 		paymentService: mockService,
 	}
-	user := database.User{ID: "u1"}
+	user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
 
 	testInvalidPayload(t, cfg.HandlerConfirmPayment, mockLog, user, "POST", "/payments/confirm", "confirm_payment")
 }
@@ -93,10 +93,10 @@ func TestHandlerConfirmPayment_ErrorCases(t *testing.T) {
 				Logger:         mockLog,
 				paymentService: mockService,
 			}
-			user := database.User{ID: "u1"}
-			req := ConfirmPaymentRequest{OrderID: "order1"}
+			user := database.User{ID: "550e8400-e29b-41d4-a716-446655440000"}
+			req := ConfirmPaymentRequest{OrderID: "550e8400-e29b-41d4-a716-446655440000"}
 			jsonBody, _ := json.Marshal(req)
-			expectedParams := ConfirmPaymentParams{OrderID: "order1", UserID: "u1"}
+			expectedParams := ConfirmPaymentParams{OrderID: "550e8400-e29b-41d4-a716-446655440000", UserID: "550e8400-e29b-41d4-a716-446655440000"}
 			mockService.On("ConfirmPayment", mock.Anything, expectedParams).Return(nil, tc.err)
 			mockLog.On("LogHandlerError", tc.logArgs...).Return()
 
