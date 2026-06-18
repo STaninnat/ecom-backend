@@ -186,7 +186,7 @@ func HandleCategoryDelete[
 	ctx := r.Context()
 
 	categoryID := chi.URLParam(r, "id")
-	if categoryID == "" || !utils.IsValidObjectID(categoryID) {
+	if categoryID == "" || !utils.IsValidUUID(categoryID) {
 		logger.LogHandlerError(
 			ctx,
 			"delete_category",

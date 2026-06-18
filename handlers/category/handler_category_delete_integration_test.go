@@ -31,20 +31,20 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 	}{
 		{
 			name:       "successful deletion",
-			categoryID: "5f8d04b39b34335500000000",
+			categoryID: "550e8400-e29b-41d4-a716-446655440000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(nil)
+				mockService.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Category deleted successfully"}`,
 		},
 		{
 			name:       "service error",
-			categoryID: "5f8d04b39b34335500000000",
+			categoryID: "550e8400-e29b-41d4-a716-446655440000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(&handlers.AppError{Code: "delete_category_error", Message: "Category not found"})
+				mockService.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(&handlers.AppError{Code: "delete_category_error", Message: "Category not found"})
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Something went wrong, please try again later"}`,
@@ -67,10 +67,10 @@ func TestIntegration_HandlerDeleteCategory(t *testing.T) {
 		},
 		{
 			name:       "service returns non-AppError",
-			categoryID: "5f8d04b39b34335500000000",
+			categoryID: "550e8400-e29b-41d4-a716-446655440000",
 			user:       database.User{ID: "test-user-id"},
 			mockSetup: func(mockService *MockCategoryService) {
-				mockService.On("DeleteCategory", mock.Anything, "5f8d04b39b34335500000000").Return(assert.AnError)
+				mockService.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(assert.AnError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"Internal server error"}`,

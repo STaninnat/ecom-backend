@@ -140,7 +140,7 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 		{
 			name: "successful update",
 			params: CategoryRequest{
-				ID:          "test-id",
+				ID:          "550e8400-e29b-41d4-a716-446655440000",
 				Name:        "Updated Category",
 				Description: "Updated Description",
 			},
@@ -167,7 +167,7 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 		{
 			name: "missing name",
 			params: CategoryRequest{
-				ID: "test-id",
+				ID: "550e8400-e29b-41d4-a716-446655440000",
 			},
 			setupMocks: func(_ *MockCategoryDBQueries, _ *MockCategoryDBConn, _ *MockCategoryDBTx) {
 				// No mocks needed as validation fails before DB calls
@@ -178,7 +178,7 @@ func TestCategoryServiceImpl_UpdateCategory(t *testing.T) {
 		{
 			name: "database error",
 			params: CategoryRequest{
-				ID:   "test-id",
+				ID:   "550e8400-e29b-41d4-a716-446655440000",
 				Name: "Test Category",
 			},
 			setupMocks:    setupDatabaseErrorForUpdate,
@@ -218,12 +218,12 @@ func TestCategoryServiceImpl_DeleteCategory(t *testing.T) {
 	}{
 		{
 			name:       "successful deletion",
-			categoryID: "test-id",
+			categoryID: "550e8400-e29b-41d4-a716-446655440000",
 			setupMocks: func(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
 				mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 				mockTx.On("Rollback").Return(nil)
 				mockDB.On("WithTx", mockTx).Return(mockDB)
-				mockDB.On("DeleteCategory", mock.Anything, "test-id").Return(nil)
+				mockDB.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 				mockTx.On("Commit").Return(nil)
 			},
 			expectedError: false,
@@ -237,12 +237,12 @@ func TestCategoryServiceImpl_DeleteCategory(t *testing.T) {
 		},
 		{
 			name:       "database error",
-			categoryID: "test-id",
+			categoryID: "550e8400-e29b-41d4-a716-446655440000",
 			setupMocks: func(mockDB *MockCategoryDBQueries, mockConn *MockCategoryDBConn, mockTx *MockCategoryDBTx) {
 				mockConn.On("BeginTx", mock.Anything, (*sql.TxOptions)(nil)).Return(mockTx, nil)
 				mockTx.On("Rollback").Return(nil)
 				mockDB.On("WithTx", mockTx).Return(mockDB)
-				mockDB.On("DeleteCategory", mock.Anything, "test-id").Return(errors.New("database error"))
+				mockDB.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(errors.New("database error"))
 			},
 			expectedError: true,
 			errorCode:     "delete_category_error",
@@ -407,7 +407,7 @@ func TestCategoryServiceImpl_UpdateCategory_NilDBConn(t *testing.T) {
 	}
 
 	err := service.UpdateCategory(context.Background(), CategoryRequest{
-		ID:          "test-id",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
 		Name:        "Test Category",
 		Description: "Test Description",
 	})
@@ -429,7 +429,7 @@ func TestCategoryServiceImpl_DeleteCategory_NilDBConn(t *testing.T) {
 		dbConn: nil,
 	}
 
-	err := service.DeleteCategory(context.Background(), "test-id")
+	err := service.DeleteCategory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -541,7 +541,7 @@ func TestCategoryServiceImpl_UpdateCategory_TransactionError(t *testing.T) {
 	}
 
 	err := service.UpdateCategory(context.Background(), CategoryRequest{
-		ID:          "test-id",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
 		Name:        "Test Category",
 		Description: "Test Description",
 	})
@@ -578,7 +578,7 @@ func TestCategoryServiceImpl_UpdateCategory_CommitError(t *testing.T) {
 	}
 
 	err := service.UpdateCategory(context.Background(), CategoryRequest{
-		ID:          "test-id",
+		ID:          "550e8400-e29b-41d4-a716-446655440000",
 		Name:        "Test Category",
 		Description: "Test Description",
 	})
@@ -609,7 +609,7 @@ func TestCategoryServiceImpl_DeleteCategory_TransactionError(t *testing.T) {
 		dbConn: mockDBConn,
 	}
 
-	err := service.DeleteCategory(context.Background(), "test-id")
+	err := service.DeleteCategory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -632,7 +632,7 @@ func TestCategoryServiceImpl_DeleteCategory_CommitError(t *testing.T) {
 	mockDBConn.On("BeginTx", mock.Anything, mock.Anything).Return(mockTx, nil)
 	// Mock successful DeleteCategory
 	mockDB.On("WithTx", mockTx).Return(mockDB)
-	mockDB.On("DeleteCategory", mock.Anything, "test-id").Return(nil)
+	mockDB.On("DeleteCategory", mock.Anything, "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 	// Mock Commit to return an error
 	mockTx.On("Commit").Return(fmt.Errorf("commit failed"))
 	mockTx.On("Rollback").Return(nil)
@@ -642,7 +642,7 @@ func TestCategoryServiceImpl_DeleteCategory_CommitError(t *testing.T) {
 		dbConn: mockDBConn,
 	}
 
-	err := service.DeleteCategory(context.Background(), "test-id")
+	err := service.DeleteCategory(context.Background(), "550e8400-e29b-41d4-a716-446655440000")
 
 	require.Error(t, err)
 	appErr := &handlers.AppError{}
@@ -680,7 +680,7 @@ func TestCategoryService_DatabaseErrorScenarios(t *testing.T) {
 			name:      "UpdateCategory_DatabaseError",
 			operation: "update",
 			params: CategoryRequest{
-				ID:   "test-id",
+				ID:   "550e8400-e29b-41d4-a716-446655440000",
 				Name: "Test Category",
 			},
 			setupMocks: func(mockService *MockCategoryService) {
