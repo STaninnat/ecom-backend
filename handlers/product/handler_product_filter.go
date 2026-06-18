@@ -3,8 +3,8 @@ package producthandlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/STaninnat/ecom-backend/handlers"
 	"github.com/STaninnat/ecom-backend/internal/database"
@@ -20,7 +20,10 @@ import (
 // @Tags         products
 // @Accept       json
 // @Produce      json
-// @Param        filter  body  object{}  true  "Filter payload"
+// @Param        category_id  query  string   false  "Category ID"
+// @Param        is_active    query  boolean  false  "Is Active"
+// @Param        min_price    query  number   false  "Minimum Price"
+// @Param        max_price    query  number   false  "Maximum Price"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]string
 // @Router       /v1/products/filter [get]
@@ -29,16 +32,40 @@ func (cfg *HandlersProductConfig) HandlerFilterProducts(w http.ResponseWriter, r
 	ctx := r.Context()
 
 	var params FilterProductsRequest
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		cfg.Logger.LogHandlerError(
-			ctx,
-			"filter_products",
-			"invalid_request",
-			"Invalid request payload",
-			ip, userAgent, err,
-		)
-		middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
+	query := r.URL.Query()
+
+	if catID := query.Get("category_id"); catID != "" {
+		params.CategoryID.Valid = true
+		params.CategoryID.String = catID
+	}
+	if isActiveStr := query.Get("is_active"); isActiveStr != "" {
+		if isActiveStr == "true" {
+			params.IsActive.Valid = true
+			params.IsActive.Bool = true
+		} else if isActiveStr == "false" {
+			params.IsActive.Valid = true
+			params.IsActive.Bool = false
+		}
+	}
+	if minPriceStr := query.Get("min_price"); minPriceStr != "" {
+		if minPrice, err := strconv.ParseFloat(minPriceStr, 64); err == nil {
+			params.MinPrice.Valid = true
+			params.MinPrice.Float64 = minPrice
+		} else {
+			cfg.Logger.LogHandlerError(ctx, "filter_products", "invalid_request", "Invalid min_price", ip, userAgent, err)
+			middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid min_price")
+			return
+		}
+	}
+	if maxPriceStr := query.Get("max_price"); maxPriceStr != "" {
+		if maxPrice, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+			params.MaxPrice.Valid = true
+			params.MaxPrice.Float64 = maxPrice
+		} else {
+			cfg.Logger.LogHandlerError(ctx, "filter_products", "invalid_request", "Invalid max_price", ip, userAgent, err)
+			middlewares.RespondWithError(w, http.StatusBadRequest, "Invalid max_price")
+			return
+		}
 	}
 
 	products, err := cfg.GetProductService().FilterProducts(ctx, params)

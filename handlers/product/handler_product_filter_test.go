@@ -2,8 +2,6 @@
 package producthandlers
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -18,8 +16,6 @@ import (
 
 // handler_product_filter_test.go: Tests the filter products handler for success, invalid input, and service error with expected responses and logging.
 
-// TestHandlerFilterProducts_Success tests the successful filtering of products via the handler.
-// It verifies that the handler returns HTTP 200 and logs success when the service returns products without error.
 func TestHandlerFilterProducts_Success(t *testing.T) {
 	mockService := new(MockProductService)
 	mockLog := new(mockLogger)
@@ -30,13 +26,22 @@ func TestHandlerFilterProducts_Success(t *testing.T) {
 		productService: mockService,
 	}
 	user := &database.User{ID: "u1"}
+
 	params := FilterProductsRequest{}
-	products := []database.Product{{ID: "p1"}, {ID: "p2"}}
+	params.CategoryID.Valid = true
+	params.CategoryID.String = "cat1"
+	params.IsActive.Valid = true
+	params.IsActive.Bool = true
+	params.MinPrice.Valid = true
+	params.MinPrice.Float64 = 10.5
+	params.MaxPrice.Valid = true
+	params.MaxPrice.Float64 = 100.0
+
+	products := []database.Product{{ID: "00000000-0000-0000-0000-000000000001"}, {ID: "p2"}}
 	mockService.On("FilterProducts", mock.Anything, params).Return(products, nil)
 	mockLog.On("LogHandlerSuccess", mock.Anything, "filter_products", "Filter products success", mock.Anything, mock.Anything).Return()
-	jsonBody, _ := json.Marshal(params)
 
-	req := httptest.NewRequest("POST", "/products/filter", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest("GET", "/products/filter?category_id=cat1&is_active=true&min_price=10.5&max_price=100", nil)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerFilterProducts(w, req, user)
@@ -45,9 +50,7 @@ func TestHandlerFilterProducts_Success(t *testing.T) {
 	mockLog.AssertExpectations(t)
 }
 
-// TestHandlerFilterProducts_InvalidPayload tests the handler's response to an invalid JSON payload.
-// It checks that the handler returns HTTP 400 and logs the appropriate error.
-func TestHandlerFilterProducts_InvalidPayload(t *testing.T) {
+func TestHandlerFilterProducts_InvalidMinPrice(t *testing.T) {
 	mockService := new(MockProductService)
 	mockLog := new(mockLogger)
 	cfg := &HandlersProductConfig{
@@ -57,10 +60,9 @@ func TestHandlerFilterProducts_InvalidPayload(t *testing.T) {
 		productService: mockService,
 	}
 	user := &database.User{ID: "u1"}
-	badBody := []byte(`{"bad":}`)
-	mockLog.On("LogHandlerError", mock.Anything, "filter_products", "invalid_request", "Invalid request payload", mock.Anything, mock.Anything, mock.Anything).Return()
+	mockLog.On("LogHandlerError", mock.Anything, "filter_products", "invalid_request", "Invalid min_price", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	req := httptest.NewRequest("POST", "/products/filter", bytes.NewBuffer(badBody))
+	req := httptest.NewRequest("GET", "/products/filter?min_price=abc", nil)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerFilterProducts(w, req, user)
@@ -68,8 +70,6 @@ func TestHandlerFilterProducts_InvalidPayload(t *testing.T) {
 	mockLog.AssertExpectations(t)
 }
 
-// TestHandlerFilterProducts_ServiceError tests the handler's behavior when the product service returns an error during filtering.
-// It ensures the handler returns HTTP 500 and logs the service error correctly.
 func TestHandlerFilterProducts_ServiceError(t *testing.T) {
 	mockService := new(MockProductService)
 	mockLog := new(mockLogger)
@@ -84,9 +84,8 @@ func TestHandlerFilterProducts_ServiceError(t *testing.T) {
 	err := &handlers.AppError{Code: "transaction_error", Message: "fail", Err: errors.New("fail")}
 	mockService.On("FilterProducts", mock.Anything, params).Return(nil, err)
 	mockLog.On("LogHandlerError", mock.Anything, "filter_products", "transaction_error", "fail", mock.Anything, mock.Anything, err.Err).Return()
-	jsonBody, _ := json.Marshal(params)
 
-	req := httptest.NewRequest("POST", "/products/filter", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest("GET", "/products/filter", nil)
 	w := httptest.NewRecorder()
 
 	cfg.HandlerFilterProducts(w, req, user)

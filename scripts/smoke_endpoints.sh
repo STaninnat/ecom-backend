@@ -111,7 +111,7 @@ PRODUCT_ID="$(sed -n 's/.*"product_id":"\([^"]*\)".*/\1/p' "$TMP_DIR/product.jso
 echo "PASS POST /products/ -> 201"
 
 require_status GET /products/ 200
-require_status GET /products/filter 200 '{}'
+require_status GET "/products/filter?is_active=true" 200 ""
 require_status GET "/products/$PRODUCT_ID" 401
 require_status GET "/products/$PRODUCT_ID" 200 "" "$USER_COOKIE"
 require_status GET "/products/$MISSING_UUID" 404 "" "$USER_COOKIE"
