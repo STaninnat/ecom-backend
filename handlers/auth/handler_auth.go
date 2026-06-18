@@ -39,7 +39,7 @@ type SigninRequest struct {
 // @Router       /v1/auth/signup [post]
 func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
+	ctx := context.WithValue(r.Context(), HTTPRequestKey, r)
 
 	// Parse and validate request
 	params, err := auth.DecodeAndValidate[struct {
@@ -99,7 +99,7 @@ func (cfg *HandlersAuthConfig) HandlerSignUp(w http.ResponseWriter, r *http.Requ
 // @Router       /v1/auth/signin [post]
 func (cfg *HandlersAuthConfig) HandlerSignIn(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
+	ctx := context.WithValue(r.Context(), HTTPRequestKey, r)
 
 	// Parse and validate request
 	params, err := auth.DecodeAndValidate[struct {

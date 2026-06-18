@@ -53,7 +53,7 @@ func (cfg *HandlersAuthConfig) HandlerGoogleSignIn(w http.ResponseWriter, r *htt
 // @Router       /v1/auth/google/callback [get]
 func (cfg *HandlersAuthConfig) HandlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
+	ctx := context.WithValue(r.Context(), HTTPRequestKey, r)
 
 	// Get parameters from URL
 	state := r.URL.Query().Get("state")

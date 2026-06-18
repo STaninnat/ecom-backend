@@ -126,9 +126,9 @@ type handlerConfigs struct {
 func (apicfg *Config) createHandlerConfigs() *handlerConfigs {
 	// --- Handler Configurations ---
 	// Auth handler config: provides dependencies for auth-related handlers
-	authHandlersConfig := &authhandlers.HandlersAuthConfig{Config: apicfg.Config}
+	authHandlersConfig := &authhandlers.HandlersAuthConfig{Config: apicfg.Config, Logger: apicfg.Config}
 	// User handler config: provides dependencies for user-related handlers
-	userHandlersConfig := &userhandlers.HandlersUserConfig{Config: apicfg.Config}
+	userHandlersConfig := &userhandlers.HandlersUserConfig{Config: apicfg.Config, Logger: apicfg.Config}
 	// Product handler config: includes DB, connection, and logger for product endpoints
 	productHandlersConfig := &producthandlers.HandlersProductConfig{
 		DB:     apicfg.DB,
@@ -136,11 +136,11 @@ func (apicfg *Config) createHandlerConfigs() *handlerConfigs {
 		Logger: apicfg.Config,
 	}
 	// Category handler config: for category endpoints
-	categoryHandlersConfig := &categoryhandlers.HandlersCategoryConfig{Config: apicfg.Config}
+	categoryHandlersConfig := &categoryhandlers.HandlersCategoryConfig{Config: apicfg.Config, Logger: apicfg.Config}
 
 	// --- Order and Payment Handler Configs ---
-	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{Config: apicfg.Config}
-	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{Config: apicfg.Config}
+	orderHandlersConfig := &orderhandlers.HandlersOrderConfig{Config: apicfg.Config, Logger: apicfg.Config}
+	paymentHandlersConfig := &paymenthandlers.HandlersPaymentConfig{Config: apicfg.Config, Logger: apicfg.Config}
 
 	// Initialize MongoDB-dependent configs as nil
 	var cartConfig *carthandlers.HandlersCartConfig
@@ -285,29 +285,29 @@ func (apicfg *Config) setupAuthRoutes(v1Router *chi.Mux, authConfig *authhandler
 func (apicfg *Config) setupUserRoutes(v1Router *chi.Mux, userConfig *userhandlers.HandlersUserConfig) {
 	// --- User Subrouter ---
 	usersRouter := chi.NewRouter()
-	usersRouter.Get("/", middlewares.NoCacheHeaders(WithUser(userConfig.AuthHandlerGetUser)).(http.HandlerFunc))    // Get current user profile
-	usersRouter.Put("/", middlewares.NoCacheHeaders(WithUser(userConfig.AuthHandlerUpdateUser)).(http.HandlerFunc)) // Update user profile
+	usersRouter.Get("/", middlewares.NoCacheHeaders(apicfg.HandlerMiddleware(userConfig.AuthHandlerGetUser)).(http.HandlerFunc))    // Get current user profile
+	usersRouter.Put("/", middlewares.NoCacheHeaders(apicfg.HandlerMiddleware(userConfig.AuthHandlerUpdateUser)).(http.HandlerFunc)) // Update user profile
 	v1Router.Mount("/users", usersRouter)
 }
 
 func (apicfg *Config) setupProductRoutes(v1Router *chi.Mux, productConfig *producthandlers.HandlersProductConfig, uploadConfig any, cacheConfig middlewares.CacheConfig) {
 	// --- Product Subrouter ---
 	productsRouter := chi.NewRouter()
-	productsRouter.Get("/", middlewares.CacheMiddleware(cacheConfig)(WithOptionalUser(productConfig.HandlerGetAllProducts)).(http.HandlerFunc))                      // List all products (cached)
-	productsRouter.Get("/filter", middlewares.CacheMiddleware(cacheConfig)(WithOptionalUser(productConfig.HandlerFilterProducts)).(http.HandlerFunc))                // Filter products (cached)
-	productsRouter.Get("/{id}", WithUser(productConfig.HandlerGetProductByID))                                                                                       // Get product details (requires auth)
-	productsRouter.Post("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerCreateProduct)).(http.HandlerFunc))       // Admin: create product, invalidates cache
-	productsRouter.Put("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerUpdateProduct)).(http.HandlerFunc))        // Admin: update product, invalidates cache
-	productsRouter.Delete("/{id}", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(WithAdmin(productConfig.HandlerDeleteProduct)).(http.HandlerFunc)) // Admin: delete product, invalidates cache
+	productsRouter.Get("/", middlewares.CacheMiddleware(cacheConfig)(apicfg.HandlerOptionalMiddleware(productConfig.HandlerGetAllProducts)).(http.HandlerFunc))                              // List all products (cached)
+	productsRouter.Get("/filter", middlewares.CacheMiddleware(cacheConfig)(apicfg.HandlerOptionalMiddleware(productConfig.HandlerFilterProducts)).(http.HandlerFunc))                        // Filter products (cached)
+	productsRouter.Get("/{id}", apicfg.HandlerMiddleware(productConfig.HandlerGetProductByID))                                                                                               // Get product details (requires auth)
+	productsRouter.Post("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(apicfg.HandlerAdminOnlyMiddleware(productConfig.HandlerCreateProduct)).(http.HandlerFunc))       // Admin: create product, invalidates cache
+	productsRouter.Put("/", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(apicfg.HandlerAdminOnlyMiddleware(productConfig.HandlerUpdateProduct)).(http.HandlerFunc))        // Admin: update product, invalidates cache
+	productsRouter.Delete("/{id}", middlewares.InvalidateCache(apicfg.CacheService, "products:*")(apicfg.HandlerAdminOnlyMiddleware(productConfig.HandlerDeleteProduct)).(http.HandlerFunc)) // Admin: delete product, invalidates cache
 	// Use correct upload handler based on backend
 	if apicfg.UploadBackend == "s3" {
 		s3UploadConfig := uploadConfig.(*uploadhandlers.HandlersUploadS3Config)
-		productsRouter.Post("/upload-image", WithAdmin(s3UploadConfig.HandlerS3UploadProductImage))
-		productsRouter.Post("/{id}/image", WithAdmin(s3UploadConfig.HandlerS3UpdateProductImageByID))
+		productsRouter.Post("/upload-image", apicfg.HandlerAdminOnlyMiddleware(s3UploadConfig.HandlerS3UploadProductImage))
+		productsRouter.Post("/{id}/image", apicfg.HandlerAdminOnlyMiddleware(s3UploadConfig.HandlerS3UpdateProductImageByID))
 	} else {
 		localUploadConfig := uploadConfig.(*uploadhandlers.HandlersUploadConfig)
-		productsRouter.Post("/upload-image", WithAdmin(localUploadConfig.HandlerUploadProductImage))
-		productsRouter.Post("/{id}/image", WithAdmin(localUploadConfig.HandlerUpdateProductImageByID))
+		productsRouter.Post("/upload-image", apicfg.HandlerAdminOnlyMiddleware(localUploadConfig.HandlerUploadProductImage))
+		productsRouter.Post("/{id}/image", apicfg.HandlerAdminOnlyMiddleware(localUploadConfig.HandlerUpdateProductImageByID))
 	}
 	v1Router.Mount("/products", productsRouter)
 }
@@ -315,22 +315,22 @@ func (apicfg *Config) setupProductRoutes(v1Router *chi.Mux, productConfig *produ
 func (apicfg *Config) setupCategoryRoutes(v1Router *chi.Mux, categoryConfig *categoryhandlers.HandlersCategoryConfig, cacheConfig middlewares.CacheConfig) {
 	// --- Category Subrouter ---
 	categoriesRouter := chi.NewRouter()
-	categoriesRouter.Get("/", middlewares.CacheMiddleware(cacheConfig)(WithOptionalUser(categoryConfig.HandlerGetAllCategories)).(http.HandlerFunc))                       // List all categories (cached)
-	categoriesRouter.Post("/", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(WithAdmin(categoryConfig.HandlerCreateCategory)).(http.HandlerFunc))       // Admin: create category, invalidates cache
-	categoriesRouter.Put("/", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(WithAdmin(categoryConfig.HandlerUpdateCategory)).(http.HandlerFunc))        // Admin: update category, invalidates cache
-	categoriesRouter.Delete("/{id}", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(WithAdmin(categoryConfig.HandlerDeleteCategory)).(http.HandlerFunc)) // Admin: delete category, invalidates cache
+	categoriesRouter.Get("/", middlewares.CacheMiddleware(cacheConfig)(apicfg.HandlerOptionalMiddleware(categoryConfig.HandlerGetAllCategories)).(http.HandlerFunc))                               // List all categories (cached)
+	categoriesRouter.Post("/", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(apicfg.HandlerAdminOnlyMiddleware(categoryConfig.HandlerCreateCategory)).(http.HandlerFunc))       // Admin: create category, invalidates cache
+	categoriesRouter.Put("/", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(apicfg.HandlerAdminOnlyMiddleware(categoryConfig.HandlerUpdateCategory)).(http.HandlerFunc))        // Admin: update category, invalidates cache
+	categoriesRouter.Delete("/{id}", middlewares.InvalidateCache(apicfg.CacheService, "categories:*")(apicfg.HandlerAdminOnlyMiddleware(categoryConfig.HandlerDeleteCategory)).(http.HandlerFunc)) // Admin: delete category, invalidates cache
 	v1Router.Mount("/categories", categoriesRouter)
 }
 
 func (apicfg *Config) setupOrderRoutes(v1Router *chi.Mux, orderConfig *orderhandlers.HandlersOrderConfig) {
 	// --- Order Subrouter ---
 	ordersRouter := chi.NewRouter()
-	ordersRouter.Post("/", WithUser(orderConfig.HandlerCreateOrder))                           // Create new order
-	ordersRouter.Get("/user", WithUser(orderConfig.HandlerGetUserOrders))                      // Get orders for current user
-	ordersRouter.Get("/items/{order_id}", WithUser(orderConfig.HandlerGetOrderItemsByOrderID)) // Get items for a specific order
-	ordersRouter.Put("/{order_id}/status", WithAdmin(orderConfig.HandlerUpdateOrderStatus))    // Admin: update order status
-	ordersRouter.Delete("/{order_id}", WithAdmin(orderConfig.HandlerDeleteOrder))              // Admin: delete order
-	ordersRouter.Get("/", WithAdmin(orderConfig.HandlerGetAllOrders))                          // Admin: list all orders
+	ordersRouter.Post("/", apicfg.HandlerMiddleware(orderConfig.HandlerCreateOrder))                                // Create new order
+	ordersRouter.Get("/user", apicfg.HandlerMiddleware(orderConfig.HandlerGetUserOrders))                           // Get orders for current user
+	ordersRouter.Get("/items/{order_id}", apicfg.HandlerMiddleware(orderConfig.HandlerGetOrderItemsByOrderID))      // Get items for a specific order
+	ordersRouter.Put("/{order_id}/status", apicfg.HandlerAdminOnlyMiddleware(orderConfig.HandlerUpdateOrderStatus)) // Admin: update order status
+	ordersRouter.Delete("/{order_id}", apicfg.HandlerAdminOnlyMiddleware(orderConfig.HandlerDeleteOrder))           // Admin: delete order
+	ordersRouter.Get("/", apicfg.HandlerAdminOnlyMiddleware(orderConfig.HandlerGetAllOrders))                       // Admin: list all orders
 	v1Router.Mount("/orders", ordersRouter)
 }
 
@@ -339,12 +339,12 @@ func (apicfg *Config) setupCartRoutes(v1Router *chi.Mux, cartConfig *carthandler
 	// Only register cart routes if MongoDB is configured and cart config is initialized
 	if apicfg.MongoDB != nil && cartConfig != nil {
 		cartRouter := chi.NewRouter()
-		cartRouter.Post("/items", WithUser(cartConfig.HandlerAddItemToUserCart))        // Add item to user cart
-		cartRouter.Put("/items", WithUser(cartConfig.HandlerUpdateItemQuantity))        // Update item quantity in user cart
-		cartRouter.Get("/items", WithUser(cartConfig.HandlerGetUserCart))               // Get current user's cart
-		cartRouter.Delete("/items", WithUser(cartConfig.HandlerRemoveItemFromUserCart)) // Remove item from user cart
-		cartRouter.Delete("/", WithUser(cartConfig.HandlerClearUserCart))               // Clear user cart
-		cartRouter.Post("/checkout", WithUser(cartConfig.HandlerCheckoutUserCart))      // Checkout user cart
+		cartRouter.Post("/items", apicfg.HandlerMiddleware(cartConfig.HandlerAddItemToUserCart))        // Add item to user cart
+		cartRouter.Put("/items", apicfg.HandlerMiddleware(cartConfig.HandlerUpdateItemQuantity))        // Update item quantity in user cart
+		cartRouter.Get("/items", apicfg.HandlerMiddleware(cartConfig.HandlerGetUserCart))               // Get current user's cart
+		cartRouter.Delete("/items", apicfg.HandlerMiddleware(cartConfig.HandlerRemoveItemFromUserCart)) // Remove item from user cart
+		cartRouter.Delete("/", apicfg.HandlerMiddleware(cartConfig.HandlerClearUserCart))               // Clear user cart
+		cartRouter.Post("/checkout", apicfg.HandlerMiddleware(cartConfig.HandlerCheckoutUserCart))      // Checkout user cart
 		v1Router.Mount("/cart", cartRouter)
 	}
 	// --- Guest Cart Subrouter ---
@@ -363,13 +363,13 @@ func (apicfg *Config) setupCartRoutes(v1Router *chi.Mux, cartConfig *carthandler
 func (apicfg *Config) setupPaymentRoutes(v1Router *chi.Mux, paymentConfig *paymenthandlers.HandlersPaymentConfig) {
 	// --- Payment Subrouter ---
 	paymentsRouter := chi.NewRouter()
-	paymentsRouter.Post("/webhook", Adapt(paymentConfig.HandlerStripeWebhook))              // Stripe webhook endpoint
-	paymentsRouter.Post("/intent", WithUser(paymentConfig.HandlerCreatePayment))            // Create payment intent
-	paymentsRouter.Post("/confirm", WithUser(paymentConfig.HandlerConfirmPayment))          // Confirm payment
-	paymentsRouter.Get("/{order_id}", WithUser(paymentConfig.HandlerGetPayment))            // Get payment for order
-	paymentsRouter.Get("/history", WithUser(paymentConfig.HandlerGetPaymentHistory))        // Get payment history for user
-	paymentsRouter.Post("/{order_id}/refund", WithUser(paymentConfig.HandlerRefundPayment)) // Refund payment for order
-	paymentsRouter.Get("/admin/{status}", WithAdmin(paymentConfig.HandlerAdminGetPayments)) // Admin: get payments by status
+	paymentsRouter.Post("/webhook", Adapt(paymentConfig.HandlerStripeWebhook))                                      // Stripe webhook endpoint
+	paymentsRouter.Post("/intent", apicfg.HandlerMiddleware(paymentConfig.HandlerCreatePayment))                    // Create payment intent
+	paymentsRouter.Post("/confirm", apicfg.HandlerMiddleware(paymentConfig.HandlerConfirmPayment))                  // Confirm payment
+	paymentsRouter.Get("/{order_id}", apicfg.HandlerMiddleware(paymentConfig.HandlerGetPayment))                    // Get payment for order
+	paymentsRouter.Get("/history", apicfg.HandlerMiddleware(paymentConfig.HandlerGetPaymentHistory))                // Get payment history for user
+	paymentsRouter.Post("/{order_id}/refund", apicfg.HandlerMiddleware(paymentConfig.HandlerRefundPayment))         // Refund payment for order
+	paymentsRouter.Get("/admin/{status}", apicfg.HandlerAdminOnlyMiddleware(paymentConfig.HandlerAdminGetPayments)) // Admin: get payments by status
 	v1Router.Mount("/payments", paymentsRouter)
 }
 
@@ -377,12 +377,12 @@ func (apicfg *Config) setupReviewRoutes(v1Router *chi.Mux, reviewConfig *reviewh
 	// --- Review Subrouter ---
 	if reviewConfig != nil {
 		reviewsRouter := chi.NewRouter()
-		reviewsRouter.Get("/product/{product_id}", Adapt(reviewConfig.HandlerGetReviewsByProductID)) // Get reviews for a product
-		reviewsRouter.Get("/{id}", Adapt(reviewConfig.HandlerGetReviewByID))                         // Get review by ID
-		reviewsRouter.Post("/", WithUser(reviewConfig.HandlerCreateReview))                          // Create review (auth required)
-		reviewsRouter.Get("/user", WithUser(reviewConfig.HandlerGetReviewsByUserID))                 // Get reviews by user
-		reviewsRouter.Put("/{id}", WithUser(reviewConfig.HandlerUpdateReviewByID))                   // Update review (auth required)
-		reviewsRouter.Delete("/{id}", WithUser(reviewConfig.HandlerDeleteReviewByID))                // Delete review (auth required)
+		reviewsRouter.Get("/product/{product_id}", Adapt(reviewConfig.HandlerGetReviewsByProductID))  // Get reviews for a product
+		reviewsRouter.Get("/{id}", Adapt(reviewConfig.HandlerGetReviewByID))                          // Get review by ID
+		reviewsRouter.Post("/", apicfg.HandlerMiddleware(reviewConfig.HandlerCreateReview))           // Create review (auth required)
+		reviewsRouter.Get("/user", apicfg.HandlerMiddleware(reviewConfig.HandlerGetReviewsByUserID))  // Get reviews by user
+		reviewsRouter.Put("/{id}", apicfg.HandlerMiddleware(reviewConfig.HandlerUpdateReviewByID))    // Update review (auth required)
+		reviewsRouter.Delete("/{id}", apicfg.HandlerMiddleware(reviewConfig.HandlerDeleteReviewByID)) // Delete review (auth required)
 		v1Router.Mount("/reviews", reviewsRouter)
 	}
 }
@@ -390,6 +390,6 @@ func (apicfg *Config) setupReviewRoutes(v1Router *chi.Mux, reviewConfig *reviewh
 func (apicfg *Config) setupAdminRoutes(v1Router *chi.Mux, userConfig *userhandlers.HandlersUserConfig) {
 	// --- Admin Subrouter ---
 	adminRouter := chi.NewRouter()
-	adminRouter.Post("/user/promote", WithAdmin(userConfig.AuthHandlerPromoteUserToAdmin)) // Promote user to admin
+	adminRouter.Post("/user/promote", apicfg.HandlerAdminOnlyMiddleware(userConfig.AuthHandlerPromoteUserToAdmin)) // Promote user to admin
 	v1Router.Mount("/admin", adminRouter)
 }

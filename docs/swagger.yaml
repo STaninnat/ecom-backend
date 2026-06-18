@@ -715,7 +715,7 @@ paths:
       summary: Update item quantity in guest cart
       tags:
       - guest-cart
-  /v1/health:
+  /v1/healthz:
     get:
       description: Returns a detailed health status including version and timestamp
       produces:

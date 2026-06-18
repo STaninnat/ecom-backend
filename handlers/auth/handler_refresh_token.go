@@ -23,7 +23,7 @@ import (
 // @Router       /v1/auth/refresh [post]
 func (cfg *HandlersAuthConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request) {
 	ip, userAgent := handlers.GetRequestMetadata(r)
-	ctx := r.Context()
+	ctx := context.WithValue(r.Context(), HTTPRequestKey, r)
 
 	// Get user info from token
 	userID, storedData, err := cfg.Auth.ValidateCookieRefreshTokenData(w, r)

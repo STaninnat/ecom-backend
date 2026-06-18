@@ -276,10 +276,22 @@ func (s *productServiceImpl) GetProductByID(ctx context.Context, productID strin
 	if productID == "" {
 		return database.Product{}, &handlers.AppError{Code: "invalid_request", Message: "Missing product ID"}
 	}
+	var (
+		product database.Product
+		err     error
+	)
 	if isAdmin {
-		return s.db.GetProductByID(ctx, productID)
+		product, err = s.db.GetProductByID(ctx, productID)
+	} else {
+		product, err = s.db.GetActiveProductByID(ctx, productID)
 	}
-	return s.db.GetActiveProductByID(ctx, productID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return database.Product{}, &handlers.AppError{Code: "product_not_found", Message: "Product not found", Err: err}
+	}
+	if err != nil {
+		return database.Product{}, &handlers.AppError{Code: "transaction_error", Message: "Error getting product", Err: err}
+	}
+	return product, nil
 }
 
 // FilterProducts filters products by various criteria.

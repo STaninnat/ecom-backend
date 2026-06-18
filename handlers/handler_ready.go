@@ -48,7 +48,7 @@ func HandlerError(w http.ResponseWriter, _ *http.Request) {
 // @Tags         infrastructure
 // @Produce      json
 // @Success      200  {object}  map[string]interface{}
-// @Router       /v1/health [get]
+// @Router       /v1/healthz [get]
 func HandlerHealth(w http.ResponseWriter, _ *http.Request) {
 	response := map[string]any{
 		"status":    "healthy",

@@ -95,7 +95,10 @@ func (b *BuilderImpl) connectRedis(ctx context.Context, config *APIConfig) error
 	redisUsername := b.provider.GetString("REDIS_USERNAME")
 	redisPassword := b.provider.GetString("REDIS_PASSWORD")
 	if redisAddr != "" {
-		redisProvider := NewRedisProvider(redisAddr, redisUsername, redisPassword)
+		redisProvider := b.redis
+		if redisProvider == nil {
+			redisProvider = NewRedisProvider(redisAddr, redisUsername, redisPassword)
+		}
 		redisClient, err := redisProvider.Connect(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to connect to Redis: %w", err)
@@ -107,7 +110,9 @@ func (b *BuilderImpl) connectRedis(ctx context.Context, config *APIConfig) error
 
 func (b *BuilderImpl) connectMongo(ctx context.Context, config *APIConfig, mongoURI string) error {
 	var mongoProvider MongoProvider
-	if b.mongo != nil {
+	if provider, ok := b.mongo.(*MongoProviderImpl); ok && provider.uri == "" {
+		mongoProvider = NewMongoProvider(mongoURI)
+	} else if b.mongo != nil {
 		mongoProvider = b.mongo
 	} else {
 		mongoProvider = NewMongoProvider(mongoURI)

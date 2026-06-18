@@ -909,7 +909,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/health": {
+        "/v1/healthz": {
             "get": {
                 "description": "Returns a detailed health status including version and timestamp",
                 "produces": [

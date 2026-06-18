@@ -92,18 +92,37 @@ logs/             # Log output (rotated)
 
 1. **Clone the repo**
 2. **Set up environment variables**
-   - Copy `.env.example` (if present) or check `internal/config` for required keys (DB URLs, JWT secrets, Stripe keys, etc).
+   - Copy `.env.development.example` to `.env.development`.
+   - The example uses local Docker services, local file uploads, and dummy Stripe/S3/Google OAuth values. Do not use production secrets for local development.
 3. **Run dependencies**
-   - Easiest: use Docker Compose for PostgreSQL, MongoDB, and Redis.
-   - Or install them locally and set the connection URLs.
+   - Easiest: `make services-up` starts PostgreSQL, MongoDB, and Redis with Docker Compose.
+   - Or install them locally and update `.env.development` connection URLs.
 4. **Run database migrations**
-   - (If using SQLC, run `sqlc generate` to update Go code from SQL.)
+   - Install `goose`, then run `make migrate-up`.
+   - If SQL changes are made, install `sqlc` and run `make sqlc` to regenerate Go code.
 5. **Install Go dependencies**
    - `go mod download`
 6. **Run the server**
-   - `go run main.go`
+   - `make run`
 7. **Access API docs**
    - [http://localhost:8080/v1/swagger/index.html](http://localhost:8080/v1/swagger/index.html)
+
+### Local Development Commands
+
+```bash
+make dev-env          # create .env.development from the safe example and local dirs
+make services-up      # start PostgreSQL, MongoDB, Redis
+make migrate-up       # apply PostgreSQL migrations from sql/schema
+make sqlc             # regenerate internal/database from sqlc.yaml
+make run              # run the API using .env.development
+make test             # go test ./...
+make cover            # go test ./... -cover
+make cover-func       # write coverage.out and print function coverage
+make checks           # tidy diff, gofmt check, vet, tests, coverage, build
+make lint             # golangci-lint run --fix=false
+```
+
+The local API base URL is `http://localhost:8080/v1` when using the default `.env.development.example`.
 
 ## 📚 API Usage (Examples)
 

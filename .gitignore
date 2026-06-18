@@ -1,5 +1,6 @@
 .env*
 !.env.example
+!.env.development.example
 dump.rdb
 
 logs/
