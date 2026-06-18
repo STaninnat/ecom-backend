@@ -3,7 +3,7 @@ GO_ENV ?= GOMODCACHE=/tmp/go-mod-cache GOCACHE=/tmp/go-build-cache
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo docker compose || echo docker-compose)
 ENV_FILE ?= .env.development
 COVERPROFILE ?= coverage.out
-BEHAVIOR_PACKAGES ?= $(shell GOMODCACHE=/tmp/go-mod-cache GOCACHE=/tmp/go-build-cache $(GO) list ./... | grep -Ev '(/docs|/internal/database|/internal/testutil|/models)$$|^github.com/STaninnat/ecom-backend$$')
+BEHAVIOR_PACKAGES ?= $(shell GOMODCACHE=/tmp/go-mod-cache GOCACHE=/tmp/go-build-cache $(GO) list ./... | grep -Ev '(/docs|/internal/database|/internal/testutil|/models)$$|^github.com/STaninnat/ecom-backend$$' | tr '\n' ' ')
 
 .PHONY: dev-env services-up services-down services-logs migrate-up migrate-down migrate-status sqlc run smoke test cover cover-func cover-behavior tidy-check fmt-check vet build lint checks
 
