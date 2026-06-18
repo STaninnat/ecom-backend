@@ -51,20 +51,20 @@ func TestAuthConfigAdapter_StoreRefreshTokenInRedis_ContextCases(t *testing.T) {
 
 	ctx := context.Background()
 	// No httpRequest in context
-	err := adapter.StoreRefreshTokenInRedis(ctx, "u1", "rt", "local", time.Minute)
+	err := adapter.StoreRefreshTokenInRedis(ctx, "550e8400-e29b-41d4-a716-446655440000", "rt", "local", time.Minute)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires *http.Request")
 
 	// With httpRequest in context, but nil APIConfig
 	r, _ := http.NewRequest("GET", "/", nil)
 	ctx2 := context.WithValue(ctx, HTTPRequestKey, r)
-	err = adapter.StoreRefreshTokenInRedis(ctx2, "u1", "rt", "local", time.Minute)
+	err = adapter.StoreRefreshTokenInRedis(ctx2, "550e8400-e29b-41d4-a716-446655440000", "rt", "local", time.Minute)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "APIConfig is nil")
 
 	// New: Test with nil embedded AuthConfig
 	nilAdapter := &AuthConfigAdapter{AuthConfig: nil}
-	err = nilAdapter.StoreRefreshTokenInRedis(ctx2, "u1", "rt", "local", time.Minute)
+	err = nilAdapter.StoreRefreshTokenInRedis(ctx2, "550e8400-e29b-41d4-a716-446655440000", "rt", "local", time.Minute)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AuthConfig is nil")
 }

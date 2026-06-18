@@ -52,7 +52,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Set up mock expectations
 		expectedResult := &AuthResult{
-			UserID:              "user123",
+			UserID:              "550e8400-e29b-41d4-a716-446655440000",
 			AccessToken:         "access_token_123",
 			RefreshToken:        "refresh_token_123",
 			AccessTokenExpires:  time.Now().Add(30 * time.Minute),
@@ -109,7 +109,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Set up mock expectations
 		expectedResult := &AuthResult{
-			UserID:              "user123",
+			UserID:              "550e8400-e29b-41d4-a716-446655440000",
 			AccessToken:         "access_token_123",
 			RefreshToken:        "refresh_token_123",
 			AccessTokenExpires:  time.Now().Add(30 * time.Minute),
@@ -295,7 +295,7 @@ func TestHandlerIntegration(t *testing.T) {
 
 		// Set up mock expectations
 		expectedResult := &AuthResult{
-			UserID:              "user123",
+			UserID:              "550e8400-e29b-41d4-a716-446655440000",
 			AccessToken:         "google_access_token_123",
 			RefreshToken:        "google_refresh_token_123",
 			AccessTokenExpires:  time.Now().Add(30 * time.Minute),

@@ -27,7 +27,7 @@ import (
 // auth_service_test.go: Tests for authentication service with local and Google OAuth, token management, user registration, and session/cart merging.
 
 const (
-	testUserID       = "user123"
+	testUserID       = "550e8400-e29b-41d4-a716-446655440000"
 	testProvider     = "local"
 	testUUID         = "123e4567-e89b-12d3-a456-426614174000"
 	testPassword     = "longenoughpassword"

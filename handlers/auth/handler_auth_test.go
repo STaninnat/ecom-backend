@@ -38,7 +38,7 @@ func TestHandlerSignUp_Success(t *testing.T) {
 	requestBody := map[string]string{"name": "Test User", "email": "test@example.com", "password": "password123"}
 	jsonBody, _ := json.Marshal(requestBody)
 	expectedResult := &AuthResult{
-		UserID: "user123", AccessToken: "access_token_123", RefreshToken: "refresh_token_123",
+		UserID: "550e8400-e29b-41d4-a716-446655440000", AccessToken: "access_token_123", RefreshToken: "refresh_token_123",
 		AccessTokenExpires: time.Now().Add(30 * time.Minute), RefreshTokenExpires: time.Now().Add(7 * 24 * time.Hour), IsNewUser: true,
 	}
 	mockAuthService.On("SignUp", mock.Anything, SignUpParams{Name: "Test User", Email: "test@example.com", Password: "password123"}).Return(expectedResult, nil)
@@ -315,7 +315,7 @@ func TestHandlerSignIn_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(requestBody)
 
 	expectedResult := &AuthResult{
-		UserID:              "user123",
+		UserID:              "550e8400-e29b-41d4-a716-446655440000",
 		AccessToken:         "access_token_123",
 		RefreshToken:        "refresh_token_123",
 		AccessTokenExpires:  time.Now().Add(30 * time.Minute),
